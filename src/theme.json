@@ -1,0 +1,24 @@
+{
+  "themeName": "Anti-Glare Light",
+  "palette": {
+    "background": {
+      "main": "#FAF9F6",
+      "surface": "#F2F0E6",
+      "overlay": "rgba(242, 240, 230, 0.85)"
+    },
+    "text": {
+      "primary": "#3A3A3A",
+      "secondary": "#888888",
+      "accent": "#00A3C1"
+    },
+    "accent": {
+      "primary": "#00A3C1",
+      "secondary": "#9EABB3",
+      "info": "#8C84A9"
+    },
+    "ui": {
+      "border": "#E0E4E8",
+      "shadow": "rgba(58, 58, 58, 0.08)"
+    }
+  }
+}

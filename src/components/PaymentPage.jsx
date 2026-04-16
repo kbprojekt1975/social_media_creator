@@ -49,7 +49,8 @@ const PaymentPage = () => {
       name: 'Plan Standardowy',
       price: '50 zł',
       features: [
-        'Plan ważny 1 miesiąc lub do wykorzystania miesięcznej subskrypcji'
+        '100 postów AI (ze strategią)',
+        '10 wysokiej jakości obrazów AI'
       ],
       id: 'price_1TLomfDXnXONl2svOFT20RGH', // Ten ID musi zgadzać się z ID produktu w Stripe
       popular: true

@@ -32,15 +32,19 @@ const IMAGE_AESTHETICS = {
   'Default': 'High-quality professional photography with balanced lighting and clear subjects.'
 };
 
+const STYLE_GUIDELINES = {
+  'Profesjonalny': 'Tone: Expert, reliable, and authoritative. Use clear, industry-standard language. Focus on facts and insights.',
+  'Humorystyczny': 'Tone: Funny, witty, and lighthearted. Use wordplay, clever observations, and appropriate humor. Keep it relatable and entertaining.',
+  'Entuzjastyczny': 'Tone: High energy, positive, and motivating. Use exclamations (sparingly but effectively), encouraging words, and a "can-do" attitude.',
+  'Nietuzinkowy': 'Tone: Unique, bold, and unconventional. Think outside the box, use surprising metaphors, and challenge the status quo. Be provocative but tasteful.',
+  'Default': 'Tone: Engaging, helpful, and balanced.'
+};
+
 /**
- * Generates social media content based on platform, topic, and style.
- * @param {Object} params - Generation parameters.
- * @param {string} params.platform - Target platform (e.g., LinkedIn, Instagram).
- * @param {string} params.topic - The main topic or context of the post.
- * @param {string} [params.style] - Optional style/tone (e.g., professional, witty).
- * @returns {Promise<string>} - The generated content.
+ * Generates technical instructions (prompt) for a social media post.
+ * @param {Object} params - Parameters.
  */
-async function generatePost({ platform, topic, style = "engaging" }) {
+async function generatePostPlan({ platform, topic, style = "engaging" }) {
   const ai = initGemini();
   if (!ai) throw new Error("Gemini API not initialized.");
   
@@ -48,25 +52,163 @@ async function generatePost({ platform, topic, style = "engaging" }) {
   const rules = PLATFORM_RULES[platform] || PLATFORM_RULES['Default'];
 
   const prompt = `
-    You are a world-class social media strategist. 
-    Create a highly optimized ${style} post for ${platform} about the following topic:
+    You are a professional Prompt Engineer and Social Media Strategist.
+    Goal: Write a detailed instruction (prompt) for an AI model to write a post.
     
     Topic: ${topic}
+    Platform: ${platform}
+    Style: ${style}
+    Style Guidelines: ${STYLE_GUIDELINES[style] || STYLE_GUIDELINES['Default']}
     
-    Platform-Specific Strategy: ${rules}
+    Requirements for the output JSON:
+    1. "polishPlan": A user-friendly summary of the strategy in POLISH (max 3-4 sentences).
+    2. "englishPrompt": A technical, highly detailed instruction for another AI model in ENGLISH. 
+       This instruction must specifically mention that the final post must be in POLISH.
+       Include ${rules} and ${style} guidelines.
     
-    Language: ALWAYS respond in POLISH.
-    Content structure: 
-    1. Chwytliwy nagłówek (Hook)
-    2. Wartościowa treść (Body)
-    3. Wezwanie do działania (Call to Action)
-    4. Odpowiednie hashtagi
+    JSON Schema:
+    {
+      "polishPlan": "string",
+      "englishPrompt": "string"
+    }
   `;
 
   try {
     const result = await model.generateContent(prompt);
     const response = await result.response;
-    return response.text();
+    let text = response.text().trim();
+    
+    console.log("Gemini Plan Raw Output:", text);
+
+    // Clean up potential markdown code blocks
+    if (text.startsWith('```')) {
+      text = text.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
+    }
+    
+    let jsonResponse;
+    try {
+      jsonResponse = JSON.parse(text);
+    } catch (e) {
+      console.error("JSON Parse Error. Raw text was:", text);
+      throw new Error("MODEL_JSON_ERROR: AI returned invalid format.");
+    }
+
+    // Normalize keys
+    const normalized = {
+      polishPlan: jsonResponse.polishPlan || jsonResponse.PolishPlan || jsonResponse.polish_plan || "",
+      englishPrompt: jsonResponse.englishPrompt || jsonResponse.EnglishPrompt || jsonResponse.english_prompt || ""
+    };
+
+    if (!normalized.polishPlan && !normalized.englishPrompt) {
+       throw new Error("EMPTY_FIELDS: AI returned empty plan.");
+    }
+
+    return normalized;
+  } catch (error) {
+    console.error("Gemini Plan Error:", error);
+    return {
+      polishPlan: `💡 Błąd planowania: ${error.message}. Spróbuj ponownie lub użyj domyślnego promptu poniżej.`,
+      englishPrompt: `Write a high-quality LinkedIn post in POLISH about ${topic}. Tone: ${style}. Platform rules: ${platform}.`
+    };
+  }
+}
+
+/**
+ * Transforms a modified Polish strategy into a fresh technical English prompt.
+ * @param {Object} params - Parameters.
+ */
+async function syncEnglishPrompt({ polishPlan, platform, topic, style }) {
+  const ai = initGemini();
+  if (!ai) throw new Error("Gemini API not initialized.");
+  
+  const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+  
+  const prompt = `
+    You are an expert Prompt Engineer. 
+    Transform the following Polish strategy into a highly detailed, technical English instruction (prompt) for an AI model that will write the final post.
+    
+    Context:
+    - Topic: ${topic}
+    - Platform: ${platform}
+    - Style: ${style}
+    
+    User's Polish Strategy (Source):
+    "${polishPlan}"
+    
+    Requirements for the Technical Prompt (Target):
+    1. Language: Write the prompt in ENGLISH.
+    2. Constraint: The prompt must instruct the AI to write the final post in POLISH.
+    3. Detail: Include specific instructions on tone, structure, and formatting based on the Polish input.
+    
+    Response format: Return ONLY the text of the generated instructions. No markdown blocks.
+  `;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    return response.text().trim();
+  } catch (error) {
+    console.error("Sync Prompt Error:", error);
+    throw new Error("Failed to synchronize English instructions.");
+  }
+}
+
+/**
+ * Generates social media content based on platform, topic, and style.
+ * @param {Object} params - Generation parameters.
+ * @param {string} params.platform - Target platform.
+ * @param {string} params.topic - The main topic.
+ * @param {string} [params.style] - Optional style.
+ * @param {string} [params.plannedPrompt] - Optional pre-generated instructions.
+ * @returns {Promise<Object>} - The generated content and token count.
+ */
+async function generatePost({ platform, topic, style = "engaging", plannedPrompt = null }) {
+  const ai = initGemini();
+  if (!ai) throw new Error("Gemini API not initialized.");
+  
+  const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+  const rules = PLATFORM_RULES[platform] || PLATFORM_RULES['Default'];
+
+  let prompt;
+  if (plannedPrompt) {
+    prompt = `
+      Follow these specific instructions to write a social media post:
+      ---
+      ${plannedPrompt}
+      ---
+      Original context (if not covered above):
+      Topic: ${topic}
+      Platform: ${platform}
+      Style: ${style}
+      
+      Output ONLY the post content.
+    `;
+  } else {
+    prompt = `
+      You are a world-class social media strategist. 
+      Create a highly optimized ${style} post for ${platform} about the following topic:
+      
+      Topic: ${topic}
+      Style: ${style}
+      Style Guidelines: ${STYLE_GUIDELINES[style] || STYLE_GUIDELINES['Default']}
+      
+      Platform-Specific Strategy: ${rules}
+      
+      Language: ALWAYS respond in POLISH.
+      Content structure: 
+      1. Chwytliwy nagłówek (Hook)
+      2. Wartościowa treść (Body)
+      3. Wezwanie do działania (Call to Action)
+      4. Odpowiednie hashtagi
+    `;
+  }
+
+  try {
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const content = response.text();
+    const tokens = response.usageMetadata?.totalTokenCount || 500; // Fallback
+    return { content, tokens };
   } catch (error) {
     console.error("Gemini Post Error:", error);
     throw new Error("Failed to generate optimized post.");
@@ -161,6 +303,6 @@ async function generateNanoBananaImage(visualPrompt, aspectRatio = '1:1') {
   }
 }
 
-module.exports = { generatePost, generateVisualPrompt, generateNanoBananaImage };
+module.exports = { generatePost, generatePostPlan, syncEnglishPrompt, generateVisualPrompt, generateNanoBananaImage };
 
 
