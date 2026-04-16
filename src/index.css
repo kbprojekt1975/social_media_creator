@@ -28,26 +28,26 @@
 }
 
 [data-theme='dark'] {
-  --bg-app: #0F172A;      /* Deep Slate (Main Background) */
-  --bg-card: #1E293B;     /* Slate 800 (Containers) */
-  --bg-white: #334155;    /* Slate 700 */
+  --bg-app: #0A0A0A;      /* Neutral 'Almost Black' (Zinc 950) */
+  --bg-card: #171717;     /* Dark Grey (Zinc 900) */
+  --bg-white: #262626;    /* Slightly lighter for distinct elements (Zinc 800) */
   
-  --text-main: #F8FAFC;   /* Slate 50 (Primary Text) */
-  --text-muted: #94A3B8;  /* Slate 400 (Info/Metadata) */
+  --text-main: #FFFFFF;   /* Pure White for maximum contrast */
+  --text-muted: #A3A3A3;  /* Pleasant light grey (Zinc 400) */
   
-  --color-primary: #38BDF8;    /* Light Blue (Main Accent) */
-  --color-secondary: #475569;  /* Slate 600 (Secondary Accent) */
+  --color-primary: #38BDF8;    /* Light Blue (Main Accent) - untouched for pop */
+  --color-secondary: #404040;  /* Neutral Accent (Zinc 700) */
   --color-info: #818CF8;       /* Indigo 400 */
   
-  --bg-glass: rgba(30, 41, 59, 0.8);
-  --bg-glass-bright: rgba(51, 65, 85, 0.4);
+  --bg-glass: rgba(23, 23, 23, 0.8);
+  --bg-glass-bright: rgba(38, 38, 38, 0.4);
   
-  --border-color: #334155;
+  --border-color: #262626;
   --primary-glow: rgba(56, 189, 248, 0.15);
   
-  --shadow-sm: 0 4px 6px rgba(0, 0, 0, 0.2);
-  --shadow-md: 0 10px 25px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 4px 6px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 10px 25px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.8);
 }
 
 /* Global Select Styles - Anti-Glare */
@@ -236,4 +236,28 @@ body {
   box-shadow: var(--shadow-sm);
   font-weight: 600;
   color: var(--color-primary);
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-secondary);
+}
+
+/* For Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
 }

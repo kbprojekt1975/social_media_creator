@@ -5,7 +5,7 @@ const admin = require("firebase-admin");
 const express = require("express");
 const cors = require("cors");
 const stripe = require("stripe");
-const { generatePost, generatePostPlan, syncEnglishPrompt, generateVisualPrompt, generateNanoBananaImage } = require("./gemini");
+const { generatePost, generatePostPlan, syncEnglishPrompt, generateVisualPrompt, generateNanoBananaImage, generateVeoVideo } = require("./gemini");
 
 
 // Initialize Firebase Admin
@@ -24,6 +24,7 @@ const TOKENS_PER_PLN = 1000000; // 1 PLN = 1,000,000 tokens (adjust margin here)
 const CREDIT_RATIO = 0.20; // 20% of payment goes to user token balance
 const MIN_TOKENS_FOR_GEN = 1000; // Minimal buffer to allow generation
 const IMAGE_COST = 10000; // 10,000 tokens for one image (10x a post)
+const VIDEO_COST = 400000; // 400,000 tokens for one video (approx 0.40 PLN / $0.10)
 
 // Helper to get Stripe instance (using secret from environment)
 const getStripe = () => {
@@ -94,18 +95,17 @@ app.post("/generate", async (req, res) => {
   }
 });
 
-// Endpoint: Generate Image Prompt (using Nano Banana visual engine)
+// Endpoint: Generate Visual Prompt (Image or Video)
 app.post("/generate-image-prompt", async (req, res) => {
   const idToken = req.headers.authorization?.split("Bearer ")[1];
   if (!idToken) return res.status(401).send("Unauthorized");
 
   try {
-    const { postContent, aspectRatio, platform } = req.body;
+    const { postContent, aspectRatio, platform, type } = req.body;
     if (!postContent) return res.status(400).send("Post content is required.");
 
-    const prompt = await generateVisualPrompt(postContent, aspectRatio || '1:1', platform || 'Default');
+    const prompt = await generateVisualPrompt(postContent, aspectRatio || '1:1', platform || 'Default', type || 'image');
     res.json({ prompt });
-
 
   } catch (error) {
     console.error("Prompt Error:", error);
@@ -191,6 +191,47 @@ app.post("/generate-image", async (req, res) => {
     res.json({ imageUrl: downloadUrl, cost: IMAGE_COST });
   } catch (error) {
     console.error("Nano Banana Generation Error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint: Generate Video (Veo 3.1 Lite)
+app.post("/generate-video", async (req, res) => {
+  const idToken = req.headers.authorization?.split("Bearer ")[1];
+  if (!idToken) return res.status(401).send("Unauthorized");
+
+  try {
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const { prompt, aspectRatio } = req.body;
+    if (!prompt) return res.status(400).send("Prompt is required.");
+
+    const userRef = db.collection("users").doc(decodedToken.uid);
+    const userDoc = await userRef.get();
+    const balance = userDoc.data()?.balance || 0;
+
+    if (balance < VIDEO_COST) {
+      return res.status(402).json({ error: `Brak tokenów na wideo. Koszt: ${VIDEO_COST.toLocaleString()} tokenów.` });
+    }
+
+    const buffer = await generateVeoVideo(prompt, aspectRatio || '1:1');
+
+    // Upload to Firebase Storage
+    const bucket = admin.storage().bucket();
+    const fileName = `generated/${decodedToken.uid}/${Date.now()}.mp4`;
+    const file = bucket.file(fileName);
+
+    await file.save(buffer, { contentType: 'video/mp4' });
+    await file.makePublic();
+    const downloadUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+
+    // Deduct tokens
+    await userRef.update({ 
+      balance: admin.firestore.FieldValue.increment(-VIDEO_COST) 
+    });
+
+    res.json({ videoUrl: downloadUrl, cost: VIDEO_COST });
+  } catch (error) {
+    console.error("Veo Video Generation Error:", error);
     res.status(500).json({ error: error.message });
   }
 });

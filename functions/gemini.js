@@ -216,13 +216,14 @@ async function generatePost({ platform, topic, style = "engaging", plannedPrompt
 }
 
 /**
- * Generates a visual prompt for image generation based on a social media post, platform and aspect ratio.
+ * Generates a visual prompt for image or video generation based on a social media post.
  * @param {string} postContent - The content of the post to base the prompt on.
  * @param {string} aspectRatio - The desired format (e.g., '1:1', '9:16', '16:9').
  * @param {string} platform - The target platform for aesthetic optimization.
+ * @param {string} type - Visualization type: 'image' (default) or 'video'.
  * @returns {Promise<string>} - The generated visual prompt.
  */
-async function generateVisualPrompt(postContent, aspectRatio = '1:1', platform = 'Default') {
+async function generateVisualPrompt(postContent, aspectRatio = '1:1', platform = 'Default', type = 'image') {
   const ai = initGemini();
   if (!ai) throw new Error("Gemini API not initialized.");
 
@@ -230,34 +231,81 @@ async function generateVisualPrompt(postContent, aspectRatio = '1:1', platform =
   const aesthetic = IMAGE_AESTHETICS[platform] || IMAGE_AESTHETICS['Default'];
 
   const formatDescription = 
-    aspectRatio === '9:16' ? 'vertical Story/Reels format (9:16 aspect ratio). Focus on a vertical composition with the main subject centered.' :
-    aspectRatio === '16:9' ? 'landscape format (16:9 aspect ratio). Create a wide, cinematic composition.' :
-    aspectRatio === '4:5' ? 'portrait format (4:5 aspect ratio). Optimized for Instagram feed.' :
-    'square format (1:1 aspect ratio). Balanced composition.';
+    aspectRatio === '9:16' ? 'vertical format (9:16 aspect ratio).' :
+    aspectRatio === '16:9' ? 'landscape format (16:9 aspect ratio).' :
+    aspectRatio === '4:5' ? 'portrait format (4:5 aspect ratio).' :
+    'square format (1:1 aspect ratio).';
+
+  const motionDirectives = type === 'video' 
+    ? `SPECIFIC VIDEO INTRUCTIONS: Focus on movement and cinematic motion. 
+       Describe camera movement (pan, tilt, zoom, or dolly). 
+       Describe the action and speed of movement (e.g., slow motion, high speed, fluid transition). 
+       The scene should feel ALIVE and dynamic.`
+    : `IMAGE INSTRUCTIONS: Focus on a powerful static composition. Detail textures, lighting, and a single moment in time.`;
 
   const prompt = `
-    Create a perfect visual prompt for an image generator (like Imagen 3) based on this social media post.
-    Platform Aesthetics to target: ${aesthetic}
-    Image Format: ${formatDescription}
+    You are a professional visual director. Create a perfect prompt for an AI ${type === 'video' ? 'video' : 'image'} generator.
+    Platform Aesthetics: ${aesthetic}
+    Format: ${formatDescription}
+    
+    ${motionDirectives}
 
-    Post Content snippet for context: ${postContent.substring(0, 300)}
+    Post Content for context: ${postContent.substring(0, 300)}
     
-    Instructions:
-    - Describe a single, powerful scene that reflects the post's message.
-    - Focus on lighting, composition, and specific stylistic keywords from the aesthetics guide.
-    - Zero text in the image.
-    - Output exactly one detailed paragraph of visual description.
+    Final Instructions:
+    - Describe a single, powerful cinematic scene.
+    - Focus on professional lighting and high-end composition.
+    - Zero text in the visuals.
+    - Output exactly one detailed, technical paragraph in ENGLISH.
     
-    Visual Prompt:
+    ${type === 'video' ? 'Video' : 'Visual'} Prompt:
   `;
 
   try {
     const result = await model.generateContent(prompt);
     const response = await result.response;
-    return response.text();
+    return response.text().trim();
   } catch (error) {
     console.error("Gemini Prompt Error:", error);
-    return "A professional high-quality image representing the core topic of the post.";
+    return `A high-quality ${type} representing the topic: ${postContent.substring(0, 50)}...`;
+  }
+}
+
+/**
+ * Generates a video using the Veo 3.1 Lite model.
+ * @param {string} visualPrompt - The descriptive prompt for the video.
+ * @param {string} aspectRatio - The desired format (e.g., '1:1', '9:16', '16:9').
+ * @returns {Promise<Buffer>} - The generated video data (MP4).
+ */
+async function generateVeoVideo(visualPrompt, aspectRatio = '1:1') {
+  const ai = initGemini();
+  if (!ai) throw new Error("Gemini API not initialized.");
+
+  // Veo 3.1 Lite is optimized for speed/cost (0.05-0.08$)
+  const model = ai.getGenerativeModel({ 
+    model: "veo-3.1-lite-generate-preview",
+    generationConfig: {
+      responseModalities: ["VIDEO"],
+      videoConfig: {
+        aspect_ratio: aspectRatio
+      }
+    }
+  });
+
+  try {
+    const result = await model.generateContent(visualPrompt);
+    const response = await result.response;
+    
+    const part = response.candidates[0].content.parts.find(p => p.inlineData);
+    
+    if (part && part.inlineData) {
+      return Buffer.from(part.inlineData.data, 'base64');
+    } else {
+      throw new Error("No video data part found in Veo response.");
+    }
+  } catch (error) {
+    console.error("Veo 3.1 Lite Error:", error);
+    throw new Error(`Technical failure creating video. Check model availability or API limits.`);
   }
 }
 
@@ -271,7 +319,6 @@ async function generateNanoBananaImage(visualPrompt, aspectRatio = '1:1') {
   const ai = initGemini();
   if (!ai) throw new Error("Gemini API not initialized.");
 
-  // Using the absolute latest model ID (Nano Banana 2/3.1)
   const model = ai.getGenerativeModel({ 
     model: "gemini-3.1-flash-image-preview",
     generationConfig: {
@@ -285,24 +332,19 @@ async function generateNanoBananaImage(visualPrompt, aspectRatio = '1:1') {
   try {
     const result = await model.generateContent(visualPrompt);
     const response = await result.response;
-    
-    // Look for the binary image part in the response
     const part = response.candidates[0].content.parts.find(p => p.inlineData);
     
     if (part && part.inlineData) {
       return Buffer.from(part.inlineData.data, 'base64');
     } else {
-      // Direct text fallback (sometimes preview models return base64 in text field)
-      const text = response.text();
-      if (text && text.length > 500) return Buffer.from(text, 'base64');
       throw new Error("No image data part found in 3.1 response.");
     }
   } catch (error) {
-    console.error("Nano Banana 3.1 Image Error:", error);
-    throw new Error(`Technical failure creating ${aspectRatio} image. Check API limits or model availability.`);
+    console.error("Nano Banana Image Error:", error);
+    throw new Error(`Technical failure creating ${aspectRatio} image.`);
   }
 }
 
-module.exports = { generatePost, generatePostPlan, syncEnglishPrompt, generateVisualPrompt, generateNanoBananaImage };
+module.exports = { generatePost, generatePostPlan, syncEnglishPrompt, generateVisualPrompt, generateNanoBananaImage, generateVeoVideo };
 
 
