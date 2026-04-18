@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import heroImage from '../assets/hero.png'
+import InteractiveDemo from './InteractiveDemo'
 
 const LandingPage = () => {
   const [isDarkMode, setIsDarkMode] = useState(true);
@@ -76,24 +77,15 @@ const LandingPage = () => {
           </div>
         </div>
         
-        {/* Glassmorphism Floating UI Elements for Hero */}
-        <div className="glass animate-float" style={{
+        {/* Main Interactive Demo in Hero */}
+        <div className="animate-float" style={{
           position: 'absolute',
-          top: '25%',
-          left: '10%',
-          padding: '1.5rem',
-          borderRadius: '16px',
-          width: '250px',
-          textAlign: 'left',
+          top: '15%',
+          left: '2%',
+          zIndex: 10,
           animationDelay: '0.5s',
-          zIndex: 1
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem' }}>
-            <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)' }}></div>
-            <span style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>@twojamarka</span>
-          </div>
-          <div style={{ width: '100%', height: '120px', borderRadius: '8px', background: 'var(--bg-glass-bright)' }}></div>
-          <p style={{ fontSize: '0.8rem', marginTop: '1rem', color: 'var(--text-muted)' }}>Generowanie idealnego opisu...</p>
+          <InteractiveDemo isHero={true} />
         </div>
 
         <div className="glass animate-float" style={{
@@ -164,77 +156,24 @@ const LandingPage = () => {
       </section>
 
       {/* Showcase Section */}
-      <section id="showcase" style={{ padding: '8rem 2rem', background: 'var(--bg-app)' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '8rem' }}>
-          
-          {/* Feature 1 */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4rem' }}>
-            <div style={{ flex: '1', minWidth: '300px' }}>
-              <div style={{ display: 'inline-block', padding: '0.4rem 1rem', background: 'rgba(56, 189, 248, 0.1)', color: 'var(--color-primary)', borderRadius: '20px', marginBottom: '1rem', fontWeight: 'bold' }}>Wizualny Projektant AI</div>
-              <h2 style={{ fontSize: '2.5rem', marginBottom: '1.5rem' }}>Projekty, które automatycznie przyciągają wzrok.</h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', lineHeight: '1.8' }}>
-                Nigdy więcej pustej kartki. Nasz system natychmiast dobiera idealne kolory, układy i typografię zoptymalizowaną dla Twojej marki.
-              </p>
-            </div>
-            <div className="glass" style={{ flex: '1', minWidth: '300px', height: '400px', borderRadius: '24px', position: 'relative', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '40px', background: 'var(--bg-card)', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', padding: '0 1rem', gap: '8px' }}>
-                <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#ff5f56' }}></div>
-                <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#ffbd2e' }}></div>
-                <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#27c93f' }}></div>
-              </div>
-              <div style={{ display: 'flex', gap: '1rem', padding: '2rem' }}>
-                 <div style={{ width: '120px', height: '160px', borderRadius: '12px', background: 'linear-gradient(45deg, var(--color-primary), var(--color-info))' }}></div>
-                 <div style={{ width: '120px', height: '160px', borderRadius: '12px', background: 'linear-gradient(45deg, #10b981, #3b82f6)' }}></div>
-              </div>
-            </div>
-          </div>
-
-          {/* Feature 2 */}
-          <div style={{ display: 'flex', flexWrap: 'wrap-reverse', alignItems: 'center', gap: '4rem' }}>
-            <div className="glass" style={{ flex: '1', minWidth: '300px', height: '400px', borderRadius: '24px', display: 'flex', flexDirection: 'column', padding: '2rem', gap: '1rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-                <span>Pon</span><span>Wt</span><span>Śr</span><span>Czw</span><span>Pt</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px', flex: 1 }}>
-                {[...Array(15)].map((_, i) => (
-                  <div key={i} style={{ background: i % 4 === 0 ? 'var(--color-primary)' : 'var(--bg-card)', borderRadius: '8px', opacity: i % 4 === 0 ? 0.8 : 0.4 }}></div>
-                ))}
-              </div>
-            </div>
-            <div style={{ flex: '1', minWidth: '300px' }}>
-              <div style={{ display: 'inline-block', padding: '0.4rem 1rem', background: 'rgba(129, 140, 248, 0.1)', color: 'var(--color-info)', borderRadius: '20px', marginBottom: '1rem', fontWeight: 'bold' }}>Inteligentny Planer</div>
-              <h2 style={{ fontSize: '2.5rem', marginBottom: '1.5rem' }}>Publikuj, gdy są online.</h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', lineHeight: '1.8' }}>
-                Koniec ze zgadywaniem. Zobacz wizualizację kalendarza, która analizuje Twoich odbiorców i automatycznie sugeruje najlepsze godziny, aby zmaksymalizować zaangażowanie i zasięg.
-              </p>
-            </div>
-          </div>
-
-          {/* Feature 3 */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4rem' }}>
-            <div style={{ flex: '1', minWidth: '300px' }}>
-              <div style={{ display: 'inline-block', padding: '0.4rem 1rem', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderRadius: '20px', marginBottom: '1rem', fontWeight: 'bold' }}>Analityka, która ma znaczenie</div>
-              <h2 style={{ fontSize: '2.5rem', marginBottom: '1.5rem' }}>Statystyki, które wywołają uśmiech.</h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', lineHeight: '1.8' }}>
-                Uproszczony panel skupiający się na tym, co naprawdę napędza wzrost. Śledź zaangażowanie, zasięg i konwersję w przejrzystym, intuicyjnym interfejsie.
-              </p>
-            </div>
-            <div className="glass" style={{ flex: '1', minWidth: '300px', height: '400px', borderRadius: '24px', display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: '2rem' }}>
-               <div style={{ fontSize: '5rem' }}>😁</div>
-               <div style={{ display: 'flex', gap: '2rem' }}>
-                 <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>12.4k</div>
-                    <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Obserwujących</div>
-                 </div>
-                 <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#10b981' }}>+8.2%</div>
-                    <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Zaangażowania</div>
-                 </div>
-               </div>
-            </div>
-          </div>
-
+      <section id="showcase" style={{ padding: '8rem 2rem', background: 'var(--bg-app)', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+          {/* Moved to Hero, leaving empty or putting something else here if needed */}
         </div>
+        
+        {/* Decorative elements for showcase */}
+        <div style={{
+          position: 'absolute',
+          bottom: '-100px',
+          right: '-100px',
+          width: '400px',
+          height: '400px',
+          background: 'var(--primary-glow)',
+          filter: 'blur(100px)',
+          borderRadius: '50%',
+          zIndex: 0,
+          opacity: 0.5
+        }}></div>
       </section>
       
       {/* Footer CTA */}
