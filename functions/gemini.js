@@ -272,6 +272,81 @@ async function generateVisualPrompt(postContent, aspectRatio = '1:1', platform =
 }
 
 /**
+ * Refines an existing post based on user instructions.
+ * @param {string} originalPost - The previously generated post.
+ * @param {string} instructions - The user's instructions for refinement.
+ * @returns {Promise<Object>} - The refined post content and token count.
+ */
+async function refinePost(originalPost, instructions) {
+  const ai = initGemini();
+  if (!ai) throw new Error("Gemini API not initialized.");
+  
+  const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+  const prompt = `
+    Jesteś profesjonalnym Social Media Managerem.
+    Masz poniższy wygenerowany post:
+    ---
+    ${originalPost}
+    ---
+    
+    Klient poprosił o wprowadzenie następujących zmian:
+    "${instructions}"
+    
+    Zastosuj te zmiany do posta. 
+    Zwróć TYLKO nową, gotową treść posta w docelowym języku (zawsze po polsku, o ile klient nie poprosił inaczej).
+  `;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const content = response.text().trim();
+    const tokens = response.usageMetadata?.totalTokenCount || 250;
+    return { content, tokens };
+  } catch (error) {
+    console.error("Gemini Refine Post Error:", error);
+    throw new Error("Nie udało się zaktualizować posta.");
+  }
+}
+
+/**
+ * Refines a visual prompt based on user instructions.
+ * @param {string} originalPrompt - The previously generated English prompt.
+ * @param {string} instructions - The user's instructions in Polish.
+ * @returns {Promise<string>} - The updated English prompt.
+ */
+async function refineVisualPrompt(originalPrompt, instructions) {
+  const ai = initGemini();
+  if (!ai) throw new Error("Gemini API not initialized.");
+
+  const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+  const prompt = `
+    You are a professional visual Prompt Engineer guiding an image/video AI model.
+    You have the following original technical prompt (in English):
+    ---
+    ${originalPrompt}
+    ---
+    
+    The user requested the following change (usually in Polish):
+    "${instructions}"
+    
+    Update the original English technical prompt to reflect the user's requested change.
+    Return ONLY the updated English technical prompt. Do not add any conversational text.
+  `;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    return response.text().trim();
+  } catch (error) {
+    console.error("Gemini Refine Visual Prompt Error:", error);
+    throw new Error("Nie udało się zaktualizować opisu wizualnego.");
+  }
+}
+
+
+/**
  * Generates a video using the Veo 3.1 Lite model.
  * @param {string} visualPrompt - The descriptive prompt for the video.
  * @param {string} aspectRatio - The desired format (e.g., '1:1', '9:16', '16:9').
@@ -345,6 +420,6 @@ async function generateNanoBananaImage(visualPrompt, aspectRatio = '1:1') {
   }
 }
 
-module.exports = { generatePost, generatePostPlan, syncEnglishPrompt, generateVisualPrompt, generateNanoBananaImage, generateVeoVideo };
+module.exports = { generatePost, generatePostPlan, syncEnglishPrompt, generateVisualPrompt, generateNanoBananaImage, generateVeoVideo, refinePost, refineVisualPrompt };
 
 

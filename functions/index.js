@@ -5,7 +5,7 @@ const admin = require("firebase-admin");
 const express = require("express");
 const cors = require("cors");
 const stripe = require("stripe");
-const { generatePost, generatePostPlan, syncEnglishPrompt, generateVisualPrompt, generateNanoBananaImage, generateVeoVideo } = require("./gemini");
+const { generatePost, generatePostPlan, syncEnglishPrompt, generateVisualPrompt, generateNanoBananaImage, generateVeoVideo, refinePost, refineVisualPrompt } = require("./gemini");
 
 
 // Initialize Firebase Admin
@@ -150,6 +150,47 @@ app.post("/sync-prompt", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// Endpoint: Refine Post
+app.post("/refine-post", async (req, res) => {
+  const idToken = req.headers.authorization?.split("Bearer ")[1];
+  if (!idToken) return res.status(401).send("Unauthorized");
+
+  try {
+    const { originalPost, instructions } = req.body;
+    if (!originalPost || !instructions) {
+      return res.status(400).json({ error: "originalPost and instructions are required." });
+    }
+
+    const { content, tokens } = await refinePost(originalPost, instructions);
+    res.json({ content, tokens });
+
+  } catch (error) {
+    console.error("Refine Post Error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint: Refine Visual Prompt
+app.post("/refine-image-prompt", async (req, res) => {
+  const idToken = req.headers.authorization?.split("Bearer ")[1];
+  if (!idToken) return res.status(401).send("Unauthorized");
+
+  try {
+    const { originalPrompt, instructions } = req.body;
+    if (!originalPrompt || !instructions) {
+      return res.status(400).json({ error: "originalPrompt and instructions are required." });
+    }
+
+    const prompt = await refineVisualPrompt(originalPrompt, instructions);
+    res.json({ prompt });
+
+  } catch (error) {
+    console.error("Refine Visual Prompt Error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 
 
 // Endpoint: Generate Image (Nano Banana / Gemini 2.5 Flash Image)

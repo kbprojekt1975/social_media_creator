@@ -65,6 +65,12 @@ const GeneratorPage = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState(auth.currentUser);
 
+  // Stany dla funkcji poprawiania (Refinement)
+  const [textFeedback, setTextFeedback] = useState('');
+  const [isTextRefining, setIsTextRefining] = useState(false);
+  const [mediaFeedback, setMediaFeedback] = useState('');
+  const [isMediaRefining, setIsMediaRefining] = useState(false);
+
   // Podstawowy adres API Twoich funkcji Firebase
   const API_BASE_URL = 'https://us-central1-social-media-creator-b6df8.cloudfunctions.net/api';
 
@@ -161,6 +167,7 @@ const GeneratorPage = () => {
         setCurrentRecordId(response.data.historyId);
       }
 
+      setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 100);
     } catch (error) {
       console.error('Generation failed:', error);
       alert(error.response?.data?.error || 'Nie udało się wygenerować treści.');
@@ -246,7 +253,7 @@ const GeneratorPage = () => {
 
       setImagePrompt(response.data.prompt);
       setIsPromptMode(true);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 100);
     } catch (error) {
       console.error('Prompt generation failed:', error);
       alert(`Nie udało się przygotować opisu ${type === 'video' ? 'wideo' : 'obrazu'}.`);
@@ -255,29 +262,31 @@ const GeneratorPage = () => {
     }
   };
 
-  const handleGenerateImage = async () => {
-    if (!imagePrompt) return;
+  const handleGenerateImage = async (overridePrompt = null) => {
+    const promptToUse = overridePrompt || imagePrompt;
+    if (!promptToUse) return;
     setImageLoading(true);
     try {
       const token = await user.getIdToken();
       const response = await axios.post(`${API_BASE_URL}/generate-image`, 
-        { prompt: imagePrompt, aspectRatio: imageAspectRatio },
+        { prompt: promptToUse, aspectRatio: imageAspectRatio },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-
 
       // Update history record with image
       if (currentRecordId) {
         const recordRef = doc(db, 'users', user.uid, 'history', currentRecordId);
         await updateDoc(recordRef, {
           imageUrl: response.data.imageUrl,
-          imagePrompt: imagePrompt
+          imagePrompt: promptToUse
         });
       }
 
       setGeneratedImage(response.data.imageUrl);
       setIsPromptMode(false);
+      setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 100);
     } catch (error) {
+
       console.error('Image generation failed:', error);
       alert(error.response?.data?.error || 'Nie udało się wygenerować obrazu.');
     } finally {
@@ -285,13 +294,14 @@ const GeneratorPage = () => {
     }
   };
 
-  const handleGenerateVideo = async () => {
-    if (!imagePrompt) return;
+  const handleGenerateVideo = async (overridePrompt = null) => {
+    const promptToUse = overridePrompt || imagePrompt;
+    if (!promptToUse) return;
     setImageLoading(true);
     try {
       const token = await user.getIdToken();
       const response = await axios.post(`${API_BASE_URL}/generate-video`, 
-        { prompt: imagePrompt, aspectRatio: videoAspectRatio },
+        { prompt: promptToUse, aspectRatio: videoAspectRatio },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -299,17 +309,75 @@ const GeneratorPage = () => {
         const recordRef = doc(db, 'users', user.uid, 'history', currentRecordId);
         await updateDoc(recordRef, {
           videoUrl: response.data.videoUrl,
-          videoPrompt: imagePrompt
+          videoPrompt: promptToUse
         });
       }
 
       setGeneratedVideo(response.data.videoUrl);
       setIsPromptMode(false);
+      setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 100);
     } catch (error) {
+
       console.error('Video generation failed:', error);
       alert(error.response?.data?.error || 'Nie udało się wygenerować klipu wideo.');
     } finally {
       setImageLoading(false);
+    }
+  };
+
+  const handleRefineText = async () => {
+    if (!textFeedback.trim() || !result) return;
+    setIsTextRefining(true);
+    try {
+      const token = await user.getIdToken();
+      const response = await axios.post(`${API_BASE_URL}/refine-post`, 
+        { originalPost: result, instructions: textFeedback },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setResult(response.data.content);
+      setTextFeedback(''); // Wyczyść pole po udanej operacji
+      
+      // Update history if currentRecordId exists
+      if (currentRecordId) {
+        const recordRef = doc(db, 'users', user.uid, 'history', currentRecordId);
+        await updateDoc(recordRef, {
+          content: response.data.content
+        });
+      }
+      setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 100);
+    } catch (error) {
+      console.error('Refine Text Error:', error);
+      alert('Nie udało się wdrożyć poprawek tekstu.');
+    } finally {
+      setIsTextRefining(false);
+    }
+  };
+
+  const handleRefineMedia = async () => {
+    if (!mediaFeedback.trim() || !imagePrompt) return;
+    setIsMediaRefining(true);
+    try {
+      const token = await user.getIdToken();
+      const response = await axios.post(`${API_BASE_URL}/refine-image-prompt`, 
+        { originalPrompt: imagePrompt, instructions: mediaFeedback },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      const newPrompt = response.data.prompt;
+      setImagePrompt(newPrompt); // Aktualizujemy widok monitu
+      setMediaFeedback('');
+
+      // Auto-generacja po poprawce
+      if (generatedVideo) {
+        await handleGenerateVideo(newPrompt);
+      } else {
+        await handleGenerateImage(newPrompt);
+      }
+    } catch (error) {
+      console.error('Refine Media Error:', error);
+      alert('Nie udało się przygotować poprawek dla modelu wizualnego.');
+    } finally {
+      setIsMediaRefining(false);
     }
   };
 
@@ -933,10 +1001,34 @@ const GeneratorPage = () => {
                   </button>
                 </div>
               </div>
-              <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.7', color: 'var(--text-main)', fontSize: '1.05rem' }}>{result}</p>
+              <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.7', color: 'var(--text-main)', fontSize: '1.05rem', marginBottom: '1.5rem' }}>{result}</p>
+              
+              {/* Text Refinement Field */}
+              <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'flex-start', background: 'var(--bg-app)', padding: '1rem', borderRadius: '15px', border: '1px solid var(--border-color)' }}>
+                <textarea 
+                  value={textFeedback}
+                  onChange={(e) => setTextFeedback(e.target.value)}
+                  placeholder="Co chcesz poprawić w tym poście? (np. skróć do 3 zdań, dodaj więcej dynamiki...)"
+                  style={{ flex: 1, minHeight: '60px', padding: '0.8rem', fontSize: '0.9rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-white)', color: 'var(--text-main)', resize: 'vertical' }}
+                  disabled={isTextRefining}
+                />
+                <button 
+                  onClick={handleRefineText}
+                  disabled={!textFeedback.trim() || isTextRefining}
+                  className="btn-primary"
+                  style={{ padding: '0.8rem 1.5rem', borderRadius: '12px', alignSelf: 'stretch', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                >
+                  {isTextRefining ? <span className="spinner"></span> : (
+                    <>
+                      <span className="material-icons" style={{ fontSize: '1.1rem' }}>auto_fix_high</span>
+                      Rozkaż AI
+                    </>
+                  )}
+                </button>
+              </div>
               
               {/* Graphic Options */}
-              {!isPromptMode && !generatedImage && !generatedVideo && (
+              {!isPromptMode && (
                 <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem' }}>
                   
                   {/* Image Generation Block */}
@@ -1106,6 +1198,37 @@ const GeneratorPage = () => {
                   ) : (
                     <img src={generatedImage} alt="Generated" style={{ width: '100%', borderRadius: '25px', boxShadow: 'var(--shadow-md)' }} />
                   )}
+                  
+                  {/* Media Refinement Field */}
+                  <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'flex-start', background: 'var(--bg-app)', padding: '1rem', borderRadius: '20px', border: '1px solid var(--border-color)', marginTop: '1.5rem', textAlign: 'left' }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--color-primary)', marginBottom: '0.5rem', fontWeight: '700' }}>
+                        <span className="material-icons" style={{ fontSize: '0.9rem', verticalAlign: 'middle', marginRight: '0.3rem' }}>design_services</span>
+                        Popraw to {generatedVideo ? 'wideo' : 'zdjęcie'}:
+                      </label>
+                      <textarea 
+                        value={mediaFeedback}
+                        onChange={(e) => setMediaFeedback(e.target.value)}
+                        placeholder="Napisz co zmienić (np. zrób tak aby w tle było morze, zmień kolory na ciemniejsze)..."
+                        style={{ width: '100%', minHeight: '60px', padding: '0.8rem', fontSize: '0.9rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-white)', color: 'var(--text-main)', resize: 'vertical' }}
+                        disabled={isMediaRefining}
+                      />
+                    </div>
+                    <button 
+                      onClick={handleRefineMedia}
+                      disabled={!mediaFeedback.trim() || isMediaRefining}
+                      className="btn-primary"
+                      style={{ padding: '0.8rem 1.5rem', borderRadius: '12px', alignSelf: 'stretch', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.3rem', minWidth: '120px' }}
+                    >
+                      {isMediaRefining ? <span className="spinner"></span> : (
+                        <>
+                          <span className="material-icons" style={{ fontSize: '1.3rem' }}>draw</span>
+                          Zastosuj
+                        </>
+                      )}
+                    </button>
+                  </div>
+
                   <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
                     <button onClick={() => { setGeneratedImage(null); setGeneratedVideo(null); }} className="btn-secondary" style={{ flex: 1, borderRadius: '15px' }}>Usuń / Nowa</button>
                     <a href={generatedVideo || generatedImage} target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ flex: 1.5, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '15px' }} download>

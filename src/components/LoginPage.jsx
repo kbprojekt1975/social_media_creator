@@ -72,9 +72,9 @@ const LoginPage = () => {
                 width: '100%',
                 padding: '1rem',
                 borderRadius: '12px',
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                color: 'white',
+                background: 'var(--bg-app)',
+                border: '1px solid var(--border-color)',
+                color: 'var(--text-main)',
                 outline: 'none',
                 fontSize: '1rem'
               }}
@@ -91,9 +91,9 @@ const LoginPage = () => {
                 width: '100%',
                 padding: '1rem',
                 borderRadius: '12px',
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                color: 'white',
+                background: 'var(--bg-app)',
+                border: '1px solid var(--border-color)',
+                color: 'var(--text-main)',
                 outline: 'none',
                 fontSize: '1rem'
               }}
@@ -105,9 +105,9 @@ const LoginPage = () => {
         </form>
 
         <div style={{ margin: '2rem 0', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.1)' }}></div>
+          <div style={{ flex: 1, height: '1px', background: 'var(--border-color)' }}></div>
           <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>OR</span>
-          <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.1)' }}></div>
+          <div style={{ flex: 1, height: '1px', background: 'var(--border-color)' }}></div>
         </div>
 
         <button 
@@ -117,14 +117,14 @@ const LoginPage = () => {
             width: '100%', 
             padding: '1rem', 
             borderRadius: '12px', 
-            color: 'white', 
+            color: 'var(--text-main)', 
             fontWeight: '600',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             gap: '0.8rem',
             cursor: 'pointer',
-            border: '1px solid rgba(255,255,255,0.1)'
+            border: '1px solid var(--border-color)'
           }}
         >
           <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" style={{ width: '18px' }} />
