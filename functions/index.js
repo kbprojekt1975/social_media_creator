@@ -5,7 +5,7 @@ const admin = require("firebase-admin");
 const express = require("express");
 const cors = require("cors");
 const stripe = require("stripe");
-const { generatePost, generatePostPlan, syncEnglishPrompt, generateVisualPrompt, generateNanoBananaImage, generateVeoVideo, refinePost, refineVisualPrompt } = require("./gemini");
+const { generatePost, generatePostPlan, syncEnglishPrompt, generateVisualPrompt, translateToTechnicalPrompt, generateNanoBananaImage, generateVeoVideo, refinePost, refineVisualPrompt } = require("./gemini");
 
 
 // Initialize Firebase Admin
@@ -23,8 +23,9 @@ app.use(express.json());
 const TOKENS_PER_PLN = 1000000; // 1 PLN = 1,000,000 tokens (adjust margin here)
 const CREDIT_RATIO = 0.20; // 20% of payment goes to user token balance
 const MIN_TOKENS_FOR_GEN = 1000; // Minimal buffer to allow generation
-const IMAGE_COST = 10000; // 10,000 tokens for one image (10x a post)
-const VIDEO_COST = 400000; // 400,000 tokens for one video (approx 0.40 PLN / $0.10)
+const POST_COST = 5000; // 5,000 tokens for one post (fixed cost)
+const IMAGE_COST = 105000; // 105,000 tokens for one image (approx 0.10 PLN)
+const VIDEO_COST = 1100000; // 1,100,000 tokens for one video (approx 1.10 PLN)
 
 // Helper to get Stripe instance (using secret from environment)
 const getStripe = () => {
@@ -45,13 +46,13 @@ app.post("/generate", async (req, res) => {
 
   try {
     const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const { platform, topic, style, plannedPrompt } = req.body;
+    const { platform, topic, style, plannedPrompt, workspaceContext } = req.body;
 
     if (!platform || !topic) {
       return res.status(400).json({ error: "Platform and topic are required." });
     }
 
-    const { content, tokens } = await generatePost({ platform, topic, style, plannedPrompt });
+    const { content, tokens } = await generatePost({ platform, topic, style, plannedPrompt, workspaceContext });
     
     // Check balance and deduct cost
     const userRef = db.collection("users").doc(decodedToken.uid);
@@ -66,9 +67,9 @@ app.post("/generate", async (req, res) => {
         throw new Error("INSUFFICIENT_FUNDS");
       }
 
-      // Deduct balance
+      // Deduct balance (using fixed cost)
       t.update(userRef, { 
-        balance: admin.firestore.FieldValue.increment(-tokens) 
+        balance: admin.firestore.FieldValue.increment(-POST_COST) 
       });
 
       // Save to history
@@ -79,12 +80,12 @@ app.post("/generate", async (req, res) => {
         topic,
         style,
         content,
-        tokensUsed: tokens,
+        tokensUsed: POST_COST,
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       });
     });
 
-    res.json({ content, tokensUsed: tokens, historyId });
+    res.json({ content, tokensUsed: POST_COST, historyId });
 
   } catch (error) {
     if (error.message === "INSUFFICIENT_FUNDS") {
@@ -101,14 +102,32 @@ app.post("/generate-image-prompt", async (req, res) => {
   if (!idToken) return res.status(401).send("Unauthorized");
 
   try {
-    const { postContent, aspectRatio, platform, type } = req.body;
+    const { postContent, aspectRatio, platform, type, workspaceContext } = req.body;
     if (!postContent) return res.status(400).send("Post content is required.");
 
-    const prompt = await generateVisualPrompt(postContent, aspectRatio || '1:1', platform || 'Default', type || 'image');
-    res.json({ prompt });
+    const visualPlannedPrompt = await generateVisualPrompt(postContent, aspectRatio || '1:1', platform || 'Default', type || 'image', workspaceContext);
+    res.json({ visualPlannedPrompt });
 
   } catch (error) {
-    console.error("Prompt Error:", error);
+    console.error("Generate Image Prompt Error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint: Sync Visual English Prompt from Polish description
+app.post("/sync-visual-prompt", async (req, res) => {
+  const idToken = req.headers.authorization?.split("Bearer ")[1];
+  if (!idToken) return res.status(401).send("Unauthorized");
+
+  try {
+    const { polishDescription, aspectRatio, type, workspaceContext } = req.body;
+    if (!polishDescription) return res.status(400).send("Polish description is required.");
+
+    const englishPrompt = await syncVisualPrompt({ polishDescription, aspectRatio, type, workspaceContext });
+    res.json({ englishPrompt });
+
+  } catch (error) {
+    console.error("Sync Visual Error:", error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -119,12 +138,12 @@ app.post("/generate-plan", async (req, res) => {
   if (!idToken) return res.status(401).send("Unauthorized");
 
   try {
-    const { platform, topic, style } = req.body;
+    const { platform, topic, style, workspaceContext } = req.body;
     if (!platform || !topic) {
       return res.status(400).json({ error: "Platform and topic are required." });
     }
 
-    const plan = await generatePostPlan({ platform, topic, style });
+    const plan = await generatePostPlan({ platform, topic, style, workspaceContext });
     res.json({ plan });
 
   } catch (error) {
@@ -139,10 +158,10 @@ app.post("/sync-prompt", async (req, res) => {
   if (!idToken) return res.status(401).send("Unauthorized");
 
   try {
-    const { polishPlan, platform, topic, style } = req.body;
+    const { polishPlan, platform, topic, style, workspaceContext } = req.body;
     if (!polishPlan) return res.status(400).send("Polish plan is required.");
 
-    const englishPrompt = await syncEnglishPrompt({ polishPlan, platform, topic, style });
+    const englishPrompt = await syncEnglishPrompt({ polishPlan, platform, topic, style, workspaceContext });
     res.json({ englishPrompt });
 
   } catch (error) {
@@ -157,12 +176,12 @@ app.post("/refine-post", async (req, res) => {
   if (!idToken) return res.status(401).send("Unauthorized");
 
   try {
-    const { originalPost, instructions } = req.body;
+    const { originalPost, instructions, workspaceContext } = req.body;
     if (!originalPost || !instructions) {
       return res.status(400).json({ error: "originalPost and instructions are required." });
     }
 
-    const { content, tokens } = await refinePost(originalPost, instructions);
+    const { content, tokens } = await refinePost(originalPost, instructions, workspaceContext);
     res.json({ content, tokens });
 
   } catch (error) {
@@ -177,16 +196,16 @@ app.post("/refine-image-prompt", async (req, res) => {
   if (!idToken) return res.status(401).send("Unauthorized");
 
   try {
-    const { originalPrompt, instructions } = req.body;
-    if (!originalPrompt || !instructions) {
-      return res.status(400).json({ error: "originalPrompt and instructions are required." });
+    const { originalPromptObject, instructions, workspaceContext } = req.body;
+    if (!originalPromptObject || !instructions) {
+      return res.status(400).json({ error: "originalPromptObject and instructions are required." });
     }
 
-    const prompt = await refineVisualPrompt(originalPrompt, instructions);
-    res.json({ prompt });
+    const visualPlannedPrompt = await refineVisualPrompt(originalPromptObject, instructions, workspaceContext);
+    res.json({ visualPlannedPrompt });
 
   } catch (error) {
-    console.error("Refine Visual Prompt Error:", error);
+    console.error("Refine Visual Error:", error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -207,12 +226,12 @@ app.post("/generate-image", async (req, res) => {
     const userDoc = await userRef.get();
     const balance = userDoc.data()?.balance || 0;
 
-    if (balance < IMAGE_COST) {
-      return res.status(402).json({ error: "Brak tokenów na obraz. Koszt: 1,000,000 tokenów." });
-    }
+    // Pre-process prompt (Translate Polish description to technical English)
+    const technicalPrompt = await translateToTechnicalPrompt(prompt, 'image', aspectRatio || '1:1');
+    console.log("Technical Image Prompt:", technicalPrompt);
 
     // Call Nano Banana (AI Studio) with technical aspectRatio
-    const buffer = await generateNanoBananaImage(prompt, aspectRatio || '1:1');
+    const buffer = await generateNanoBananaImage(technicalPrompt, aspectRatio || '1:1');
 
 
     // Upload to Firebase Storage
@@ -250,11 +269,11 @@ app.post("/generate-video", async (req, res) => {
     const userDoc = await userRef.get();
     const balance = userDoc.data()?.balance || 0;
 
-    if (balance < VIDEO_COST) {
-      return res.status(402).json({ error: `Brak tokenów na wideo. Koszt: ${VIDEO_COST.toLocaleString()} tokenów.` });
-    }
+    // Pre-process prompt (Translate Polish description to technical English)
+    const technicalPrompt = await translateToTechnicalPrompt(prompt, 'video', aspectRatio || '1:1');
+    console.log("Technical Video Prompt:", technicalPrompt);
 
-    const buffer = await generateVeoVideo(prompt, aspectRatio || '1:1');
+    const buffer = await generateVeoVideo(technicalPrompt, aspectRatio || '1:1');
 
     // Upload to Firebase Storage
     const bucket = admin.storage().bucket();
@@ -297,9 +316,9 @@ exports.grantTokens = onDocumentCreated({
     const userData = userDoc.data() || {};
 
     if (!userData.lastSubscriptionId || userData.lastSubscriptionId !== event.params.subscriptionId) {
-      console.log(`🎁 Przyznawanie 200k tokenów dla ${userId} (Sub: ${event.params.subscriptionId})`);
+      console.log(`🎁 Przyznawanie 10M tokenów dla ${userId} (Sub: ${event.params.subscriptionId})`);
       await userRef.set({
-        balance: admin.firestore.FieldValue.increment(200000),
+        balance: admin.firestore.FieldValue.increment(10000000),
         lastSubscriptionId: event.params.subscriptionId,
         subscriptionStatus: subscription.status,
         updatedAt: admin.firestore.FieldValue.serverTimestamp()

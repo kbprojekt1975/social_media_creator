@@ -73,17 +73,15 @@ const LandingPage = () => {
             <Link to="/login" className="btn-primary" style={{ padding: '1rem 2.5rem', fontSize: '1.1rem', boxShadow: '0 0 20px var(--primary-glow)' }}>
               Zaczynamy
             </Link>
-            <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>✨ Nie wymaga karty kredytowej</span>
           </div>
         </div>
         
         {/* Main Interactive Demo in Hero */}
-        <div className="animate-float" style={{
+        <div style={{
           position: 'absolute',
           top: '15%',
           left: '2%',
           zIndex: 10,
-          animationDelay: '0.5s',
         }}>
           <InteractiveDemo isHero={true} />
         </div>

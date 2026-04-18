@@ -44,7 +44,7 @@ const STYLE_GUIDELINES = {
  * Generates technical instructions (prompt) for a social media post.
  * @param {Object} params - Parameters.
  */
-async function generatePostPlan({ platform, topic, style = "engaging" }) {
+async function generatePostPlan({ platform, topic, style = "engaging", workspaceContext }) {
   const ai = initGemini();
   if (!ai) throw new Error("Gemini API not initialized.");
   
@@ -59,6 +59,10 @@ async function generatePostPlan({ platform, topic, style = "engaging" }) {
     Platform: ${platform}
     Style: ${style}
     Style Guidelines: ${STYLE_GUIDELINES[style] || STYLE_GUIDELINES['Default']}
+    
+    ${workspaceContext ? `WORKSPACE CONTEXT (MANDATORY RULES):
+    - Brand Directives: ${workspaceContext.contentDirectives}
+    - Visual Aesthetic: ${workspaceContext.visualStyle}` : ''}
     
     Requirements for the output JSON:
     1. "polishPlan": A user-friendly summary of the strategy in POLISH (max 3-4 sentences).
@@ -117,7 +121,7 @@ async function generatePostPlan({ platform, topic, style = "engaging" }) {
  * Transforms a modified Polish strategy into a fresh technical English prompt.
  * @param {Object} params - Parameters.
  */
-async function syncEnglishPrompt({ polishPlan, platform, topic, style }) {
+async function syncEnglishPrompt({ polishPlan, platform, topic, style, workspaceContext }) {
   const ai = initGemini();
   if (!ai) throw new Error("Gemini API not initialized.");
   
@@ -134,6 +138,10 @@ async function syncEnglishPrompt({ polishPlan, platform, topic, style }) {
     
     User's Polish Strategy (Source):
     "${polishPlan}"
+    
+    ${workspaceContext ? `WORKSPACE CONTEXT (MANDATORY RULES):
+    - Brand Directives: ${workspaceContext.contentDirectives}
+    - Visual Aesthetic: ${workspaceContext.visualStyle}` : ''}
     
     Requirements for the Technical Prompt (Target):
     1. Language: Write the prompt in ENGLISH.
@@ -162,7 +170,7 @@ async function syncEnglishPrompt({ polishPlan, platform, topic, style }) {
  * @param {string} [params.plannedPrompt] - Optional pre-generated instructions.
  * @returns {Promise<Object>} - The generated content and token count.
  */
-async function generatePost({ platform, topic, style = "engaging", plannedPrompt = null }) {
+async function generatePost({ platform, topic, style = "engaging", plannedPrompt = null, workspaceContext }) {
   const ai = initGemini();
   if (!ai) throw new Error("Gemini API not initialized.");
   
@@ -192,6 +200,10 @@ async function generatePost({ platform, topic, style = "engaging", plannedPrompt
       Style: ${style}
       Style Guidelines: ${STYLE_GUIDELINES[style] || STYLE_GUIDELINES['Default']}
       
+      ${workspaceContext ? `WORKSPACE CONTEXT (MANDATORY RULES):
+      - Brand Directives: ${workspaceContext.contentDirectives}
+      - Visual Aesthetic: ${workspaceContext.visualStyle}` : ''}
+      
       Platform-Specific Strategy: ${rules}
       
       Language: ALWAYS respond in POLISH.
@@ -204,14 +216,16 @@ async function generatePost({ platform, topic, style = "engaging", plannedPrompt
   }
 
   try {
+    console.log("Generating post for:", platform, "Topic:", topic);
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const content = response.text();
-    const tokens = response.usageMetadata?.totalTokenCount || 500; // Fallback
+    const tokens = response.usageMetadata?.totalTokenCount || 500;
+    console.log("Generation successful, tokens:", tokens);
     return { content, tokens };
   } catch (error) {
-    console.error("Gemini Post Error:", error);
-    throw new Error("Failed to generate optimized post.");
+    console.error("Gemini Post Error Detail:", error);
+    throw new Error(`Failed to generate optimized post: ${error.message}`);
   }
 }
 
@@ -221,44 +235,74 @@ async function generatePost({ platform, topic, style = "engaging", plannedPrompt
  * @param {string} aspectRatio - The desired format (e.g., '1:1', '9:16', '16:9').
  * @param {string} platform - The target platform for aesthetic optimization.
  * @param {string} type - Visualization type: 'image' (default) or 'video'.
+ * @param {Object} workspaceContext - Optional brand workspace context.
  * @returns {Promise<string>} - The generated visual prompt.
  */
-async function generateVisualPrompt(postContent, aspectRatio = '1:1', platform = 'Default', type = 'image') {
+async function generateVisualPrompt(postContent, aspectRatio = '1:1', platform = 'Default', type = 'image', workspaceContext = null) {
   const ai = initGemini();
   if (!ai) throw new Error("Gemini API not initialized.");
 
   const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
   const aesthetic = IMAGE_AESTHETICS[platform] || IMAGE_AESTHETICS['Default'];
 
-  const formatDescription = 
-    aspectRatio === '9:16' ? 'vertical format (9:16 aspect ratio).' :
-    aspectRatio === '16:9' ? 'landscape format (16:9 aspect ratio).' :
-    aspectRatio === '4:5' ? 'portrait format (4:5 aspect ratio).' :
-    'square format (1:1 aspect ratio).';
+  const prompt = `
+    Jesteś dyrektorem kreatywnym i ekspertem od Prompt Engineeringu. 
+    Twoim zadaniem jest stworzenie opisu wizualnego dla modelu AI (${type === 'video' ? 'wideo' : 'obraz'}), bazując na treści posta.
+    
+    Platforma: ${platform}
+    Estetyka platformy: ${aesthetic}
+    Format: ${aspectRatio}
+    
+    ${workspaceContext ? `WYTYCZNE PRZESTRZENI ROBOCZEJ (MARKI):
+    ${workspaceContext.visualStyle}` : ''}
 
-  const motionDirectives = type === 'video' 
-    ? `SPECIFIC VIDEO INTRUCTIONS: Focus on movement and cinematic motion. 
-       Describe camera movement (pan, tilt, zoom, or dolly). 
-       Describe the action and speed of movement (e.g., slow motion, high speed, fluid transition). 
-       The scene should feel ALIVE and dynamic.`
-    : `IMAGE INSTRUCTIONS: Focus on a powerful static composition. Detail textures, lighting, and a single moment in time.`;
+    Treść posta:
+    "${postContent.substring(0, 500)}"
+    
+    ZWRÓĆ DANE W FORMACIE JSON:
+    {
+      "polishDescription": "Krótki, sugestywny opis sceny po polsku dla użytkownika (bez technicznego żargonu).",
+      "englishPrompt": "Technical English prompt for ${type === 'video' ? 'Veo 3.1' : 'Nano Banana'} (detailed, lighting, composition, camera settings, no text, cinema quality)."
+    }
+  `;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text().replace(/```json/g, '').replace(/```/g, '').trim();
+    return JSON.parse(text);
+  } catch (error) {
+    console.error("Gemini Visual Prompt Error:", error);
+    return {
+      polishDescription: `Wysokiej jakości ${type} przedstawiający: ${postContent.substring(0, 50).trim()}...`,
+      englishPrompt: `High quality cinematic ${type} of ${postContent.substring(0, 50).trim()}, professional lighting, 8k, highly detailed.`
+    };
+  }
+}
+
+/**
+ * Translates a user-edited Polish prompt into a technical English prompt for the generation models.
+ */
+async function translateToTechnicalPrompt(polishPrompt, type = 'image', aspectRatio = '1:1') {
+  const ai = initGemini();
+  if (!ai) throw new Error("Gemini API not initialized.");
+
+  const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
 
   const prompt = `
-    You are a professional visual director. Create a perfect prompt for an AI ${type === 'video' ? 'video' : 'image'} generator.
-    Platform Aesthetics: ${aesthetic}
-    Format: ${formatDescription}
+    Transform the following Polish visual description into a high-end, technical English prompt for ${type === 'video' ? 'Veo 3.1 Video Generator' : 'Nano Banana Image Generator'}.
     
-    ${motionDirectives}
-
-    Post Content for context: ${postContent.substring(0, 300)}
+    Polish Description:
+    "${polishPrompt}"
     
-    Final Instructions:
-    - Describe a single, powerful cinematic scene.
-    - Focus on professional lighting and high-end composition.
-    - Zero text in the visuals.
-    - Output exactly one detailed, technical paragraph in ENGLISH.
+    Aspect Ratio: ${aspectRatio}
     
-    ${type === 'video' ? 'Video' : 'Visual'} Prompt:
+    Requirements for the English Prompt:
+    - Strictly in ENGLISH.
+    - Use technical terms for lighting, camera lens, and composition.
+    - No text in the image/video.
+    - For video, include specific motion and camera trajectory instructions.
+    - Output ONLY the final technical prompt text.
   `;
 
   try {
@@ -266,8 +310,8 @@ async function generateVisualPrompt(postContent, aspectRatio = '1:1', platform =
     const response = await result.response;
     return response.text().trim();
   } catch (error) {
-    console.error("Gemini Prompt Error:", error);
-    return `A high-quality ${type} representing the topic: ${postContent.substring(0, 50)}...`;
+    console.error("Translation Error:", error);
+    return polishPrompt; // Fallback to original if translation fails
   }
 }
 
@@ -277,7 +321,7 @@ async function generateVisualPrompt(postContent, aspectRatio = '1:1', platform =
  * @param {string} instructions - The user's instructions for refinement.
  * @returns {Promise<Object>} - The refined post content and token count.
  */
-async function refinePost(originalPost, instructions) {
+async function refinePost(originalPost, instructions, workspaceContext = null) {
   const ai = initGemini();
   if (!ai) throw new Error("Gemini API not initialized.");
   
@@ -293,6 +337,9 @@ async function refinePost(originalPost, instructions) {
     Klient poprosił o wprowadzenie następujących zmian:
     "${instructions}"
     
+    ${workspaceContext ? `MANDATORY BRAND RULES (WORKSPACE):
+    - Tone/Style: ${workspaceContext.contentDirectives}` : ''}
+    
     Zastosuj te zmiany do posta. 
     Zwróć TYLKO nową, gotową treść posta w docelowym języku (zawsze po polsku, o ile klient nie poprosił inaczej).
   `;
@@ -301,11 +348,20 @@ async function refinePost(originalPost, instructions) {
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const content = response.text().trim();
+    
+    if (!content) {
+      throw new Error("Model Gemini zwrócił pustą odpowiedź.");
+    }
+
     const tokens = response.usageMetadata?.totalTokenCount || 250;
     return { content, tokens };
   } catch (error) {
-    console.error("Gemini Refine Post Error:", error);
-    throw new Error("Nie udało się zaktualizować posta.");
+    console.error("Gemini Refine Post Error Details:", error);
+    // If it's a safety error or other specific AI error, pass it through
+    const errorMessage = error.message?.includes("safety") 
+      ? "Treść została zablokowana przez filtry bezpieczeństwa AI." 
+      : error.message;
+    throw new Error(`Błąd ulepszania posta: ${errorMessage}`);
   }
 }
 
@@ -315,24 +371,64 @@ async function refinePost(originalPost, instructions) {
  * @param {string} instructions - The user's instructions in Polish.
  * @returns {Promise<string>} - The updated English prompt.
  */
-async function refineVisualPrompt(originalPrompt, instructions) {
+async function refineVisualPrompt(originalPromptObject, instructions, workspaceContext = null) {
   const ai = initGemini();
   if (!ai) throw new Error("Gemini API not initialized.");
 
   const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
 
   const prompt = `
-    You are a professional visual Prompt Engineer guiding an image/video AI model.
-    You have the following original technical prompt (in English):
-    ---
-    ${originalPrompt}
-    ---
+    Jesteś ekspertem od edycji kreatywnej i Prompt Engineeringu. Użytkownik chce zmienić opis wizualny dla AI.
     
-    The user requested the following change (usually in Polish):
-    "${instructions}"
+    AKTUALNY OPIS (PL): "${originalPromptObject.polishDescription}"
+    AKTUALNY PROMPT (EN): "${originalPromptObject.englishPrompt}"
+    INSTRUKCJE ZMIANY: "${instructions}"
     
-    Update the original English technical prompt to reflect the user's requested change.
-    Return ONLY the updated English technical prompt. Do not add any conversational text.
+    ${workspaceContext ? `WYTYCZNE MARKI (MANDATORY): ${workspaceContext.visualStyle}` : ''}
+
+    ZWRÓĆ ZAKTUALIZOWANE DANE W FORMACIE JSON:
+    {
+      "polishDescription": "Zmieniony, sugestywny opis po polsku.",
+      "englishPrompt": "Updated technical English prompt (lighting, camera, etc.)."
+    }
+  `;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text().replace(/```json/g, '').replace(/```/g, '').trim();
+    return JSON.parse(text);
+  } catch (error) {
+    console.error("Gemini Refine Visual Prompt Error:", error);
+    throw new Error(`Nie udało się zaktualizować opisu wizualnego: ${error.message}`);
+  }
+}
+
+/**
+ * Synchronizes the English technical prompt based on manual edits to the Polish description.
+ */
+async function syncVisualPrompt({ polishDescription, aspectRatio = '1:1', type = 'image', workspaceContext = null }) {
+  const ai = initGemini();
+  if (!ai) throw new Error("Gemini API not initialized.");
+
+  const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+  const prompt = `
+    Transform the following Polish visual description into a high-end, technical English prompt for ${type === 'video' ? 'Veo 3.1 Video Generator' : 'Nano Banana Image Generator'}.
+    
+    Polish Description:
+    "${polishDescription}"
+    
+    Aspect Ratio: ${aspectRatio}
+    
+    ${workspaceContext ? `MANDATORY BRAND STYLE: ${workspaceContext.visualStyle}` : ''}
+    
+    Requirements:
+    - Strictly in ENGLISH.
+    - Technical terminology (lens, lighting, textures).
+    - No text in image.
+    
+    Return ONLY the English prompt text.
   `;
 
   try {
@@ -340,8 +436,8 @@ async function refineVisualPrompt(originalPrompt, instructions) {
     const response = await result.response;
     return response.text().trim();
   } catch (error) {
-    console.error("Gemini Refine Visual Prompt Error:", error);
-    throw new Error("Nie udało się zaktualizować opisu wizualnego.");
+    console.error("Sync Visual Prompt Error:", error);
+    return `Cinematic ${type} based on: ${polishDescription}`;
   }
 }
 
@@ -420,6 +516,6 @@ async function generateNanoBananaImage(visualPrompt, aspectRatio = '1:1') {
   }
 }
 
-module.exports = { generatePost, generatePostPlan, syncEnglishPrompt, generateVisualPrompt, generateNanoBananaImage, generateVeoVideo, refinePost, refineVisualPrompt };
+module.exports = { generatePost, generatePostPlan, syncEnglishPrompt, generateVisualPrompt, translateToTechnicalPrompt, generateNanoBananaImage, generateVeoVideo, refinePost, refineVisualPrompt };
 
 

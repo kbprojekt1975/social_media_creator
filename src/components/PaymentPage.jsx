@@ -48,9 +48,11 @@ const PaymentPage = () => {
     {
       name: 'Plan Standardowy',
       price: '50 zł',
+      validity: 'Ważny 30 dni lub do zużycia tokenów',
       features: [
-        '100 postów AI (ze strategią)',
-        '10 wysokiej jakości obrazów AI'
+        '60 postów AI (ze strategią)',
+        '40 wysokiej jakości obrazów AI',
+        '5 klipów wideo (Reels/TikTok)'
       ],
       id: 'price_1TLomfDXnXONl2svOFT20RGH', // Ten ID musi zgadzać się z ID produktu w Stripe
       popular: true
@@ -92,8 +94,9 @@ const PaymentPage = () => {
                 }}>NAJCZĘŚCIEJ WYBIERANY</div>
               )}
               <h3 style={{ fontSize: '1.8rem', marginBottom: '0.5rem' }}>{plan.name}</h3>
-              <div style={{ fontSize: '3rem', fontWeight: '700', marginBottom: '2rem' }}>
-                {plan.price}
+              <div style={{ marginBottom: '2rem' }}>
+                <div style={{ fontSize: '3rem', fontWeight: '700' }}>{plan.price}</div>
+                <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>{plan.validity}</div>
               </div>
               <ul style={{ listStyle: 'none', marginBottom: '3rem', flexGrow: 1 }}>
                 {plan.features.map((f, j) => (
