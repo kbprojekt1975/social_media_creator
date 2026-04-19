@@ -1,4 +1,6 @@
 const { onRequest } = require("firebase-functions/v2/https");
+const { GoogleAuth } = require('google-auth-library');
+const axios = require("axios");
 const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
 
 const admin = require("firebase-admin");
@@ -18,6 +20,32 @@ const app = express();
 // Middleware
 app.use(cors({ origin: true }));
 app.use(express.json());
+
+// Endpoint: Diagnoza modeli (Tymczasowy)
+app.get("/list-models", async (req, res) => {
+  try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) return res.status(500).json({ error: "Brak GEMINI_API_KEY" });
+
+    console.log("Fetching available models from Google...");
+    const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
+    
+    const response = await axios.get(url);
+    const veoModels = response.data.models.filter(m => m.name.toLowerCase().includes('veo'));
+    
+    res.json({
+      all_veo_models: veoModels.map(m => ({
+        name: m.name,
+        displayName: m.displayName,
+        description: m.description,
+        supportedMethods: m.supportedGenerationMethods
+      }))
+    });
+  } catch (error) {
+    console.error("List Models Error:", error.response?.data || error.message);
+    res.status(500).json({ error: error.message, details: error.response?.data });
+  }
+});
 
 // --- CONFIGURATION ---
 const TOKENS_PER_PLN = 1000000; // 1 PLN = 1,000,000 tokens (adjust margin here)
@@ -127,8 +155,9 @@ app.post("/sync-visual-prompt", async (req, res) => {
     res.json({ englishPrompt });
 
   } catch (error) {
-    console.error("Sync Visual Error:", error);
-    res.status(500).json({ error: error.message });
+    console.error("Generate Error:", error);
+    const status = error.message?.includes("429") ? 429 : 500;
+    res.status(status).json({ error: error.message });
   }
 });
 
@@ -148,7 +177,8 @@ app.post("/generate-plan", async (req, res) => {
 
   } catch (error) {
     console.error("Plan Error:", error);
-    res.status(500).json({ error: error.message });
+    const status = error.message?.includes("429") ? 429 : 500;
+    res.status(status).json({ error: error.message });
   }
 });
 
@@ -166,7 +196,8 @@ app.post("/sync-prompt", async (req, res) => {
 
   } catch (error) {
     console.error("Sync Error:", error);
-    res.status(500).json({ error: error.message });
+    const status = error.message?.includes("429") ? 429 : 500;
+    res.status(status).json({ error: error.message });
   }
 });
 
@@ -186,7 +217,8 @@ app.post("/refine-post", async (req, res) => {
 
   } catch (error) {
     console.error("Refine Post Error:", error);
-    res.status(500).json({ error: error.message });
+    const status = error.message?.includes("429") ? 429 : 500;
+    res.status(status).json({ error: error.message });
   }
 });
 
@@ -206,7 +238,8 @@ app.post("/refine-image-prompt", async (req, res) => {
 
   } catch (error) {
     console.error("Refine Visual Error:", error);
-    res.status(500).json({ error: error.message });
+    const status = error.message?.includes("429") ? 429 : 500;
+    res.status(status).json({ error: error.message });
   }
 });
 
@@ -255,44 +288,137 @@ app.post("/generate-image", async (req, res) => {
   }
 });
 
-// Endpoint: Generate Video (Veo 3.1 Lite)
+// Endpoint: Generate Video (Veo 3.1) - Now Asynchronous
 app.post("/generate-video", async (req, res) => {
   const idToken = req.headers.authorization?.split("Bearer ")[1];
   if (!idToken) return res.status(401).send("Unauthorized");
 
   try {
     const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const { prompt, aspectRatio } = req.body;
+    const { prompt, aspectRatio, includeAudio } = req.body;
     if (!prompt) return res.status(400).send("Prompt is required.");
 
-    const userRef = db.collection("users").doc(decodedToken.uid);
-    const userDoc = await userRef.get();
-    const balance = userDoc.data()?.balance || 0;
-
-    // Pre-process prompt (Translate Polish description to technical English)
+    // Translate Polish description to technical English
     const technicalPrompt = await translateToTechnicalPrompt(prompt, 'video', aspectRatio || '1:1');
-    console.log("Technical Video Prompt:", technicalPrompt);
+    console.log("Starting Video LRO for:", technicalPrompt, "Audio:", !!includeAudio);
 
-    const buffer = await generateVeoVideo(technicalPrompt, aspectRatio || '1:1');
+    // This now returns { status, operationName, videoBase64 }
+    const result = await generateVeoVideo(technicalPrompt, aspectRatio || '1:1', !!includeAudio);
+    
+    if (result.status === "done" && result.videoBase64) {
+      // 1. Save to Storage (Direct case)
+      const buffer = Buffer.from(result.videoBase64, 'base64');
+      const bucket = admin.storage().bucket();
+      const fileName = `generated/${decodedToken.uid}/${Date.now()}.mp4`;
+      const file = bucket.file(fileName);
 
-    // Upload to Firebase Storage
-    const bucket = admin.storage().bucket();
-    const fileName = `generated/${decodedToken.uid}/${Date.now()}.mp4`;
-    const file = bucket.file(fileName);
+      await file.save(buffer, { contentType: 'video/mp4' });
+      await file.makePublic();
+      const downloadUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
 
-    await file.save(buffer, { contentType: 'video/mp4' });
-    await file.makePublic();
-    const downloadUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+      // 2. Deduct tokens (Use global constant)
+      const userRef = db.collection("users").doc(decodedToken.uid);
+      await userRef.update({ 
+        balance: admin.firestore.FieldValue.increment(-VIDEO_COST) 
+      });
 
-    // Deduct tokens
-    await userRef.update({ 
-      balance: admin.firestore.FieldValue.increment(-VIDEO_COST) 
+      return res.json({ 
+        status: "done", 
+        videoUrl: downloadUrl,
+        videoBase64: result.videoBase64,
+        cost: VIDEO_COST
+      });
+    }
+
+    res.json({ 
+      status: "started", 
+      operationName: result.operationName,
+      technicalPrompt: technicalPrompt 
     });
 
-    res.json({ videoUrl: downloadUrl, cost: VIDEO_COST });
   } catch (error) {
-    console.error("Veo Video Generation Error:", error);
+    console.error("Veo Start Error:", error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint: Check Video Generation Status (Hardened version)
+app.get("/video-status", async (req, res) => {
+  const idToken = req.headers.authorization?.split("Bearer ")[1];
+  if (!idToken) return res.status(401).send("Unauthorized");
+
+  try {
+    const { operationName } = req.query;
+    if (!operationName) return res.status(400).send("operationName is required.");
+
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    
+    // 1. Check status using Gemini API (AI Studio)
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) throw new Error("GEMINI_API_KEY not found.");
+
+    console.log("Checking AI Studio LRO Status for:", operationName);
+
+    // AI Studio operations endpoint
+    const url = `https://generativelanguage.googleapis.com/v1beta/${operationName}?key=${apiKey}`;
+    
+    const response = await axios.get(url);
+    const data = response.data;
+    
+    console.log("AI Studio Status Response:", data.done ? "DONE" : "IN_PROGRESS");
+
+    // 2. Handle Completion
+    if (data.done) {
+      if (data.error) {
+        console.error("AI Studio LRO reported an error:", data.error);
+        return res.status(500).json({ status: "failed", error: data.error.message });
+      }
+
+      // 1. Extract the URI from the new AI Studio response structure
+      const videoUri = data.response?.generateVideoResponse?.generatedSamples?.[0]?.video?.uri;
+
+      if (!videoUri) {
+        console.error("AI Studio finished but no video URI found. Data:", JSON.stringify(data, null, 2));
+        throw new Error("Nie znaleziono linku do filmu w odpowiedzi AI Studio.");
+      }
+
+      console.log("Downloading video bytes from Google File API:", videoUri);
+
+      // 2. Download the actual video bytes using the API Key
+      const videoResponse = await axios.get(`${videoUri}&key=${apiKey}`, { 
+        responseType: 'arraybuffer' 
+      });
+      
+      const buffer = Buffer.from(videoResponse.data);
+
+      // 3. Save the buffer to your Firebase Storage
+      const bucket = admin.storage().bucket();
+      const fileName = `generated/${decodedToken.uid}/${Date.now()}.mp4`;
+      const file = bucket.file(fileName);
+
+      await file.save(buffer, { contentType: 'video/mp4' });
+      await file.makePublic();
+      const downloadUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+
+      // 4. Deduct tokens (Use global constant)
+      const userRef = db.collection("users").doc(decodedToken.uid);
+      await userRef.update({ 
+        balance: admin.firestore.FieldValue.increment(-VIDEO_COST) 
+      });
+
+      return res.json({ 
+        status: "done", 
+        videoUrl: downloadUrl,
+        cost: VIDEO_COST
+      });
+    } else {
+      // 6. Still in progress
+      console.log("Video still processing for:", operationName);
+      res.json({ status: "processing" });
+    }
+  } catch (error) {
+    console.error("Hardened Status Check Error:", error.response?.data || error.message);
+    res.status(500).json({ error: "Failed to check video status detail: " + (error.response?.data?.error?.message || error.message) });
   }
 });
 
@@ -352,5 +478,6 @@ exports.onSubscriptionUpdate = onDocumentUpdated({
 exports.api = onRequest({
   secrets: ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "GEMINI_API_KEY"],
   cors: true,
-  memory: "1GiB"
+  memory: "2GiB",
+  timeoutSeconds: 300
 }, app);

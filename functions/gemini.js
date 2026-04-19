@@ -1,4 +1,5 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const axios = require("axios");
 
 let genAI;
 
@@ -84,17 +85,19 @@ async function generatePostPlan({ platform, topic, style = "engaging", workspace
     
     console.log("Gemini Plan Raw Output:", text);
 
-    // Clean up potential markdown code blocks
-    if (text.startsWith('```')) {
-      text = text.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
+    // Robust JSON extraction
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.error("No JSON object found in text:", text);
+      throw new Error("MODEL_JSON_ERROR: AI returned no JSON.");
     }
     
     let jsonResponse;
     try {
-      jsonResponse = JSON.parse(text);
+      jsonResponse = JSON.parse(jsonMatch[0]);
     } catch (e) {
-      console.error("JSON Parse Error. Raw text was:", text);
-      throw new Error("MODEL_JSON_ERROR: AI returned invalid format.");
+      console.error("JSON Parse Error. Extracted text was:", jsonMatch[0]);
+      throw new Error("MODEL_JSON_ERROR: AI returned invalid JSON format.");
     }
 
     // Normalize keys
@@ -269,8 +272,16 @@ async function generateVisualPrompt(postContent, aspectRatio = '1:1', platform =
   try {
     const result = await model.generateContent(prompt);
     const response = await result.response;
-    const text = response.text().replace(/```json/g, '').replace(/```/g, '').trim();
-    return JSON.parse(text);
+    const text = response.text().trim();
+    
+    // Robust JSON extraction
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.error("No JSON found in visual prompt output:", text);
+      throw new Error("MODEL_JSON_ERROR: AI returned no JSON for visual prompt.");
+    }
+    
+    return JSON.parse(jsonMatch[0]);
   } catch (error) {
     console.error("Gemini Visual Prompt Error:", error);
     return {
@@ -396,8 +407,16 @@ async function refineVisualPrompt(originalPromptObject, instructions, workspaceC
   try {
     const result = await model.generateContent(prompt);
     const response = await result.response;
-    const text = response.text().replace(/```json/g, '').replace(/```/g, '').trim();
-    return JSON.parse(text);
+    const text = response.text().trim();
+    
+    // Robust JSON extraction
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.error("No JSON found in visual refinement output:", text);
+      throw new Error("MODEL_JSON_ERROR: AI returned no JSON for visual refinement.");
+    }
+    
+    return JSON.parse(jsonMatch[0]);
   } catch (error) {
     console.error("Gemini Refine Visual Prompt Error:", error);
     throw new Error(`Nie udało się zaktualizować opisu wizualnego: ${error.message}`);
@@ -443,76 +462,80 @@ async function syncVisualPrompt({ polishDescription, aspectRatio = '1:1', type =
 
 
 /**
- * Generates a video using the Veo 3.1 Lite model.
- * @param {string} visualPrompt - The descriptive prompt for the video.
- * @param {string} aspectRatio - The desired format (e.g., '1:1', '9:16', '16:9').
- * @returns {Promise<Buffer>} - The generated video data (MP4).
+ * Generates a video using the Veo 3.1 model via Google AI Studio (Gemini API) REST.
+ * We use predictLongRunning as it's the only supported method for this model.
  */
-async function generateVeoVideo(visualPrompt, aspectRatio = '1:1') {
-  const ai = initGemini();
-  if (!ai) throw new Error("Gemini API not initialized.");
+async function generateVeoVideo(visualPrompt, aspectRatio = '1:1', includeAudio = false) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("GEMINI_API_KEY not found.");
 
-  // Veo 3.1 Lite is optimized for speed/cost (0.05-0.08$)
-  const model = ai.getGenerativeModel({ 
-    model: "veo-3.1-lite-generate-preview",
-    generationConfig: {
-      responseModalities: ["VIDEO"],
-      videoConfig: {
-        aspect_ratio: aspectRatio
-      }
+  const modelId = "models/veo-3.1-lite-generate-preview";
+  const url = `https://generativelanguage.googleapis.com/v1beta/${modelId}:predictLongRunning?key=${apiKey}`;
+
+  // Enhancement: Add audio intent to prompt if requested
+  const finalPrompt = includeAudio ? `${visualPrompt} (with synchronized high-quality audio)` : visualPrompt;
+
+  const payload = {
+    instances: [{ prompt: finalPrompt }],
+    parameters: {
+      sampleCount: 1,
+      aspectRatio: aspectRatio === '9:16' ? '9:16' : '16:9',
+      durationSeconds: 6,
+      includeAudio: includeAudio
     }
-  });
+  };
+
+  console.log(`Initiating Veo 3.1 via AI Studio REST (Audio: ${includeAudio})...`);
 
   try {
-    const result = await model.generateContent(visualPrompt);
-    const response = await result.response;
-    
-    const part = response.candidates[0].content.parts.find(p => p.inlineData);
-    
-    if (part && part.inlineData) {
-      return Buffer.from(part.inlineData.data, 'base64');
+    const response = await axios.post(url, payload);
+    const data = response.data;
+
+    if (data.name) {
+      console.log("Video generation started as LRO in AI Studio:", data.name);
+      return { status: "processing", operationName: data.name };
     } else {
-      throw new Error("No video data part found in Veo response.");
+      console.log("Unexpected AI Studio REST Response:", JSON.stringify(data, null, 2));
+      throw new Error("Nie otrzymano nazwy operacji z AI Studio.");
     }
   } catch (error) {
-    console.error("Veo 3.1 Lite Error:", error);
-    throw new Error(`Technical failure creating video. Check model availability or API limits.`);
+    console.error("AI Studio REST Video Error:", error.response?.data || error.message);
+    throw new Error(`Błąd AI Studio (REST): ${error.response?.data?.error?.message || error.message}`);
   }
 }
 
 /**
- * Generates an image using the Nano Banana (Gemini 3.1 Flash Image) model.
- * @param {string} visualPrompt - The descriptive prompt for the image.
- * @param {string} aspectRatio - The desired format (e.g., '1:1', '9:16', '16:9').
- * @returns {Promise<Buffer>} - The generated image data.
+ * Generates an image using the Nano Banana (Gemini 3.1 Flash Image) model via REST API.
  */
 async function generateNanoBananaImage(visualPrompt, aspectRatio = '1:1') {
-  const ai = initGemini();
-  if (!ai) throw new Error("Gemini API not initialized.");
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("GEMINI_API_KEY not found.");
 
-  const model = ai.getGenerativeModel({ 
-    model: "gemini-3.1-flash-image-preview",
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${apiKey}`;
+
+  const payload = {
+    contents: [{ parts: [{ text: visualPrompt }] }],
     generationConfig: {
-      responseModalities: ["IMAGE"],
-      imageConfig: {
-        aspect_ratio: aspectRatio
-      }
+      responseModalities: ["IMAGE"]
     }
-  });
+  };
 
   try {
-    const result = await model.generateContent(visualPrompt);
-    const response = await result.response;
-    const part = response.candidates[0].content.parts.find(p => p.inlineData);
+    const response = await axios.post(url, payload);
+    const data = response.data;
+    
+    const candidate = data.candidates?.[0];
+    const part = candidate?.content?.parts?.find(p => p.inlineData);
     
     if (part && part.inlineData) {
       return Buffer.from(part.inlineData.data, 'base64');
     } else {
-      throw new Error("No image data part found in 3.1 response.");
+      console.error("Nano Banana REST Response:", JSON.stringify(data, null, 2));
+      throw new Error("No image data in response candidates.");
     }
   } catch (error) {
-    console.error("Nano Banana Image Error:", error);
-    throw new Error(`Technical failure creating ${aspectRatio} image.`);
+    console.error("Nano Banana REST Error:", error.response?.data || error.message);
+    throw new Error(`Technical failure creating image: ${error.response?.data?.error?.message || error.message}`);
   }
 }
 

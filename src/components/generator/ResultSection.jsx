@@ -33,7 +33,10 @@ const ResultSection = ({
   mediaFeedback, 
   setMediaFeedback, 
   isMediaRefining, 
-  handleRefineMedia 
+  handleRefineMedia,
+  visualPlannedPrompt,
+  isVisualSyncing,
+  handleSyncVisualPrompt
 }) => {
   if (!result) return null;
 
@@ -176,6 +179,47 @@ const ResultSection = ({
                   </button>
                 ))}
               </div>
+              {/* Sound Toggle Option */}
+              <div style={{ 
+                marginBottom: '1.2rem', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '1rem',
+                padding: '0.8rem 1.2rem',
+                background: 'var(--bg-app)',
+                borderRadius: '15px',
+                border: '1px solid var(--border-color)',
+                cursor: 'pointer'
+              }} onClick={() => setIncludeAudio(!includeAudio)}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flex: 1 }}>
+                  <span className="material-icons" style={{ color: includeAudio ? 'var(--color-primary)' : 'var(--text-muted)' }}>
+                    {includeAudio ? 'volume_up' : 'volume_off'}
+                  </span>
+                  <span style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-main)' }}>
+                    {includeAudio ? 'Wideo z dźwiękiem AI' : 'Wideo bez dźwięku'}
+                  </span>
+                </div>
+                <div style={{ 
+                  width: '40px', 
+                  height: '20px', 
+                  background: includeAudio ? 'var(--color-primary)' : 'var(--text-muted)', 
+                  borderRadius: '20px', 
+                  position: 'relative',
+                  transition: 'all 0.3s'
+                }}>
+                  <div style={{ 
+                    position: 'absolute', 
+                    top: '2px', 
+                    left: includeAudio ? '22px' : '2px', 
+                    width: '16px', 
+                    height: '16px', 
+                    background: '#fff', 
+                    borderRadius: '50%',
+                    transition: 'all 0.3s'
+                  }} />
+                </div>
+              </div>
+
               <button 
                 onClick={() => handleGeneratePrompt('video')}
                 disabled={imageLoading || isReadOnly}

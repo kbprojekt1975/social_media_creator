@@ -11,7 +11,20 @@ import GeneratorTabs from './generator/GeneratorTabs';
 import HistoryDrawer from './generator/HistoryDrawer';
 import WorkspaceManager from './generator/WorkspaceManager';
 import PostGenerator from './generator/PostGenerator';
-import ResultSection from './generator/ResultSection'; // Importujemy widok płatności
+import ResultSection from './generator/ResultSection'; 
+import axiosRetry from 'axios-retry';
+
+// Configure axios to retry on 429 errors
+axiosRetry(axios, { 
+  retries: 3, 
+  retryDelay: (retryCount) => {
+    return retryCount * 2500; // 2.5s, 5s, 7.5s - to stay under the 15 RPM limit
+  },
+  retryCondition: (error) => {
+    // Retry on 429 (Rate Limit) or network errors
+    return error.response?.status === 429 || axiosRetry.isNetworkOrIdempotentRequestError(error);
+  }
+});
 
 const GeneratorPage = () => {
   const [topic, setTopic] = useState('');
@@ -43,6 +56,7 @@ const GeneratorPage = () => {
   // Plan/PEaaS States
   const [plannedPrompt, setPlannedPrompt] = useState(null);
   const [isPlanning, setIsPlanning] = useState(false);
+  const [includeAudio, setIncludeAudio] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [planActive, setPlanActive] = useState(false);
 
@@ -391,26 +405,72 @@ const GeneratorPage = () => {
     setImageLoading(true);
     try {
       const token = await user.getIdToken();
-      const response = await axios.post(`${API_BASE_URL}/generate-video`, 
-        { prompt: visualPlannedPrompt.englishPrompt, aspectRatio: videoAspectRatio },
+      
+      // Step 1: Start the generation process
+      const startResponse = await axios.post(`${API_BASE_URL}/generate-video`, 
+        { 
+          prompt: visualPlannedPrompt.englishPrompt, 
+          aspectRatio: videoAspectRatio,
+          includeAudio: includeAudio
+        },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
+      const operationName = startResponse.data.operationName;
+      console.log("Video generation started, operation:", operationName);
+
+      // Step 2: Poll for status
+      let isDone = false;
+      let videoUrl = null;
+      let attempts = 0;
+      const maxAttempts = 40; // ~3-4 minutes max polling
+
+      while (!isDone && attempts < maxAttempts) {
+        attempts++;
+        // Wait 5 seconds between polls
+        await new Promise(resolve => setTimeout(resolve, 5000));
+
+        try {
+          const statusResponse = await axios.get(
+            `${API_BASE_URL}/video-status?operationName=${encodeURIComponent(operationName)}`, 
+            {
+              headers: { Authorization: `Bearer ${token}` }
+            }
+          );
+
+          if (statusResponse.data.status === "done") {
+            isDone = true;
+            videoUrl = statusResponse.data.videoUrl;
+          } else if (statusResponse.data.status === "failed") {
+            throw new Error(statusResponse.data.error || "Generation failed at Google side.");
+          }
+          // if "processing", just continue loop
+        } catch (pollError) {
+          console.error("Polling error:", pollError);
+          // If it's a transient error, we can continue polling
+          if (attempts > 10) throw pollError; 
+        }
+      }
+
+      if (!videoUrl) {
+        throw new Error("Generowanie trwa zbyt długo. Sprawdź historię za chwilę.");
+      }
+
+      // Step 3: Success! Update local state and history
       if (currentRecordId) {
         const recordRef = doc(db, 'users', user.uid, 'history', currentRecordId);
         await updateDoc(recordRef, {
-          videoUrl: response.data.videoUrl,
+          videoUrl: videoUrl,
           videoPrompt: visualPlannedPrompt.englishPrompt
         });
       }
 
-      setGeneratedVideo(response.data.videoUrl);
+      setGeneratedVideo(videoUrl);
       setIsPromptMode(false);
       setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 100);
     } catch (error) {
-
       console.error('Video generation failed:', error);
-      alert(error.response?.data?.error || 'Nie udało się wygenerować klipu wideo.');
+      alert(error.response?.data?.error || error.message || 'Nie udało się wygenerować klipu wideo.');
     } finally {
       setImageLoading(false);
     }
@@ -729,6 +789,8 @@ const GeneratorPage = () => {
               isVisualSyncing={isVisualSyncing}
               handleSyncVisualPrompt={handleSyncVisualPrompt}
               handleRefineMedia={handleRefineMedia}
+              includeAudio={includeAudio}
+              setIncludeAudio={setIncludeAudio}
             />
           </>
         ) : (
