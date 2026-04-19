@@ -56,7 +56,6 @@ const GeneratorPage = () => {
   // Plan/PEaaS States
   const [plannedPrompt, setPlannedPrompt] = useState(null);
   const [isPlanning, setIsPlanning] = useState(false);
-  const [includeAudio, setIncludeAudio] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [planActive, setPlanActive] = useState(false);
 
@@ -408,11 +407,7 @@ const GeneratorPage = () => {
       
       // Step 1: Start the generation process
       const startResponse = await axios.post(`${API_BASE_URL}/generate-video`, 
-        { 
-          prompt: visualPlannedPrompt.englishPrompt, 
-          aspectRatio: videoAspectRatio,
-          includeAudio: includeAudio
-        },
+        { prompt: visualPlannedPrompt.englishPrompt, aspectRatio: videoAspectRatio },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -789,8 +784,6 @@ const GeneratorPage = () => {
               isVisualSyncing={isVisualSyncing}
               handleSyncVisualPrompt={handleSyncVisualPrompt}
               handleRefineMedia={handleRefineMedia}
-              includeAudio={includeAudio}
-              setIncludeAudio={setIncludeAudio}
             />
           </>
         ) : (

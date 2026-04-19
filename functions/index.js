@@ -295,15 +295,15 @@ app.post("/generate-video", async (req, res) => {
 
   try {
     const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const { prompt, aspectRatio, includeAudio } = req.body;
+    const { prompt, aspectRatio } = req.body;
     if (!prompt) return res.status(400).send("Prompt is required.");
 
     // Translate Polish description to technical English
     const technicalPrompt = await translateToTechnicalPrompt(prompt, 'video', aspectRatio || '1:1');
-    console.log("Starting Video LRO for:", technicalPrompt, "Audio:", !!includeAudio);
+    console.log("Starting Video LRO for:", technicalPrompt);
 
     // This now returns { status, operationName, videoBase64 }
-    const result = await generateVeoVideo(technicalPrompt, aspectRatio || '1:1', !!includeAudio);
+    const result = await generateVeoVideo(technicalPrompt, aspectRatio || '1:1');
     
     if (result.status === "done" && result.videoBase64) {
       // 1. Save to Storage (Direct case)
@@ -316,7 +316,7 @@ app.post("/generate-video", async (req, res) => {
       await file.makePublic();
       const downloadUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
 
-      // 2. Deduct tokens (Use global constant)
+      // 2. Deduct tokens
       const userRef = db.collection("users").doc(decodedToken.uid);
       await userRef.update({ 
         balance: admin.firestore.FieldValue.increment(-VIDEO_COST) 
@@ -400,7 +400,7 @@ app.get("/video-status", async (req, res) => {
       await file.makePublic();
       const downloadUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
 
-      // 4. Deduct tokens (Use global constant)
+      // 4. Deduct tokens
       const userRef = db.collection("users").doc(decodedToken.uid);
       await userRef.update({ 
         balance: admin.firestore.FieldValue.increment(-VIDEO_COST) 

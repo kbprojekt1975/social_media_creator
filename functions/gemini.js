@@ -465,27 +465,23 @@ async function syncVisualPrompt({ polishDescription, aspectRatio = '1:1', type =
  * Generates a video using the Veo 3.1 model via Google AI Studio (Gemini API) REST.
  * We use predictLongRunning as it's the only supported method for this model.
  */
-async function generateVeoVideo(visualPrompt, aspectRatio = '1:1', includeAudio = false) {
+async function generateVeoVideo(visualPrompt, aspectRatio = '1:1') {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY not found.");
 
   const modelId = "models/veo-3.1-lite-generate-preview";
   const url = `https://generativelanguage.googleapis.com/v1beta/${modelId}:predictLongRunning?key=${apiKey}`;
 
-  // Enhancement: Add audio intent to prompt if requested
-  const finalPrompt = includeAudio ? `${visualPrompt} (with synchronized high-quality audio)` : visualPrompt;
-
   const payload = {
-    instances: [{ prompt: finalPrompt }],
+    instances: [{ prompt: visualPrompt }],
     parameters: {
       sampleCount: 1,
       aspectRatio: aspectRatio === '9:16' ? '9:16' : '16:9',
-      durationSeconds: 6,
-      includeAudio: includeAudio
+      durationSeconds: 6
     }
   };
 
-  console.log(`Initiating Veo 3.1 via AI Studio REST (Audio: ${includeAudio})...`);
+  console.log("Initiating Veo 3.1 via AI Studio REST (predictLongRunning)...");
 
   try {
     const response = await axios.post(url, payload);
