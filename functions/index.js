@@ -229,12 +229,12 @@ app.post("/refine-image-prompt", async (req, res) => {
   if (!idToken) return res.status(401).send("Unauthorized");
 
   try {
-    const { originalPromptObject, instructions, workspaceContext } = req.body;
+    const { originalPromptObject, instructions, workspaceContext, mediaUrl } = req.body;
     if (!originalPromptObject || !instructions) {
       return res.status(400).json({ error: "originalPromptObject and instructions are required." });
     }
 
-    const visualPlannedPrompt = await refineVisualPrompt(originalPromptObject, instructions, workspaceContext);
+    const visualPlannedPrompt = await refineVisualPrompt(originalPromptObject, instructions, workspaceContext, mediaUrl);
     res.json({ visualPlannedPrompt });
 
   } catch (error) {

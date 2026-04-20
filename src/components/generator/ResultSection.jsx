@@ -36,7 +36,9 @@ const ResultSection = ({
   handleRefineMedia,
   visualPlannedPrompt,
   isVisualSyncing,
-  handleSyncVisualPrompt
+  handleSyncVisualPrompt,
+  mediaHistory,
+  setMediaHistory
 }) => {
   if (!result) return null;
 
@@ -279,59 +281,67 @@ const ResultSection = ({
           </div>
         )}
 
-        {(generatedImage || generatedVideo) && (
-          <div style={{ marginTop: '2.5rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+        {mediaHistory && mediaHistory.length > 0 && (
+          <div style={{ marginTop: '2.5rem', display: 'flex', flexDirection: 'column', gap: '3rem' }}>
+            <h3 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
+              Historia Wygenerowanych Mediów
+            </h3>
             
-            {generatedVideo && (
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginBottom: '1rem', color: 'var(--text-muted)' }}>
-                  <span className="material-icons" style={{ fontSize: '1.2rem' }}>movie</span>
-                  <span style={{ fontSize: '0.85rem', fontWeight: '700', textTransform: 'uppercase' }}>Wygenerowany Klip Wideo</span>
+            {mediaHistory.map((media, idx) => (
+              <div key={idx} style={{ textAlign: 'center', background: 'var(--bg-app)', padding: '1.5rem', borderRadius: '30px', border: '1px solid var(--border-color)', position: 'relative' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginBottom: '1.2rem', color: 'var(--text-muted)' }}>
+                  <span className="material-icons" style={{ fontSize: '1.2rem' }}>{media.type === 'video' ? 'movie' : 'image'}</span>
+                  <span style={{ fontSize: '0.85rem', fontWeight: '700', textTransform: 'uppercase' }}>
+                    Wersja {idx + 1} ({media.type === 'video' ? 'Wideo' : 'Grafika'})
+                  </span>
                 </div>
-                <video 
-                  src={generatedVideo} 
-                  controls 
-                  autoPlay 
-                  loop 
-                  style={{ width: '100%', borderRadius: '25px', boxShadow: 'var(--shadow-md)', background: '#000' }} 
-                />
-                <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                  <button onClick={() => setGeneratedVideo(null)} className="btn-secondary" style={{ flex: 1, borderRadius: '15px', fontSize: '0.85rem' }}>Usuń Wideo</button>
-                  <a href={generatedVideo} target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ flex: 1.5, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '15px', fontSize: '0.85rem' }} download>
-                    Pobierz Wideo
-                  </a>
-                </div>
-              </div>
-            )}
 
-            {generatedImage && (
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginBottom: '1rem', color: 'var(--text-muted)', marginTop: generatedVideo ? '1rem' : 0 }}>
-                  <span className="material-icons" style={{ fontSize: '1.2rem' }}>image</span>
-                  <span style={{ fontSize: '0.85rem', fontWeight: '700', textTransform: 'uppercase' }}>Wygenerowana Grafika</span>
-                </div>
-                <img src={generatedImage} alt="Generated" style={{ width: '100%', borderRadius: '25px', boxShadow: 'var(--shadow-md)' }} />
-                <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                  <button onClick={() => setGeneratedImage(null)} className="btn-secondary" style={{ flex: 1, borderRadius: '15px', fontSize: '0.85rem' }}>Usuń Grafikę</button>
-                  <a href={generatedImage} target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ flex: 1.5, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '15px', fontSize: '0.85rem' }} download>
-                    Pobierz Obraz
+                {media.type === 'video' ? (
+                  <video 
+                    src={media.url} 
+                    controls 
+                    style={{ width: '100%', borderRadius: '20px', boxShadow: 'var(--shadow-md)', background: '#000' }} 
+                  />
+                ) : (
+                  <img src={media.url} alt={`Generated version ${idx + 1}`} style={{ width: '100%', borderRadius: '20px', boxShadow: 'var(--shadow-md)' }} />
+                )}
+
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '1.2rem' }}>
+                  <button 
+                    onClick={() => {
+                      const newHistory = [...mediaHistory];
+                      newHistory.splice(idx, 1);
+                      setMediaHistory(newHistory);
+                      // Also clear current states if it was the last one
+                      if (newHistory.length === 0) {
+                        setGeneratedImage(null);
+                        setGeneratedVideo(null);
+                      }
+                    }} 
+                    className="btn-secondary" 
+                    style={{ flex: 1, borderRadius: '15px', fontSize: '0.8rem' }}
+                  >
+                    Usuń tę wersję
+                  </button>
+                  <a href={media.url} target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ flex: 1.5, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '15px', fontSize: '0.85rem' }} download>
+                    Pobierz {media.type === 'video' ? 'Wideo' : 'Obraz'}
                   </a>
                 </div>
               </div>
-            )}
+            ))}
             
-            {/* Media Refinement Field */}
-            <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'flex-start', background: 'var(--bg-app)', padding: '1.2rem', borderRadius: '20px', border: '1px solid var(--border-color)', marginTop: '0.5rem', textAlign: 'left' }}>
+            {/* Media Refinement Field (Sticky at the bottom of the list) */}
+            <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'flex-start', background: 'var(--bg-app)', padding: '1.5rem', borderRadius: '25px', border: '1px solid var(--color-primary)', marginTop: '1rem', textAlign: 'left', boxShadow: 'var(--shadow-lg)' }}>
               <div style={{ flex: 1 }}>
-                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--color-primary)', marginBottom: '0.5rem', fontWeight: '700' }}>
-                  <span className="material-icons" style={{ fontSize: '0.9rem', verticalAlign: 'middle', marginRight: '0.3rem' }}>design_services</span>
-                  Popraw {generatedVideo && generatedImage ? 'ostatnie media' : (generatedVideo ? 'wideo' : 'zdjęcie')}:
+                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-primary)', marginBottom: '0.6rem', fontWeight: '800' }}>
+                  <span className="material-icons" style={{ fontSize: '1rem', verticalAlign: 'middle', marginRight: '0.4rem' }}>auto_fix_high</span>
+                  Zaproponuj poprawki do ostatniej wersji:
                 </label>
                 <textarea 
                   value={mediaFeedback}
                   onChange={(e) => setMediaFeedback(e.target.value)}
-                  placeholder="Napisz co zmienić (np. zrób tak aby w tle było morze, zmień kolory na ciemniejsze)..."
-                  style={{ width: '100%', minHeight: '60px', padding: '0.8rem', fontSize: '0.9rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-white)', color: 'var(--text-main)', resize: 'vertical' }}
+                  placeholder="np. zmień postać na kobietę, niech tło będzie bardziej słoneczne..."
+                  style={{ width: '100%', minHeight: '80px', padding: '1rem', fontSize: '0.95rem', borderRadius: '15px', border: '1px solid var(--border-color)', background: 'var(--bg-white)', color: 'var(--text-main)', resize: 'vertical' }}
                   disabled={isMediaRefining}
                 />
               </div>
@@ -339,11 +349,11 @@ const ResultSection = ({
                 onClick={handleRefineMedia}
                 disabled={!mediaFeedback.trim() || isMediaRefining}
                 className="btn-primary"
-                style={{ padding: '0.8rem 1.5rem', borderRadius: '12px', alignSelf: 'stretch', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.3rem', minWidth: '120px' }}
+                style={{ padding: '1rem 2rem', borderRadius: '15px', alignSelf: 'stretch', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', minWidth: '130px' }}
               >
                 {isMediaRefining ? <span className="spinner"></span> : (
                   <>
-                    <span className="material-icons" style={{ fontSize: '1.3rem' }}>draw</span>
+                    <span className="material-icons" style={{ fontSize: '1.5rem' }}>draw</span>
                     Zastosuj
                   </>
                 )}

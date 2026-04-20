@@ -92,6 +92,7 @@ const GeneratorPage = () => {
   const [isTextRefining, setIsTextRefining] = useState(false);
   const [mediaFeedback, setMediaFeedback] = useState('');
   const [isMediaRefining, setIsMediaRefining] = useState(false);
+  const [mediaHistory, setMediaHistory] = useState([]); // Array to store { type: 'image'|'video', url: string, prompt: string }
 
   // Workspace States
   const [activeTab, setActiveTab] = useState('generator'); // 'generator' | 'workspaces'
@@ -415,15 +416,16 @@ const GeneratorPage = () => {
     }
   };
 
-  const handleGenerateVideo = async () => {
-    if (!visualPlannedPrompt?.englishPrompt) return;
+  const handleGenerateVideo = async (overridePrompt = null) => {
+    const targetPrompt = overridePrompt || visualPlannedPrompt;
+    if (!targetPrompt?.englishPrompt) return;
     setImageLoading(true);
     try {
       const token = await user.getIdToken();
       
       // Step 1: Start the generation process
       const startResponse = await axios.post(`${API_BASE_URL}/generate-video`, 
-        { prompt: visualPlannedPrompt.englishPrompt, aspectRatio: videoAspectRatio },
+        { prompt: targetPrompt.englishPrompt, aspectRatio: videoAspectRatio },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -472,12 +474,16 @@ const GeneratorPage = () => {
         const recordRef = doc(db, 'users', user.uid, 'history', currentRecordId);
         await updateDoc(recordRef, {
           videoUrl: videoUrl,
-          videoPrompt: visualPlannedPrompt.englishPrompt,
-          imagePolishDescription: visualPlannedPrompt.polishDescription
+          videoPrompt: targetPrompt.englishPrompt,
+          imagePolishDescription: targetPrompt.polishDescription
         });
       }
 
       setGeneratedVideo(videoUrl);
+      setMediaHistory(prev => [
+        ...prev, 
+        { type: 'video', url: videoUrl, prompt: targetPrompt.polishDescription, englishPrompt: targetPrompt.englishPrompt }
+      ]);
       setIsPromptMode(false);
       setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 100);
     } catch (error) {
@@ -488,13 +494,14 @@ const GeneratorPage = () => {
     }
   };
 
-  const handleGenerateImage = async () => {
-    if (!visualPlannedPrompt?.englishPrompt) return;
+  const handleGenerateImage = async (overridePrompt = null) => {
+    const targetPrompt = overridePrompt || visualPlannedPrompt;
+    if (!targetPrompt?.englishPrompt) return;
     setImageLoading(true);
     try {
       const token = await user.getIdToken();
       const response = await axios.post(`${API_BASE_URL}/generate-image`, 
-        { prompt: visualPlannedPrompt.englishPrompt, aspectRatio: imageAspectRatio },
+        { prompt: targetPrompt.englishPrompt, aspectRatio: imageAspectRatio },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -502,12 +509,16 @@ const GeneratorPage = () => {
         const recordRef = doc(db, 'users', user.uid, 'history', currentRecordId);
         await updateDoc(recordRef, {
           imageUrl: response.data.imageUrl,
-          imagePrompt: visualPlannedPrompt.englishPrompt,
-          imagePolishDescription: visualPlannedPrompt.polishDescription
+          imagePrompt: targetPrompt.englishPrompt,
+          imagePolishDescription: targetPrompt.polishDescription
         });
       }
 
       setGeneratedImage(response.data.imageUrl);
+      setMediaHistory(prev => [
+        ...prev, 
+        { type: 'image', url: response.data.imageUrl, prompt: targetPrompt.polishDescription, englishPrompt: targetPrompt.englishPrompt }
+      ]);
       setIsPromptMode(false);
       setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 100);
     } catch (error) {
@@ -558,10 +569,15 @@ const GeneratorPage = () => {
     setIsMediaRefining(true);
     try {
       const token = await user.getIdToken();
+      
+      // Pass the current media URL if it exists
+      const mediaUrl = generatedImage || generatedVideo;
+
       const response = await axios.post(`${API_BASE_URL}/refine-image-prompt`, 
         { 
           originalPromptObject: visualPlannedPrompt, 
           instructions: mediaFeedback,
+          mediaUrl,
           workspaceContext: activeWorkspace ? {
             visualStyle: activeWorkspace.visualStyle
           } : null
@@ -573,11 +589,15 @@ const GeneratorPage = () => {
       setVisualPlannedPrompt(vPlan);
       setImagePrompt(vPlan.polishDescription);
       setMediaFeedback('');
-      setIsPromptMode(true);
       
-      // Clear generated media to show the new prompt
-      setGeneratedImage(null);
-      setGeneratedVideo(null);
+      // Auto trigger generation
+      if (visualizationType === 'video') {
+        handleGenerateVideo(vPlan);
+      } else {
+        handleGenerateImage(vPlan);
+      }
+      
+      // DO NOT clear generated media here, keep them visible
     } catch (error) {
       console.error('Refine Media Error:', error);
       alert(error.response?.data?.error || 'Nie udało się przygotować poprawek dla modelu wizualnego.');
@@ -619,6 +639,7 @@ const GeneratorPage = () => {
     setVisualPlannedPrompt(null);
     setGeneratedImage(null);
     setGeneratedVideo(null);
+    setMediaHistory([]);
     setCurrentRecordId(null);
   };
 
@@ -661,9 +682,16 @@ const GeneratorPage = () => {
       });
       
       setImagePrompt(item.imagePolishDescription || 'Edytowany projekt');
+
+      // Populate mediaHistory from the item
+      const historyMedia = [];
+      if (item.videoUrl) historyMedia.push({ type: 'video', url: item.videoUrl, prompt: item.imagePolishDescription, englishPrompt: item.videoPrompt });
+      if (item.imageUrl) historyMedia.push({ type: 'image', url: item.imageUrl, prompt: item.imagePolishDescription, englishPrompt: item.imagePrompt });
+      setMediaHistory(historyMedia);
     } else {
       setImagePrompt('');
       setVisualPlannedPrompt(null);
+      setMediaHistory([]);
     }
 
     setIsHistoryDrawerOpen(false); 
@@ -915,6 +943,8 @@ const GeneratorPage = () => {
               isVisualSyncing={isVisualSyncing}
               handleSyncVisualPrompt={handleSyncVisualPrompt}
               handleRefineMedia={handleRefineMedia}
+              mediaHistory={mediaHistory}
+              setMediaHistory={setMediaHistory}
             />
           </>
         )}

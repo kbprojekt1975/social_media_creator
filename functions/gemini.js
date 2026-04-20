@@ -377,40 +377,59 @@ async function refinePost(originalPost, instructions, workspaceContext = null) {
 }
 
 /**
- * Refines a visual prompt based on user instructions.
- * @param {string} originalPrompt - The previously generated English prompt.
- * @param {string} instructions - The user's instructions in Polish.
- * @returns {Promise<string>} - The updated English prompt.
+ * Refines a visual prompt based on user instructions, optionally analyzing the current image/video.
  */
-async function refineVisualPrompt(originalPromptObject, instructions, workspaceContext = null) {
+async function refineVisualPrompt(originalPromptObject, instructions, workspaceContext = null, mediaUrl = null) {
   const ai = initGemini();
   if (!ai) throw new Error("Gemini API not initialized.");
 
   const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-  const prompt = `
-    Jesteś ekspertem od edycji kreatywnej i Prompt Engineeringu. Użytkownik chce wprowadzić precyzyjne poprawki do wygenerowanego opisu wizualnego (obraz/wideo).
-    
-    BARDZO WAŻNE: Twoim celem jest zachowanie MAKSYMALNEJ SPÓJNOŚCI WIZUALNEJ.
-    - NIE zmieniaj kompozycji, oświetlenia, stylu ani tła, jeśli użytkownik o to nie prosił.
-    - Skup się wyłącznie na konkretnej zmianie wskazanej w instrukcjach (np. jeśli user chce zmienić postać na kobietę, zmień tylko opis postaci, pozostawiając całą resztę bez zmian).
-    - Zachowaj te same parametry techniczne (kamera, obiektyw, tekstury), aby nowy wynik wyglądał jak kolejna klatka lub wersja tego samego materiału.
+  let promptParts = [];
 
+  if (mediaUrl) {
+    try {
+      // Fetch image to send as inlineData
+      const axios = require('axios');
+      const response = await axios.get(mediaUrl, { responseType: 'arraybuffer' });
+      const base64Image = Buffer.from(response.data, 'binary').toString('base64');
+      
+      promptParts.push({
+        inlineData: {
+          data: base64Image,
+          mimeType: "image/png" // Assuming PNG/JPG
+        }
+      });
+    } catch (e) {
+      console.error("Could not fetch image for multimodal refinement:", e);
+    }
+  }
+
+  const textPrompt = `
+    Jesteś ekspertem od edycji kreatywnej. Użytkownik chce wprowadzić poprawki do załączonego/opisanego materiału wizualnego.
+    
+    BARDZO WAŻNE: Zachowaj MAKSYMALNĄ SPÓJNOŚĆ WIZUALNĄ.
+    - Przeanalizuj załączony obraz (jeśli jest) lub aktualny opis.
+    - Zmień TYLKO to, o co prosi użytkownik (np. zmiana koloru ekranu, zmiana postaci).
+    - Zachowaj tło, oświetlenie, styl i kompozycję bez zmian.
+    
     AKTUALNY OPIS (PL): "${originalPromptObject.polishDescription}"
     AKTUALNY PROMPT (EN): "${originalPromptObject.englishPrompt}"
     INSTRUKCJE ZMIANY: "${instructions}"
     
-    ${workspaceContext ? `WYTYCZNE MARKI (MANDATORY STYLE): ${workspaceContext.visualStyle}` : ''}
+    ${workspaceContext ? `WYTYCZNE MARKI: ${workspaceContext.visualStyle}` : ''}
 
-    ZWRÓĆ ZAKTUALIZOWANE DANE W FORMACIE JSON:
+    ZWRÓĆ JSON:
     {
-      "polishDescription": "Zaktualizowany opis po polsku (krótki, sugestywny).",
-      "englishPrompt": "Updated technical English prompt (high-end, detailed, but following the 'minimal change' rule)."
+      "polishDescription": "Zaktualizowany opis PL.",
+      "englishPrompt": "Updated technical EN prompt."
     }
   `;
 
+  promptParts.push(textPrompt);
+
   try {
-    const result = await model.generateContent(prompt);
+    const result = await model.generateContent(promptParts);
     const response = await result.response;
     const text = response.text().trim();
     
