@@ -19,7 +19,8 @@ const PostGenerator = ({
   loading, 
   balance, 
   isReadOnly, 
-  handleReset 
+  handleReset,
+  onShowHelp
 }) => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -43,7 +44,17 @@ const PostGenerator = ({
       
       <div className="glass" style={{ padding: '2.5rem', borderRadius: '30px', background: 'var(--bg-white)', border: 'none' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-          <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: '700' }}>Nowy Projekt</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+            <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: '700' }}>Nowy Projekt</h2>
+            <button 
+              type="button"
+              onClick={onShowHelp}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', opacity: 0.7 }}
+              title="Pokaż przewodnik"
+            >
+              <span className="material-icons" style={{ fontSize: '1.4rem' }}>info</span>
+            </button>
+          </div>
           <button 
             onClick={handleReset} 
             className="btn-secondary" 

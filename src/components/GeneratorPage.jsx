@@ -14,6 +14,7 @@ import PostGenerator from './generator/PostGenerator';
 import ResultSection from './generator/ResultSection'; 
 import axiosRetry from 'axios-retry';
 import CampaignPlanner from './generator/CampaignPlanner';
+import HelpModal from './generator/HelpModal';
 
 // Configure axios to retry on 429 errors
 axiosRetry(axios, { 
@@ -97,7 +98,8 @@ const GeneratorPage = () => {
   const [aiDetectionLog, setAiDetectionLog] = useState("");
 
   // Workspace States
-  const [activeTab, setActiveTab] = useState('generator'); // 'generator' | 'workspaces'
+  const [activeTab, setActiveTab] = useState('generator'); // 'generator' | 'workspaces' | 'campaigns'
+  const [showHelp, setShowHelp] = useState(false);
   const [workspaces, setWorkspaces] = useState([]);
   const [activeWorkspace, setActiveWorkspace] = useState(null);
   const [showWorkspaceForm, setShowWorkspaceForm] = useState(false);
@@ -870,7 +872,10 @@ const GeneratorPage = () => {
         isDark={isDark}
         setIsDark={setIsDark}
         handleLogout={handleLogout}
+        onShowHelp={() => setShowHelp(true)}
       />
+
+      <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
 
       <GeneratorTabs 
         activeTab={activeTab}
@@ -921,6 +926,7 @@ const GeneratorPage = () => {
               balance={balance}
               isReadOnly={isReadOnly}
               handleReset={handleReset}
+              onShowHelp={() => setShowHelp(true)}
             />
 
             <ResultSection 

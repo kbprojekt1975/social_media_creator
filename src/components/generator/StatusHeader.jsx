@@ -8,7 +8,8 @@ const StatusHeader = ({
   setForcePaymentView, 
   isDark, 
   setIsDark, 
-  handleLogout 
+  handleLogout,
+  onShowHelp
 }) => {
   return (
     <header style={{
@@ -66,6 +67,24 @@ const StatusHeader = ({
 
         <span style={{ color: 'var(--text-main)', fontSize: '0.9rem', fontWeight: '500' }}>{user?.email}</span>
         
+        <button 
+          onClick={onShowHelp}
+          className="btn-secondary"
+          style={{ 
+            padding: '0.6rem', 
+            borderRadius: '50%', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            width: '40px',
+            height: '40px',
+            color: 'var(--color-primary)'
+          }}
+          title="Pomoc i Przewodnik"
+        >
+          <span className="material-icons" style={{ fontSize: '1.4rem' }}>info</span>
+        </button>
+
         <button 
           onClick={() => setIsDark(!isDark)}
           className="btn-secondary"
