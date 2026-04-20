@@ -1,14 +1,16 @@
 import React, { useState } from 'react'
 import { auth, db } from '../firebase'
 import { collection, addDoc, onSnapshot } from 'firebase/firestore'
+import { useNotification } from './common/NotificationContext'
 
 const PaymentPage = () => {
   const [loading, setLoading] = useState(false)
+  const { showError, showWarning } = useNotification()
 
   const handleCheckout = async (priceId) => {
     const user = auth.currentUser;
     if (!user) {
-      alert('Zaloguj się, aby kontynuować.');
+      showWarning('Zaloguj się, aby kontynuować.');
       return;
     }
 
@@ -30,7 +32,7 @@ const PaymentPage = () => {
         if (error) {
           unsubscribe();
           setLoading(false);
-          alert(`Błąd płatności: ${error.message}`);
+          showError(`Błąd płatności: ${error.message}`);
         }
         if (url) {
           unsubscribe();
@@ -40,7 +42,7 @@ const PaymentPage = () => {
     } catch (err) {
       console.error('Błąd inicjacji płatności:', err);
       setLoading(false);
-      alert('Nie udało się zainicjować płatności. Spróbuj ponownie.');
+      showError('Nie udało się zainicjować płatności. Spróbuj ponownie.');
     }
   }
 

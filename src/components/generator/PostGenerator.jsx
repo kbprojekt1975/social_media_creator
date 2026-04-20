@@ -25,7 +25,7 @@ const PostGenerator = ({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       {activeWorkspace && (
-        <div className="glass animate-float" style={{ 
+        <div className="glass" style={{ 
           padding: '0.8rem 1.5rem', 
           background: 'rgba(56, 189, 248, 0.1)', 
           borderRadius: '15px', 
@@ -141,15 +141,16 @@ const PostGenerator = ({
             </button>
             
             <button 
-              type="submit" 
+              type={balance < 1000 ? "button" : "submit"} 
+              onClick={balance < 1000 ? () => setForcePaymentView(true) : undefined}
               className="btn-primary" 
-              disabled={loading || balance < 1000 || isReadOnly} 
-              style={{ flex: 1.2, padding: '1.2rem', borderRadius: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              disabled={loading || isReadOnly} 
+              style={{ flex: 1.2, padding: '1.2rem', borderRadius: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', animation: balance < 1000 ? 'pulse 2s infinite' : 'none' }}
             >
               {loading ? 'Generowanie...' : (
                 <>
                   {isReadOnly || balance < 1000 ? (
-                    <>Brak środków <span className="material-icons" style={{ fontSize: '1.2rem', marginLeft: '0.5rem' }}>error_outline</span></>
+                    <>Doładuj portfel <span className="material-icons" style={{ fontSize: '1.2rem', marginLeft: '0.5rem' }}>payments</span></>
                   ) : (
                     <>Generuj Treść <span className="material-icons" style={{ fontSize: '1.2rem', marginLeft: '0.5rem' }}>bolt</span></>
                   )}

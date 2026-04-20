@@ -86,7 +86,7 @@ const WorkspaceManager = ({
               </div>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <button 
-                  onClick={() => handleActivateWorkspace(ws)}
+                  onClick={() => handleActivateWorkspace(ws.id, activeWorkspace?.id === ws.id)}
                   className={activeWorkspace?.id === ws.id ? 'btn-primary' : 'btn-secondary'}
                   style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', borderRadius: '10px' }}
                 >

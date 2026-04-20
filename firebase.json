@@ -16,6 +16,7 @@
     "rules": "firestore.rules"
   },
   "hosting": {
+    "site": "tworca-sm",
     "public": "dist",
     "ignore": [
       "firebase.json",

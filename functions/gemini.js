@@ -85,8 +85,8 @@ async function generatePostPlan({ platform, topic, style = "engaging", workspace
     Style Guidelines: ${STYLE_GUIDELINES[style] || STYLE_GUIDELINES['Default']}
     
     ${workspaceContext ? `WORKSPACE CONTEXT (MANDATORY RULES):
-    - Brand Directives: ${workspaceContext.contentDirectives}
-    - Visual Aesthetic: ${workspaceContext.visualStyle}` : ''}
+    - Brand Directives: ${workspaceContext.contentDirectives || "Brak szczegółowych wytycznych."}
+    - Visual Aesthetic: ${workspaceContext.visualStyle || "Standardowa estetyka social media."}` : ''}
     
     Requirements for the output JSON:
     1. "polishPlan": A user-friendly summary of the strategy in POLISH (max 3-4 sentences).
@@ -102,8 +102,10 @@ async function generatePostPlan({ platform, topic, style = "engaging", workspace
   `;
 
   try {
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
+    const response = await withRetry(async () => {
+      const result = await model.generateContent(prompt);
+      return await result.response;
+    });
     let text = response.text().trim();
     
     console.log("Gemini Plan Raw Output:", text);
@@ -166,8 +168,8 @@ async function syncEnglishPrompt({ polishPlan, platform, topic, style, workspace
     "${polishPlan}"
     
     ${workspaceContext ? `WORKSPACE CONTEXT (MANDATORY RULES):
-    - Brand Directives: ${workspaceContext.contentDirectives}
-    - Visual Aesthetic: ${workspaceContext.visualStyle}` : ''}
+    - Brand Directives: ${workspaceContext.contentDirectives || "Brak szczegółowych wytycznych."}
+    - Visual Aesthetic: ${workspaceContext.visualStyle || "Standardowa estetyka social media."}` : ''}
     
     Requirements for the Technical Prompt (Target):
     1. Language: Write the prompt in ENGLISH.
@@ -178,8 +180,10 @@ async function syncEnglishPrompt({ polishPlan, platform, topic, style, workspace
   `;
 
   try {
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
+    const response = await withRetry(async () => {
+      const result = await model.generateContent(prompt);
+      return await result.response;
+    });
     return response.text().trim();
   } catch (error) {
     console.error("Sync Prompt Error:", error);
@@ -227,8 +231,8 @@ async function generatePost({ platform, topic, style = "engaging", plannedPrompt
       Style Guidelines: ${STYLE_GUIDELINES[style] || STYLE_GUIDELINES['Default']}
       
       ${workspaceContext ? `WORKSPACE CONTEXT (MANDATORY RULES):
-      - Brand Directives: ${workspaceContext.contentDirectives}
-      - Visual Aesthetic: ${workspaceContext.visualStyle}` : ''}
+      - Brand Directives: ${workspaceContext.contentDirectives || "Brak szczegółowych wytycznych."}
+      - Visual Aesthetic: ${workspaceContext.visualStyle || "Standardowa estetyka social media."}` : ''}
       
       Platform-Specific Strategy: ${rules}
       
@@ -243,8 +247,10 @@ async function generatePost({ platform, topic, style = "engaging", plannedPrompt
 
   try {
     console.log("Generating post for:", platform, "Topic:", topic);
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
+    const response = await withRetry(async () => {
+      const result = await model.generateContent(prompt);
+      return await result.response;
+    });
     const content = response.text();
     const tokens = response.usageMetadata?.totalTokenCount || 500;
     console.log("Generation successful, tokens:", tokens);
@@ -528,15 +534,23 @@ async function syncVisualPrompt({ polishDescription, aspectRatio = '1:1', type =
  * Generates a video using the Veo 3.1 model via Google AI Studio (Gemini API) REST.
  * We use predictLongRunning as it's the only supported method for this model.
  */
-async function generateVeoVideo(visualPrompt, aspectRatio = '1:1') {
+async function generateVeoVideo(visualPrompt, aspectRatio = '1:1', imageBase64 = null) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY not found.");
 
   const modelId = "models/veo-3.1-lite-generate-preview";
   const url = `https://generativelanguage.googleapis.com/v1beta/${modelId}:predictLongRunning?key=${apiKey}`;
 
+  const instance = { prompt: visualPrompt };
+  if (imageBase64) {
+    instance.image = {
+      bytesBase64Encoded: imageBase64,
+      mimeType: "image/png"
+    };
+  }
+
   const payload = {
-    instances: [{ prompt: visualPrompt }],
+    instances: [instance],
     parameters: {
       sampleCount: 1,
       aspectRatio: aspectRatio === '9:16' ? '9:16' : '16:9',

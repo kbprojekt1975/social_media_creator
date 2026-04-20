@@ -63,6 +63,22 @@ const StatusHeader = ({
               <button onClick={() => setShowTooltip(false)} style={{ display: 'block', width: '100%', marginTop: '0.5rem', background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.7rem', cursor: 'pointer' }}>Zamknij</button>
             </div>
           )}
+
+          {perc <= 10 && (
+            <button 
+              onClick={() => setForcePaymentView(true)}
+              className="btn-primary pulse"
+              style={{ 
+                padding: '0.3rem 0.8rem', 
+                fontSize: '0.75rem', 
+                borderRadius: '30px',
+                marginLeft: '0.5rem',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              Wykup plan
+            </button>
+          )}
         </div>
 
         <span style={{ color: 'var(--text-main)', fontSize: '0.9rem', fontWeight: '500' }}>{user?.email}</span>

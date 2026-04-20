@@ -178,7 +178,7 @@ const LandingPage = () => {
       <section style={{ padding: '6rem 2rem', background: 'var(--bg-card)', textAlign: 'center' }}>
         <h2 style={{ fontSize: '2.5rem', marginBottom: '2rem' }}>Gotów zrewolucjonizować swoje media społecznościowe?</h2>
         <Link to="/login" className="btn-primary" style={{ padding: '1rem 3rem', fontSize: '1.2rem', boxShadow: '0 0 25px var(--primary-glow)' }}>
-          Zacznij tworzyć za darmo
+          Zacznij tworzyć
         </Link>
       </section>
     </div>

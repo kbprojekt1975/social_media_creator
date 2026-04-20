@@ -15,6 +15,7 @@ import ResultSection from './generator/ResultSection';
 import axiosRetry from 'axios-retry';
 import CampaignPlanner from './generator/CampaignPlanner';
 import HelpModal from './generator/HelpModal';
+import { useNotification } from './common/NotificationContext';
 
 // Configure axios to retry on 429 errors
 axiosRetry(axios, { 
@@ -39,8 +40,8 @@ const GeneratorPage = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [subscriptionStatus, setSubscriptionStatus] = useState('loading'); // 'loading', 'active', 'none'
 
-  const [visualPlannedPrompt, setVisualPlannedPrompt] = useState(null); // { polishDescription, englishPrompt }
-  const [imagePrompt, setImagePrompt] = useState(''); // Polish visible description
+  const [imagePromptData, setImagePromptData] = useState(null); // { polishDescription, englishPrompt }
+  const [videoPromptData, setVideoPromptData] = useState(null); // { polishDescription, englishPrompt }
   const [isVisualSyncing, setIsVisualSyncing] = useState(false);
   const [isPromptMode, setIsPromptMode] = useState(false);
   const [generatedImage, setGeneratedImage] = useState(null);
@@ -104,6 +105,8 @@ const GeneratorPage = () => {
   const [activeWorkspace, setActiveWorkspace] = useState(null);
   const [showWorkspaceForm, setShowWorkspaceForm] = useState(false);
   const [newWorkspace, setNewWorkspace] = useState({ name: '', contentDirectives: '', visualStyle: '' });
+
+  const { showError, showSuccess, showWarning, showInfo } = useNotification();
 
   // Campaign States
   const [campaigns, setCampaigns] = useState([]);
@@ -198,6 +201,26 @@ const GeneratorPage = () => {
     };
   }, [user]);
 
+  const handleApiError = (error, defaultMsg) => {
+    const serverError = error?.response?.data?.error || error?.message || '';
+    const status = error?.response?.status;
+
+    if (status === 429 || serverError.includes('429') || serverError.includes('Resource exhausted')) {
+      showError('🚀 System jest obecnie przeciążony (zbyt wiele zapytań). Odczekaj 30-60 sekund i spróbuj ponownie.');
+    } else if (status === 500 || serverError.includes('500')) {
+      showError('🛠️ Wystąpił błąd po stronie serwerów Google Gemini. Zwykle pomaga odczekanie chwili i ponowna próba.');
+    } else if (serverError.includes('safety') || serverError.includes('SAFETY')) {
+      showWarning('🛡️ Treść została zablokowana przez filtry bezpieczeństwa AI. Spróbuj zmienić temat lub opis.');
+    } else if (error?.code === 'ECONNABORTED' || serverError.includes('timeout')) {
+      showError('⏳ Połączenie zajęło zbyt dużo czasu. Sprawdź swoje łącze internetowe i spróbuj ponownie.');
+    } else if (serverError.includes('fetch') || serverError.includes('Network Error')) {
+      showError('🌐 Problem z połączeniem sieciowym. Sprawdź, czy jesteś online.');
+    } else {
+      showError(serverError || defaultMsg);
+    }
+  };
+
+
   // Workspace Management Functions
   const handleAddWorkspace = async (e) => {
     e.preventDefault();
@@ -208,10 +231,12 @@ const GeneratorPage = () => {
         isActive: false,
         createdAt: serverTimestamp()
       });
+      showSuccess(`Przestrzeń "${newWorkspace.name}" została utworzona.`);
       setNewWorkspace({ name: '', contentDirectives: '', visualStyle: '' });
       setShowWorkspaceForm(false);
     } catch (error) {
       console.error('Error adding workspace:', error);
+      showError('Nie udało się utworzyć przestrzeni roboczej.');
     }
   };
 
@@ -242,6 +267,7 @@ const GeneratorPage = () => {
       await deleteDoc(doc(db, 'users', user.uid, 'workspaces', id));
     } catch (error) {
       console.error('Error deleting workspace:', error);
+      showError('Nie udało się usunąć przestrzeni roboczej.');
     }
   };
 
@@ -253,7 +279,8 @@ const GeneratorPage = () => {
     setResult(null);
     setGeneratedImage(null);
     setGeneratedVideo(null);
-    setImagePrompt('');
+    setImagePromptData(null);
+    setVideoPromptData(null);
     setIsPromptMode(false);
     try {
 
@@ -274,12 +301,13 @@ const GeneratorPage = () => {
 
       setResult(response.data.content);
       setCurrentRecordId(response.data.historyId);
+      showSuccess('Treść została wygenerowana pomyślnie!');
       
       // Auto-scroll to result
       setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 100);
     } catch (error) {
       console.error('Generation failed:', error);
-      alert(error.response?.data?.error || 'Wystąpił błąd podczas generowania treści.');
+      handleApiError(error, 'Wystąpił błąd podczas generowania treści.');
     } finally {
       setLoading(false);
     }
@@ -287,7 +315,7 @@ const GeneratorPage = () => {
 
   const handleGeneratePlan = async () => {
     if (!topic) {
-      alert('Proszę wpisać temat, aby przygotować plan.');
+      showWarning('Proszę wpisać temat, aby przygotować plan.');
       return;
     }
     setIsPlanning(true);
@@ -317,9 +345,10 @@ const GeneratorPage = () => {
         setPlannedPrompt(planData);
       }
       setPlanActive(true);
+      showInfo('Profesjonalny plan strategii jest gotowy.');
     } catch (error) {
       console.error('Planning failed:', error);
-      alert(error.response?.data?.error || 'Nie udało się przygotować profesjonalnego planu.');
+      handleApiError(error, 'Nie udało się przygotować profesjonalnego planu.');
     } finally {
       setIsPlanning(false);
     }
@@ -351,7 +380,7 @@ const GeneratorPage = () => {
       });
     } catch (error) {
       console.error('Sync failed:', error);
-      alert(error.response?.data?.error || 'Nie udało się dopasować instrukcji technicznych do Twoich zmian.');
+      handleApiError(error, 'Nie udało się dopasować instrukcji technicznych do Twoich zmian.');
     } finally {
       setIsSyncing(false);
     }
@@ -379,26 +408,30 @@ const GeneratorPage = () => {
       });
       
       const vPlan = response.data.visualPlannedPrompt;
-      setVisualPlannedPrompt(vPlan);
-      setImagePrompt(vPlan.polishDescription);
+      if (type === 'video') {
+        setVideoPromptData(vPlan);
+      } else {
+        setImagePromptData(vPlan);
+      }
       setIsPromptMode(true);
       setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 100);
     } catch (error) {
       console.error('Prompt generation failed:', error);
-      alert(error.response?.data?.error || `Nie udało się przygotować opisu ${type === 'video' ? 'wideo' : 'obrazu'}.`);
+      handleApiError(error, `Nie udało się przygotować opisu ${type === 'video' ? 'wideo' : 'obrazu'}.`);
     } finally {
       setImageLoading(false);
     }
   };
 
   const handleSyncVisualPrompt = async () => {
-    if (!imagePrompt || isVisualSyncing || isReadOnly) return;
+    const currentData = visualizationType === 'video' ? videoPromptData : imagePromptData;
+    if (!currentData || isVisualSyncing || isReadOnly) return;
     setIsVisualSyncing(true);
     try {
       const token = await user.getIdToken();
       const response = await axios.post(`${API_BASE_URL}/sync-visual-prompt`, 
         { 
-          polishDescription: imagePrompt,
+          polishDescription: currentData.polishDescription,
           aspectRatio: visualizationType === 'video' ? videoAspectRatio : imageAspectRatio,
           type: visualizationType,
           workspaceContext: activeWorkspace ? {
@@ -408,20 +441,21 @@ const GeneratorPage = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
-      setVisualPlannedPrompt(prev => ({
-        ...prev,
-        englishPrompt: response.data.englishPrompt
-      }));
+      if (visualizationType === 'video') {
+        setVideoPromptData(prev => ({ ...prev, englishPrompt: response.data.englishPrompt }));
+      } else {
+        setImagePromptData(prev => ({ ...prev, englishPrompt: response.data.englishPrompt }));
+      }
     } catch (error) {
       console.error('Failed to sync visual prompt:', error);
-      alert('Nie udało się zaktualizować technicznego opisu.');
+      handleApiError(error, 'Nie udało się zaktualizować technicznego opisu.');
     } finally {
       setIsVisualSyncing(false);
     }
   };
 
-  const handleGenerateVideo = async (overridePrompt = null) => {
-    const targetPrompt = overridePrompt || visualPlannedPrompt;
+  const handleGenerateVideo = async (overridePrompt = null, imageUrl = null) => {
+    const targetPrompt = overridePrompt || videoPromptData;
     if (!targetPrompt?.englishPrompt) return;
     setImageLoading(true);
     try {
@@ -429,7 +463,11 @@ const GeneratorPage = () => {
       
       // Step 1: Start the generation process
       const startResponse = await axios.post(`${API_BASE_URL}/generate-video`, 
-        { prompt: targetPrompt.englishPrompt, aspectRatio: videoAspectRatio },
+        { 
+          prompt: targetPrompt.englishPrompt, 
+          aspectRatio: videoAspectRatio,
+          imageUrl: imageUrl // This enables Image-to-Video!
+        },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -488,18 +526,20 @@ const GeneratorPage = () => {
         ...prev, 
         { type: 'video', url: videoUrl, prompt: targetPrompt.polishDescription, englishPrompt: targetPrompt.englishPrompt }
       ]);
+      setVideoPromptData(null);
       setIsPromptMode(false);
+      showSuccess('Klip wideo został wygenerowany!');
       setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 100);
     } catch (error) {
       console.error('Video generation failed:', error);
-      alert(error.response?.data?.error || error.message || 'Nie udało się wygenerować klipu wideo.');
+      handleApiError(error, 'Nie udało się wygenerować klipu wideo.');
     } finally {
       setImageLoading(false);
     }
   };
 
   const handleGenerateImage = async (overridePrompt = null) => {
-    const targetPrompt = overridePrompt || visualPlannedPrompt;
+    const targetPrompt = overridePrompt || imagePromptData;
     if (!targetPrompt?.englishPrompt) return;
     setImageLoading(true);
     try {
@@ -534,11 +574,13 @@ const GeneratorPage = () => {
         ...prev, 
         { type: 'image', url: response.data.imageUrl, prompt: targetPrompt.polishDescription, englishPrompt: targetPrompt.englishPrompt }
       ]);
+      setImagePromptData(null);
       setIsPromptMode(false);
+      showSuccess('Obraz został wygenerowany!');
       setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 100);
     } catch (error) {
       console.error('Image generation failed:', error);
-      alert(error.response?.data?.error || 'Nie udało się wygenerować obrazu.');
+      handleApiError(error, 'Nie udało się wygenerować obrazu.');
     } finally {
       setImageLoading(false);
     }
@@ -562,6 +604,7 @@ const GeneratorPage = () => {
       );
       setResult(response.data.content);
       setTextFeedback(''); // Wyczyść pole po udanej operacji
+      showSuccess('Poprawki tekstu zostały naniesione.');
       
       // Update history if currentRecordId exists
       if (currentRecordId) {
@@ -573,14 +616,15 @@ const GeneratorPage = () => {
       setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 100);
     } catch (error) {
       console.error('Refine Text Error:', error);
-      alert(error.response?.data?.error || 'Nie udało się wdrożyć poprawek tekstu.');
+      handleApiError(error, 'Nie udało się wdrożyć poprawek tekstu.');
     } finally {
       setIsTextRefining(false);
     }
   };
 
   const handleRefineMedia = async () => {
-    if (!mediaFeedback.trim() || !visualPlannedPrompt) return;
+    const currentPromptData = visualizationType === 'video' ? videoPromptData : imagePromptData;
+    if (!mediaFeedback.trim() || !currentPromptData) return;
     setIsMediaRefining(true);
     setAiDetectionLog(""); // Clear old log before new analysis starts
     try {
@@ -592,7 +636,7 @@ const GeneratorPage = () => {
       const response = await axios.post(`${API_BASE_URL}/refine-image-prompt`, 
         { 
           v1PromptObject: v1VisualPrompt, 
-          lastPromptObject: visualPlannedPrompt,
+          lastPromptObject: currentPromptData,
           instructions: mediaFeedback,
           mediaUrl,
           workspaceContext: activeWorkspace ? {
@@ -603,8 +647,11 @@ const GeneratorPage = () => {
       );
       
       const vPlan = response.data.visualPlannedPrompt;
-      setVisualPlannedPrompt(vPlan);
-      setImagePrompt(vPlan.polishDescription);
+      if (visualizationType === 'video') {
+        setVideoPromptData(vPlan);
+      } else {
+        setImagePromptData(vPlan);
+      }
       setAiDetectionLog(vPlan.aiDetectionLog || "");
       setMediaFeedback('');
       
@@ -618,7 +665,7 @@ const GeneratorPage = () => {
       // DO NOT clear generated media here, keep them visible
     } catch (error) {
       console.error('Refine Media Error:', error);
-      alert(error.response?.data?.error || 'Nie udało się przygotować poprawek dla modelu wizualnego.');
+      handleApiError(error, 'Nie udało się przygotować poprawek dla modelu wizualnego.');
     } finally {
       setIsMediaRefining(false);
     }
@@ -653,8 +700,8 @@ const GeneratorPage = () => {
     setPlannedPrompt(null);
     setPlanActive(false);
     setIsPromptMode(false);
-    setImagePrompt('');
-    setVisualPlannedPrompt(null);
+    setImagePromptData(null);
+    setVideoPromptData(null);
     setGeneratedImage(null);
     setGeneratedVideo(null);
     setMediaHistory([]);
@@ -693,15 +740,16 @@ const GeneratorPage = () => {
       const activeType = hasVideo ? 'video' : 'image';
       setVisualizationType(activeType);
       
-      // We reconstruct visualPlannedPrompt so refinement works.
-      // Note: we might only have the English technical prompt in history.
-      const technicalPrompt = hasVideo ? item.videoPrompt : item.imagePrompt;
-      setVisualPlannedPrompt({
+      const loadedPrompt = {
         polishDescription: item.imagePolishDescription || 'Edytowany projekt',
         englishPrompt: technicalPrompt || ''
-      });
+      };
       
-      setImagePrompt(item.imagePolishDescription || 'Edytowany projekt');
+      if (activeType === 'video') {
+        setVideoPromptData(loadedPrompt);
+      } else {
+        setImagePromptData(loadedPrompt);
+      }
 
       // Populate mediaHistory from the item
       const historyMedia = [];
@@ -709,8 +757,8 @@ const GeneratorPage = () => {
       if (item.imageUrl) historyMedia.push({ type: 'image', url: item.imageUrl, prompt: item.imagePolishDescription, englishPrompt: item.imagePrompt });
       setMediaHistory(historyMedia);
     } else {
-      setImagePrompt('');
-      setVisualPlannedPrompt(null);
+      setImagePromptData(null);
+      setVideoPromptData(null);
       setMediaHistory([]);
     }
 
@@ -732,10 +780,11 @@ const GeneratorPage = () => {
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      showSuccess('Kampania marketingowa została wygenerowana!');
       // Campaign will be updated via Firestore onSnapshot
     } catch (error) {
       console.error('Campaign generation failed:', error);
-      alert(error.response?.data?.error || 'Nie udało się wygenerować strategii kampanii.');
+      showError(error.response?.data?.error || 'Nie udało się wygenerować strategii kampanii.');
     } finally {
       setCampaignLoading(false);
     }
@@ -760,7 +809,7 @@ const GeneratorPage = () => {
       return response.data;
     } catch (error) {
       console.error('Goal refinement failed:', error);
-      alert('Nie udało się zredagować celu.');
+      showError('Nie udało się zredagować celu.');
       return null;
     }
   };
@@ -785,7 +834,7 @@ const GeneratorPage = () => {
       return response.data.refinedDescription;
     } catch (error) {
       console.error('Product refinement failed:', error);
-      alert('Nie udało się zredagować opisu.');
+      showError('Nie udało się zredagować opisu.');
       return null;
     }
   };
@@ -800,7 +849,7 @@ const GeneratorPage = () => {
       return response.data.refinedUSP;
     } catch (error) {
       console.error('USP refinement failed:', error);
-      alert('Nie udało się zredagować USP.');
+      showError('Nie udało się zredagować USP.');
       return null;
     }
   };
@@ -812,7 +861,7 @@ const GeneratorPage = () => {
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
-    alert('Skopiowano do schowka!');
+    showSuccess('Skopiowano do schowka!');
   };
 
   const handleDeleteHistory = async (itemId) => {
@@ -821,7 +870,7 @@ const GeneratorPage = () => {
       await deleteDoc(doc(db, 'users', user.uid, 'history', itemId));
     } catch (error) {
       console.error('Delete failed:', error);
-      alert('Nie udało się usunąć wpisu.');
+      showError('Nie udało się usunąć wpisu.');
     }
   };
 
@@ -925,6 +974,7 @@ const GeneratorPage = () => {
               loading={loading}
               balance={balance}
               isReadOnly={isReadOnly}
+              setForcePaymentView={setForcePaymentView}
               handleReset={handleReset}
               onShowHelp={() => setShowHelp(true)}
             />
@@ -947,13 +997,13 @@ const GeneratorPage = () => {
               isReadOnly={isReadOnly}
               visualizationType={visualizationType}
               handleGeneratePrompt={handleGeneratePrompt}
+              handleGenerateVideo={handleGenerateVideo}
               videoAspectRatio={videoAspectRatio}
               setVideoAspectRatio={setVideoAspectRatio}
               activeVideoLabel={activeVideoLabel}
               setActiveVideoLabel={setActiveVideoLabel}
-              imagePrompt={imagePrompt}
-              setImagePrompt={setImagePrompt}
-              handleGenerateVideo={handleGenerateVideo}
+              isVisualSyncing={isVisualSyncing}
+              handleSyncVisualPrompt={handleSyncVisualPrompt}
               handleGenerateImage={handleGenerateImage}
               generatedImage={generatedImage}
               setGeneratedImage={setGeneratedImage}
@@ -962,11 +1012,11 @@ const GeneratorPage = () => {
               mediaFeedback={mediaFeedback}
               setMediaFeedback={setMediaFeedback}
               isMediaRefining={isMediaRefining}
-              visualPlannedPrompt={visualPlannedPrompt}
-              setVisualPlannedPrompt={setVisualPlannedPrompt}
-              isVisualSyncing={isVisualSyncing}
-              handleSyncVisualPrompt={handleSyncVisualPrompt}
               handleRefineMedia={handleRefineMedia}
+              imagePromptData={imagePromptData}
+              setImagePromptData={setImagePromptData}
+              videoPromptData={videoPromptData}
+              setVideoPromptData={setVideoPromptData}
               mediaHistory={mediaHistory}
               setMediaHistory={setMediaHistory}
               aiDetectionLog={aiDetectionLog}

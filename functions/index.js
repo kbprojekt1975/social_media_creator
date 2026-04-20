@@ -445,15 +445,26 @@ app.post("/generate-video", async (req, res) => {
 
   try {
     const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const { prompt, aspectRatio } = req.body;
+    const { prompt, aspectRatio, imageUrl } = req.body;
     if (!prompt) return res.status(400).send("Prompt is required.");
 
     // Translate Polish description to technical English
     const technicalPrompt = await translateToTechnicalPrompt(prompt, 'video', aspectRatio || '1:1');
     console.log("Starting Video LRO for:", technicalPrompt);
 
+    let base64Context = null;
+    if (imageUrl) {
+      try {
+        const imgResponse = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+        base64Context = Buffer.from(imgResponse.data, 'binary').toString('base64');
+        console.log("Image-to-Video context captured.");
+      } catch (e) {
+        console.error("Failed to fetch image context for video:", e);
+      }
+    }
+
     // This now returns { status, operationName, videoBase64 }
-    const result = await generateVeoVideo(technicalPrompt, aspectRatio || '1:1');
+    const result = await generateVeoVideo(technicalPrompt, aspectRatio || '1:1', base64Context);
     
     if (result.status === "done" && result.videoBase64) {
       // 1. Save to Storage (Direct case)
