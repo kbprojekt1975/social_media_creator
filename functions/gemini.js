@@ -389,18 +389,23 @@ async function refineVisualPrompt(originalPromptObject, instructions, workspaceC
   const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
 
   const prompt = `
-    Jesteś ekspertem od edycji kreatywnej i Prompt Engineeringu. Użytkownik chce zmienić opis wizualny dla AI.
+    Jesteś ekspertem od edycji kreatywnej i Prompt Engineeringu. Użytkownik chce wprowadzić precyzyjne poprawki do wygenerowanego opisu wizualnego (obraz/wideo).
     
+    BARDZO WAŻNE: Twoim celem jest zachowanie MAKSYMALNEJ SPÓJNOŚCI WIZUALNEJ.
+    - NIE zmieniaj kompozycji, oświetlenia, stylu ani tła, jeśli użytkownik o to nie prosił.
+    - Skup się wyłącznie na konkretnej zmianie wskazanej w instrukcjach (np. jeśli user chce zmienić postać na kobietę, zmień tylko opis postaci, pozostawiając całą resztę bez zmian).
+    - Zachowaj te same parametry techniczne (kamera, obiektyw, tekstury), aby nowy wynik wyglądał jak kolejna klatka lub wersja tego samego materiału.
+
     AKTUALNY OPIS (PL): "${originalPromptObject.polishDescription}"
     AKTUALNY PROMPT (EN): "${originalPromptObject.englishPrompt}"
     INSTRUKCJE ZMIANY: "${instructions}"
     
-    ${workspaceContext ? `WYTYCZNE MARKI (MANDATORY): ${workspaceContext.visualStyle}` : ''}
+    ${workspaceContext ? `WYTYCZNE MARKI (MANDATORY STYLE): ${workspaceContext.visualStyle}` : ''}
 
     ZWRÓĆ ZAKTUALIZOWANE DANE W FORMACIE JSON:
     {
-      "polishDescription": "Zmieniony, sugestywny opis po polsku.",
-      "englishPrompt": "Updated technical English prompt (lighting, camera, etc.)."
+      "polishDescription": "Zaktualizowany opis po polsku (krótki, sugestywny).",
+      "englishPrompt": "Updated technical English prompt (high-end, detailed, but following the 'minimal change' rule)."
     }
   `;
 
@@ -536,17 +541,24 @@ async function generateNanoBananaImage(visualPrompt, aspectRatio = '1:1') {
 }
 
 /**
- * Generates a full social media campaign strategy.
+ * Generates a full campaign plan based on multiple parameters.
  */
-async function generateCampaignPlan({ 
-  name, 
-  goal, 
-  productDescription, 
-  usp, 
-  duration, 
-  platforms, 
-  workspaceContext 
-}) {
+async function generateCampaignPlan(data) {
+  const { 
+    name, 
+    goal, 
+    productDescription, 
+    usp, 
+    duration, 
+    platforms,
+    intensity,
+    toneOfVoice,
+    mainCTA,
+    targetAudience,
+    problemSolved,
+    workspaceContext
+  } = data;
+
   const ai = initGemini();
   if (!ai) throw new Error("Gemini API not initialized.");
   
@@ -555,16 +567,20 @@ async function generateCampaignPlan({
   const platformRules = platforms.map(p => `[${p}]: ${PLATFORM_RULES[p] || PLATFORM_RULES['Default']}`).join('\n');
 
   const prompt = `
-    Jesteś światowej klasy strategiem marketingu cyfrowego i ekspertem od mediów społecznościowych. 
-    Twoim zadaniem jest stworzenie kompleksowego planu kampanii na podstawie poniższych danych.
+    Jesteś dyrektorem marketingu i ekspertem od strategii social media. Twoim zadaniem jest stworzenie kompletnej strategii kampanii.
 
     DANE KAMPANII:
     - Nazwa: ${name}
-    - Cel główny: ${goal}
-    - Opis produktu/usługi: ${productDescription}
-    - Unikalna wartość (USP): ${usp}
+    - Cele: ${goal}
+    - Produkt/Usługa: ${productDescription}
+    - USP (Unikalna wartość): ${usp}
+    - Rozwiązywany problem: ${problemSolved || 'Nie określono'}
+    - Grupa docelowa (Persona): ${targetAudience}
     - Czas trwania: ${duration} dni
-    - Kanały: ${platforms.join(', ')}
+    - Platformy: ${platforms.join(', ')}
+    - Intensywność/Faza: ${intensity} (Steady = stały szum, Teaser-Launch = budowanie napięcia, Sprint = agresywna sprzedaż)
+    - Ton komunikacji: ${toneOfVoice}
+    - Główne CTA: ${mainCTA || 'Nie określono'}
 
     ${workspaceContext ? `WYTYCZNE MARKI (MANDATORY):
     - Strategia treści: ${workspaceContext.contentDirectives}
@@ -659,6 +675,66 @@ async function refineCampaignGoal(rawGoal) {
   }
 }
 
-module.exports = { generatePost, generatePostPlan, syncEnglishPrompt, generateVisualPrompt, translateToTechnicalPrompt, generateNanoBananaImage, generateVeoVideo, refinePost, refineVisualPrompt, generateCampaignPlan, refineCampaignGoal };
+/**
+ * Refines a product description using AI.
+ */
+async function refineProductDescription(rawDescription) {
+  const ai = initGemini();
+  if (!ai) throw new Error("Gemini API not initialized.");
+  
+  const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+  const prompt = `
+    Jesteś copywriterem sprzedażowym. Użytkownik podał opis swojego produktu lub usługi.
+    Twoim zadaniem jest zredagowanie go tak, aby brzmiał profesjonalnie, zachęcająco i podkreślał korzyści, zachowując jednak wszystkie fakty podane przez użytkownika.
+
+    SUROWY OPIS:
+    "${rawDescription}"
+
+    ZWRÓĆ TYLKO ZREDAGOWANY TEKST (max 3-4 zdania).
+    Odpowiadaj w języku POLSKIM.
+  `;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    return response.text().trim();
+  } catch (error) {
+    console.error("Refine Product Error:", error);
+    throw new Error("Nie udało się zredagować opisu produktu.");
+  }
+}
+
+/**
+ * Refines a USP (Unique Selling Proposition) using AI.
+ */
+async function refineUSP(rawUSP) {
+  const ai = initGemini();
+  if (!ai) throw new Error("Gemini API not initialized.");
+  
+  const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+  const prompt = `
+    Jesteś ekspertem od brandingu. Użytkownik podał swoje USP (Unique Selling Proposition).
+    Twoim zadaniem jest zredagowanie go tak, aby było krótkie, uderzające (punchy) i zapadało w pamięć.
+
+    SUROWY USP:
+    "${rawUSP}"
+
+    ZWRÓĆ TYLKO ZREDAGOWANE USP (max 1 zdanie).
+    Odpowiadaj w języku POLSKIM.
+  `;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    return response.text().trim();
+  } catch (error) {
+    console.error("Refine USP Error:", error);
+    throw new Error("Nie udało się zredagować USP.");
+  }
+}
+
+module.exports = { generatePost, generatePostPlan, syncEnglishPrompt, generateVisualPrompt, translateToTechnicalPrompt, generateNanoBananaImage, generateVeoVideo, refinePost, refineVisualPrompt, generateCampaignPlan, refineCampaignGoal, refineProductDescription, refineUSP };
 
 

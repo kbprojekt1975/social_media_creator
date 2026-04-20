@@ -717,6 +717,46 @@ const GeneratorPage = () => {
     }
   };
 
+  const handleUpdateCampaignName = async (id, newName) => {
+    try {
+      await updateDoc(doc(db, 'users', user.uid, 'campaigns', id), {
+        name: newName
+      });
+    } catch (error) {
+      console.error('Error updating campaign name:', error);
+    }
+  };
+
+  const handleRefineProductDescription = async (rawDescription) => {
+    try {
+      const token = await user.getIdToken();
+      const response = await axios.post(`${API_BASE_URL}/refine-product-description`, 
+        { rawDescription },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      return response.data.refinedDescription;
+    } catch (error) {
+      console.error('Product refinement failed:', error);
+      alert('Nie udało się zredagować opisu.');
+      return null;
+    }
+  };
+
+  const handleRefineUSP = async (rawUSP) => {
+    try {
+      const token = await user.getIdToken();
+      const response = await axios.post(`${API_BASE_URL}/refine-usp`, 
+        { rawUSP },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      return response.data.refinedUSP;
+    } catch (error) {
+      console.error('USP refinement failed:', error);
+      alert('Nie udało się zredagować USP.');
+      return null;
+    }
+  };
+
   const handleLogout = () => {
     signOut(auth);
     navigate('/');
@@ -897,6 +937,9 @@ const GeneratorPage = () => {
           <CampaignPlanner 
             handleGenerateCampaign={handleGenerateCampaign}
             handleRefineCustomGoal={handleRefineCustomGoal}
+            handleUpdateCampaignName={handleUpdateCampaignName}
+            handleRefineProductDescription={handleRefineProductDescription}
+            handleRefineUSP={handleRefineUSP}
             loading={campaignLoading}
             campaigns={campaigns}
             handleSelectCampaignItem={handleSelectCampaignItem}

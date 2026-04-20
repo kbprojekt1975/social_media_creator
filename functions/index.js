@@ -7,7 +7,7 @@ const admin = require("firebase-admin");
 const express = require("express");
 const cors = require("cors");
 const stripe = require("stripe");
-const { generatePost, generatePostPlan, syncEnglishPrompt, generateVisualPrompt, translateToTechnicalPrompt, generateNanoBananaImage, generateVeoVideo, refinePost, refineVisualPrompt, generateCampaignPlan, refineCampaignGoal } = require("./gemini");
+const { generatePost, generatePostPlan, syncEnglishPrompt, generateVisualPrompt, translateToTechnicalPrompt, generateNanoBananaImage, generateVeoVideo, refinePost, refineVisualPrompt, generateCampaignPlan, refineCampaignGoal, refineProductDescription, refineUSP } = require("./gemini");
 
 
 // Initialize Firebase Admin
@@ -322,6 +322,40 @@ app.post("/refine-campaign-goal", async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error("Refine Goal Error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint: Refine Product Description
+app.post("/refine-product-description", async (req, res) => {
+  const idToken = req.headers.authorization?.split("Bearer ")[1];
+  if (!idToken) return res.status(401).send("Unauthorized");
+
+  try {
+    const { rawDescription } = req.body;
+    if (!rawDescription) return res.status(400).send("rawDescription is required.");
+
+    const result = await refineProductDescription(rawDescription);
+    res.json({ refinedDescription: result });
+  } catch (error) {
+    console.error("Refine Product Error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint: Refine USP
+app.post("/refine-usp", async (req, res) => {
+  const idToken = req.headers.authorization?.split("Bearer ")[1];
+  if (!idToken) return res.status(401).send("Unauthorized");
+
+  try {
+    const { rawUSP } = req.body;
+    if (!rawUSP) return res.status(400).send("rawUSP is required.");
+
+    const result = await refineUSP(rawUSP);
+    res.json({ refinedUSP: result });
+  } catch (error) {
+    console.error("Refine USP Error:", error);
     res.status(500).json({ error: error.message });
   }
 });
