@@ -7,7 +7,7 @@ const admin = require("firebase-admin");
 const express = require("express");
 const cors = require("cors");
 const stripe = require("stripe");
-const { generatePost, generatePostPlan, syncEnglishPrompt, generateVisualPrompt, translateToTechnicalPrompt, generateNanoBananaImage, generateVeoVideo, refinePost, refineVisualPrompt } = require("./gemini");
+const { generatePost, generatePostPlan, syncEnglishPrompt, generateVisualPrompt, translateToTechnicalPrompt, generateNanoBananaImage, generateVeoVideo, refinePost, refineVisualPrompt, generateCampaignPlan, refineCampaignGoal } = require("./gemini");
 
 
 // Initialize Firebase Admin
@@ -54,6 +54,7 @@ const MIN_TOKENS_FOR_GEN = 1000; // Minimal buffer to allow generation
 const POST_COST = 5000; // 5,000 tokens for one post (fixed cost)
 const IMAGE_COST = 105000; // 105,000 tokens for one image (approx 0.10 PLN)
 const VIDEO_COST = 1100000; // 1,100,000 tokens for one video (approx 1.10 PLN)
+const CAMPAIGN_COST = 25000; // 25,000 tokens for a full campaign strategy
 
 // Helper to get Stripe instance (using secret from environment)
 const getStripe = () => {
@@ -240,6 +241,88 @@ app.post("/refine-image-prompt", async (req, res) => {
     console.error("Refine Visual Error:", error);
     const status = error.message?.includes("429") ? 429 : 500;
     res.status(status).json({ error: error.message });
+  }
+});
+
+// Endpoint: Generate Campaign Strategy
+app.post("/generate-campaign", async (req, res) => {
+  const idToken = req.headers.authorization?.split("Bearer ")[1];
+  if (!idToken) return res.status(401).send("Unauthorized");
+
+  try {
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const { name, goal, productDescription, usp, duration, platforms, workspaceContext } = req.body;
+
+    if (!name || !goal || !productDescription) {
+      return res.status(400).json({ error: "Name, goal, and product description are required." });
+    }
+
+    const strategy = await generateCampaignPlan({ 
+      name, 
+      goal, 
+      productDescription, 
+      usp, 
+      duration: duration || 7, 
+      platforms: platforms || ["LinkedIn"], 
+      workspaceContext 
+    });
+
+    // Check balance and deduct cost
+    const userRef = db.collection("users").doc(decodedToken.uid);
+    
+    await db.runTransaction(async (t) => {
+      const userDoc = await t.get(userRef);
+      const userData = userDoc.data() || {};
+      const currentBalance = userData.balance || 0;
+
+      if (currentBalance < CAMPAIGN_COST) {
+        throw new Error("INSUFFICIENT_FUNDS");
+      }
+
+      // Deduct balance
+      t.update(userRef, { 
+        balance: admin.firestore.FieldValue.increment(-CAMPAIGN_COST) 
+      });
+
+      // Save to campaigns collection
+      const campaignRef = userRef.collection("campaigns").doc();
+      t.set(campaignRef, {
+        name,
+        goal,
+        productDescription,
+        usp,
+        duration: duration || 7,
+        platforms: platforms || ["LinkedIn"],
+        strategy, // The JSON array
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+    });
+
+    res.json({ strategy, cost: CAMPAIGN_COST });
+
+  } catch (error) {
+    if (error.message === "INSUFFICIENT_FUNDS") {
+      return res.status(402).json({ error: "Brak tokenów na koncie. Doładuj portfel." });
+    }
+    console.error("Campaign Generate Error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint: Refine Custom Campaign Goal
+app.post("/refine-campaign-goal", async (req, res) => {
+  const idToken = req.headers.authorization?.split("Bearer ")[1];
+  if (!idToken) return res.status(401).send("Unauthorized");
+
+  try {
+    const { rawGoal } = req.body;
+    if (!rawGoal) return res.status(400).send("rawGoal is required.");
+
+    const result = await refineCampaignGoal(rawGoal);
+    res.json(result);
+  } catch (error) {
+    console.error("Refine Goal Error:", error);
+    res.status(500).json({ error: error.message });
   }
 });
 

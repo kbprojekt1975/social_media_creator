@@ -535,6 +535,130 @@ async function generateNanoBananaImage(visualPrompt, aspectRatio = '1:1') {
   }
 }
 
-module.exports = { generatePost, generatePostPlan, syncEnglishPrompt, generateVisualPrompt, translateToTechnicalPrompt, generateNanoBananaImage, generateVeoVideo, refinePost, refineVisualPrompt };
+/**
+ * Generates a full social media campaign strategy.
+ */
+async function generateCampaignPlan({ 
+  name, 
+  goal, 
+  productDescription, 
+  usp, 
+  duration, 
+  platforms, 
+  workspaceContext 
+}) {
+  const ai = initGemini();
+  if (!ai) throw new Error("Gemini API not initialized.");
+  
+  const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+  const platformRules = platforms.map(p => `[${p}]: ${PLATFORM_RULES[p] || PLATFORM_RULES['Default']}`).join('\n');
+
+  const prompt = `
+    Jesteś światowej klasy strategiem marketingu cyfrowego i ekspertem od mediów społecznościowych. 
+    Twoim zadaniem jest stworzenie kompleksowego planu kampanii na podstawie poniższych danych.
+
+    DANE KAMPANII:
+    - Nazwa: ${name}
+    - Cel główny: ${goal}
+    - Opis produktu/usługi: ${productDescription}
+    - Unikalna wartość (USP): ${usp}
+    - Czas trwania: ${duration} dni
+    - Kanały: ${platforms.join(', ')}
+
+    ${workspaceContext ? `WYTYCZNE MARKI (MANDATORY):
+    - Strategia treści: ${workspaceContext.contentDirectives}
+    - Estetyka wizualna: ${workspaceContext.visualStyle}` : ''}
+
+    ZASADY DLA KANAŁÓW:
+    ${platformRules}
+
+    WYMAGANIA DOTYCZĄCE WYJŚCIA (JSON):
+    Stwórz listę postów (harmonogram), rozłożoną w czasie. 
+    Dla każdego elementu podaj:
+    1. "day": numer dnia lub etap (np. "Dzień 1", "Dzień 3").
+    2. "platform": na którą platformę jest ten post.
+    3. "topic": konkretny temat posta (krótki, gotowy do wrzucenia do generatora).
+    4. "visualIdea": sugestia co powinno być na obrazku/wideo.
+    5. "rationale": dlaczego ten post realizuje cel: ${goal}.
+
+    ZWRÓĆ DANE TYLKO W FORMACIE JSON (tablica obiektów):
+    [
+      {
+        "day": "string",
+        "platform": "string",
+        "topic": "string",
+        "visualIdea": "string",
+        "rationale": "string"
+      }
+    ]
+
+    Pamiętaj o specyfice platform: 
+    - LinkedIn: merytoryka, autorytet, B2B.
+    - TikTok/IG: energia, trendy, wizualny "wow".
+    - FB: społeczność, relacje.
+
+    Odpowiadaj w języku POLSKIM.
+  `;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    let text = response.text().trim();
+    
+    // Robust JSON extraction
+    const jsonMatch = text.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) {
+      throw new Error("MODEL_JSON_ERROR: AI nie zwróciło poprawnego formatu JSON.");
+    }
+    
+    return JSON.parse(jsonMatch[0]);
+  } catch (error) {
+    console.error("Campaign Plan Error:", error);
+    throw new Error(`Błąd generowania kampanii: ${error.message}`);
+  }
+}
+
+/**
+ * Refines a custom campaign goal using AI.
+ */
+async function refineCampaignGoal(rawGoal) {
+  const ai = initGemini();
+  if (!ai) throw new Error("Gemini API not initialized.");
+  
+  const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+  const prompt = `
+    Jesteś ekspertem od strategii marketingowej. Użytkownik podał własny cel kampanii, który może być niejasny lub mało profesjonalny.
+    Twoim zadaniem jest zredagowanie go tak, aby brzmiał jak profesjonalny cel biznesowy (SMART), zachowując jednak intencję użytkownika.
+
+    SUROWY CEL UŻYTKOWNIKA:
+    "${rawGoal}"
+
+    ZWRÓĆ DANE W FORMACIE JSON:
+    {
+      "refinedGoal": "Krótka, profesjonalna nazwa celu (np. 'Zwiększenie retencji klientów o 20%')",
+      "description": "Rozwinięcie celu i uzasadnienie strategiczne (max 2 zdania)."
+    }
+
+    Odpowiadaj w języku POLSKIM.
+  `;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text().trim();
+    
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("AI nie zwróciło poprawnego formatu JSON.");
+    
+    return JSON.parse(jsonMatch[0]);
+  } catch (error) {
+    console.error("Refine Goal Error:", error);
+    throw new Error("Nie udało się zredagować celu.");
+  }
+}
+
+module.exports = { generatePost, generatePostPlan, syncEnglishPrompt, generateVisualPrompt, translateToTechnicalPrompt, generateNanoBananaImage, generateVeoVideo, refinePost, refineVisualPrompt, generateCampaignPlan, refineCampaignGoal };
 
 

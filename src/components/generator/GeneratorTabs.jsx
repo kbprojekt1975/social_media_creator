@@ -20,6 +20,14 @@ const GeneratorTabs = ({ activeTab, setActiveTab, activeWorkspace }) => {
         Przestrzenie robocze
         {activeWorkspace && <div style={{ width: '8px', height: '8px', background: '#4ade80', borderRadius: '50%', boxShadow: '0 0 5px #4ade80' }}></div>}
       </button>
+      <button 
+        onClick={() => setActiveTab('campaigns')}
+        className={activeTab === 'campaigns' ? 'btn-primary' : 'btn-secondary'}
+        style={{ padding: '0.8rem 2rem', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+      >
+        <span className="material-icons" style={{ fontSize: '1.2rem' }}>event_note</span>
+        Planuj kampanię
+      </button>
     </div>
   );
 };

@@ -280,25 +280,52 @@ const ResultSection = ({
         )}
 
         {(generatedImage || generatedVideo) && (
-          <div style={{ marginTop: '2rem', textAlign: 'center' }}>
-            {generatedVideo ? (
-              <video 
-                src={generatedVideo} 
-                controls 
-                autoPlay 
-                loop 
-                style={{ width: '100%', borderRadius: '25px', boxShadow: 'var(--shadow-md)', background: '#000' }} 
-              />
-            ) : (
-              <img src={generatedImage} alt="Generated" style={{ width: '100%', borderRadius: '25px', boxShadow: 'var(--shadow-md)' }} />
+          <div style={{ marginTop: '2.5rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            
+            {generatedVideo && (
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginBottom: '1rem', color: 'var(--text-muted)' }}>
+                  <span className="material-icons" style={{ fontSize: '1.2rem' }}>movie</span>
+                  <span style={{ fontSize: '0.85rem', fontWeight: '700', textTransform: 'uppercase' }}>Wygenerowany Klip Wideo</span>
+                </div>
+                <video 
+                  src={generatedVideo} 
+                  controls 
+                  autoPlay 
+                  loop 
+                  style={{ width: '100%', borderRadius: '25px', boxShadow: 'var(--shadow-md)', background: '#000' }} 
+                />
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                  <button onClick={() => setGeneratedVideo(null)} className="btn-secondary" style={{ flex: 1, borderRadius: '15px', fontSize: '0.85rem' }}>Usuń Wideo</button>
+                  <a href={generatedVideo} target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ flex: 1.5, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '15px', fontSize: '0.85rem' }} download>
+                    Pobierz Wideo
+                  </a>
+                </div>
+              </div>
+            )}
+
+            {generatedImage && (
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginBottom: '1rem', color: 'var(--text-muted)', marginTop: generatedVideo ? '1rem' : 0 }}>
+                  <span className="material-icons" style={{ fontSize: '1.2rem' }}>image</span>
+                  <span style={{ fontSize: '0.85rem', fontWeight: '700', textTransform: 'uppercase' }}>Wygenerowana Grafika</span>
+                </div>
+                <img src={generatedImage} alt="Generated" style={{ width: '100%', borderRadius: '25px', boxShadow: 'var(--shadow-md)' }} />
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                  <button onClick={() => setGeneratedImage(null)} className="btn-secondary" style={{ flex: 1, borderRadius: '15px', fontSize: '0.85rem' }}>Usuń Grafikę</button>
+                  <a href={generatedImage} target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ flex: 1.5, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '15px', fontSize: '0.85rem' }} download>
+                    Pobierz Obraz
+                  </a>
+                </div>
+              </div>
             )}
             
             {/* Media Refinement Field */}
-            <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'flex-start', background: 'var(--bg-app)', padding: '1rem', borderRadius: '20px', border: '1px solid var(--border-color)', marginTop: '1.5rem', textAlign: 'left' }}>
+            <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'flex-start', background: 'var(--bg-app)', padding: '1.2rem', borderRadius: '20px', border: '1px solid var(--border-color)', marginTop: '0.5rem', textAlign: 'left' }}>
               <div style={{ flex: 1 }}>
                 <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--color-primary)', marginBottom: '0.5rem', fontWeight: '700' }}>
                   <span className="material-icons" style={{ fontSize: '0.9rem', verticalAlign: 'middle', marginRight: '0.3rem' }}>design_services</span>
-                  Popraw to {generatedVideo ? 'wideo' : 'zdjęcie'}:
+                  Popraw {generatedVideo && generatedImage ? 'ostatnie media' : (generatedVideo ? 'wideo' : 'zdjęcie')}:
                 </label>
                 <textarea 
                   value={mediaFeedback}
@@ -321,13 +348,6 @@ const ResultSection = ({
                   </>
                 )}
               </button>
-            </div>
-
-            <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-              <button onClick={() => { setGeneratedImage(null); setGeneratedVideo(null); }} className="btn-secondary" style={{ flex: 1, borderRadius: '15px' }}>Usuń / Nowa</button>
-              <a href={generatedVideo || generatedImage} target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ flex: 1.5, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '15px' }} download>
-                Pobierz {generatedVideo ? 'Wideo' : 'Obraz'}
-              </a>
             </div>
           </div>
         )}

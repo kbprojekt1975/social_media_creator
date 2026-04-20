@@ -13,6 +13,7 @@ import WorkspaceManager from './generator/WorkspaceManager';
 import PostGenerator from './generator/PostGenerator';
 import ResultSection from './generator/ResultSection'; 
 import axiosRetry from 'axios-retry';
+import CampaignPlanner from './generator/CampaignPlanner';
 
 // Configure axios to retry on 429 errors
 axiosRetry(axios, { 
@@ -99,6 +100,10 @@ const GeneratorPage = () => {
   const [showWorkspaceForm, setShowWorkspaceForm] = useState(false);
   const [newWorkspace, setNewWorkspace] = useState({ name: '', contentDirectives: '', visualStyle: '' });
 
+  // Campaign States
+  const [campaigns, setCampaigns] = useState([]);
+  const [campaignLoading, setCampaignLoading] = useState(false);
+
   // Podstawowy adres API Twoich funkcji Firebase
   const API_BASE_URL = 'https://us-central1-social-media-creator-b6df8.cloudfunctions.net/api';
 
@@ -169,11 +174,22 @@ const GeneratorPage = () => {
       setActiveWorkspace(active || null);
     });
 
+    // 5. Nasłuchiwanie kampanii
+    const campaignsQuery = query(
+      collection(db, 'users', user.uid, 'campaigns'),
+      orderBy('createdAt', 'desc')
+    );
+    const campaignsUnsubscribe = onSnapshot(campaignsQuery, (snapshot) => {
+      const campData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setCampaigns(campData);
+    });
+
     return () => {
       userUnsubscribe();
       stripeUnsubscribe();
       historyUnsubscribe();
       workspacesUnsubscribe();
+      campaignsUnsubscribe();
     };
   }, [user]);
 
@@ -456,7 +472,8 @@ const GeneratorPage = () => {
         const recordRef = doc(db, 'users', user.uid, 'history', currentRecordId);
         await updateDoc(recordRef, {
           videoUrl: videoUrl,
-          videoPrompt: visualPlannedPrompt.englishPrompt
+          videoPrompt: visualPlannedPrompt.englishPrompt,
+          imagePolishDescription: visualPlannedPrompt.polishDescription
         });
       }
 
@@ -485,7 +502,8 @@ const GeneratorPage = () => {
         const recordRef = doc(db, 'users', user.uid, 'history', currentRecordId);
         await updateDoc(recordRef, {
           imageUrl: response.data.imageUrl,
-          imagePrompt: visualPlannedPrompt.englishPrompt
+          imagePrompt: visualPlannedPrompt.englishPrompt,
+          imagePolishDescription: visualPlannedPrompt.polishDescription
         });
       }
 
@@ -609,21 +627,94 @@ const GeneratorPage = () => {
     setPlatform(item.platform || 'LinkedIn');
     setStyle(item.style || 'Profesjonalny');
     setResult(item.content || '');
-    if (item.polishPlan || item.englishPrompt || item.imagePrompt || item.videoPrompt) {
+    
+    // Restore Text Post Plan
+    if (item.polishPlan || item.englishPrompt) {
       setPlannedPrompt({
         polishPlan: item.polishPlan || '',
-        englishPrompt: item.englishPrompt || item.imagePrompt || item.videoPrompt || ''
+        englishPrompt: item.englishPrompt || ''
       });
       setPlanActive(true);
     } else {
       setPlannedPrompt(null);
       setPlanActive(false);
     }
+
+    // Restore Media
     setGeneratedImage(item.imageUrl || null);
     setGeneratedVideo(item.videoUrl || null);
-    setImagePrompt(item.imagePrompt || item.videoPrompt || '');
-    setIsHistoryDrawerOpen(false); // Automatycznie zamyka panel historii
-    window.scrollTo({ top: 0, behavior: 'smooth' }); // Przewija ekran do góry podążając za nowo załadowanym tematem
+    
+    // Determine visualization type and restore visual prompt
+    const hasVideo = !!item.videoUrl;
+    const hasImage = !!item.imageUrl;
+    
+    if (hasVideo || hasImage) {
+      const activeType = hasVideo ? 'video' : 'image';
+      setVisualizationType(activeType);
+      
+      // We reconstruct visualPlannedPrompt so refinement works.
+      // Note: we might only have the English technical prompt in history.
+      const technicalPrompt = hasVideo ? item.videoPrompt : item.imagePrompt;
+      setVisualPlannedPrompt({
+        polishDescription: item.imagePolishDescription || 'Edytowany projekt',
+        englishPrompt: technicalPrompt || ''
+      });
+      
+      setImagePrompt(item.imagePolishDescription || 'Edytowany projekt');
+    } else {
+      setImagePrompt('');
+      setVisualPlannedPrompt(null);
+    }
+
+    setIsHistoryDrawerOpen(false); 
+    window.scrollTo({ top: 0, behavior: 'smooth' }); 
+  };
+
+  const handleGenerateCampaign = async (campaignData) => {
+    setCampaignLoading(true);
+    try {
+      const token = await user.getIdToken();
+      await axios.post(`${API_BASE_URL}/generate-campaign`, 
+        { 
+          ...campaignData,
+          workspaceContext: activeWorkspace ? {
+            contentDirectives: activeWorkspace.contentDirectives,
+            visualStyle: activeWorkspace.visualStyle
+          } : null
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      // Campaign will be updated via Firestore onSnapshot
+    } catch (error) {
+      console.error('Campaign generation failed:', error);
+      alert(error.response?.data?.error || 'Nie udało się wygenerować strategii kampanii.');
+    } finally {
+      setCampaignLoading(false);
+    }
+  };
+
+  const handleSelectCampaignItem = (item) => {
+    setTopic(item.topic);
+    setPlatform(item.platform || 'LinkedIn');
+    // Pre-fill result with visualization idea so user knows what the context was
+    setResult(`💡 Pomysł z kampanii:\n${item.topic}\n\nWizualizacja: ${item.visualIdea}\n\nUzasadnienie: ${item.rationale}\n\n--- Kliknij "Generuj Treść" aby stworzyć gotowy post. ---`);
+    setActiveTab('generator');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleRefineCustomGoal = async (rawGoal) => {
+    try {
+      const token = await user.getIdToken();
+      const response = await axios.post(`${API_BASE_URL}/refine-campaign-goal`, 
+        { rawGoal },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Goal refinement failed:', error);
+      alert('Nie udało się zredagować celu.');
+      return null;
+    }
   };
 
   const handleLogout = () => {
@@ -722,7 +813,7 @@ const GeneratorPage = () => {
         gap: '2.5rem',
         alignItems: 'stretch'
       }}>
-        {activeTab === 'generator' ? (
+        {activeTab === 'generator' && (
           <>
             <PostGenerator 
               activeWorkspace={activeWorkspace}
@@ -786,7 +877,9 @@ const GeneratorPage = () => {
               handleRefineMedia={handleRefineMedia}
             />
           </>
-        ) : (
+        )}
+
+        {activeTab === 'workspaces' && (
           <WorkspaceManager 
             activeWorkspace={activeWorkspace}
             workspaces={workspaces}
@@ -797,6 +890,18 @@ const GeneratorPage = () => {
             setNewWorkspace={setNewWorkspace}
             handleActivateWorkspace={toggleWorkspace}
             handleDeleteWorkspace={handleDeleteWorkspace}
+          />
+        )}
+
+        {activeTab === 'campaigns' && (
+          <CampaignPlanner 
+            handleGenerateCampaign={handleGenerateCampaign}
+            handleRefineCustomGoal={handleRefineCustomGoal}
+            loading={campaignLoading}
+            campaigns={campaigns}
+            handleSelectCampaignItem={handleSelectCampaignItem}
+            balance={balance}
+            isReadOnly={isReadOnly}
           />
         )}
     </div>
