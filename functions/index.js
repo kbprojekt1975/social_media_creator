@@ -223,19 +223,31 @@ app.post("/refine-post", async (req, res) => {
   }
 });
 
-// Endpoint: Refine Visual Prompt
+// Endpoint: Refine Visual Prompt (Visual Auditor)
 app.post("/refine-image-prompt", async (req, res) => {
   const idToken = req.headers.authorization?.split("Bearer ")[1];
   if (!idToken) return res.status(401).send("Unauthorized");
 
   try {
-    const { originalPromptObject, instructions, workspaceContext, mediaUrl } = req.body;
-    if (!originalPromptObject || !instructions) {
-      return res.status(400).json({ error: "originalPromptObject and instructions are required." });
+    const { 
+      v1PromptObject, 
+      lastPromptObject, 
+      originalPromptObject, // for backward compatibility
+      instructions, 
+      workspaceContext, 
+      mediaUrl 
+    } = req.body;
+
+    // Determine context anchors
+    const v1 = v1PromptObject || originalPromptObject;
+    const last = lastPromptObject || originalPromptObject;
+
+    if (!v1 || !instructions) {
+      return res.status(400).json({ error: "Context (v1/last) and instructions are required." });
     }
 
-    const visualPlannedPrompt = await refineVisualPrompt(originalPromptObject, instructions, workspaceContext, mediaUrl);
-    res.json({ visualPlannedPrompt });
+    const result = await refineVisualPrompt(v1, last, instructions, workspaceContext, mediaUrl);
+    res.json({ visualPlannedPrompt: result });
 
   } catch (error) {
     console.error("Refine Visual Error:", error);
@@ -369,19 +381,40 @@ app.post("/generate-image", async (req, res) => {
 
   try {
     const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const { prompt, aspectRatio } = req.body;
+    const { prompt, aspectRatio, originalImageUrl, isAlreadyTechnical } = req.body;
     if (!prompt) return res.status(400).send("Prompt is required.");
 
     const userRef = db.collection("users").doc(decodedToken.uid);
     const userDoc = await userRef.get();
     const balance = userDoc.data()?.balance || 0;
 
-    // Pre-process prompt (Translate Polish description to technical English)
-    const technicalPrompt = await translateToTechnicalPrompt(prompt, 'image', aspectRatio || '1:1');
-    console.log("Technical Image Prompt:", technicalPrompt);
+    if (balance < IMAGE_COST) {
+      return res.status(402).json({ error: "Brak tokenów na koncie. Doładuj portfel." });
+    }
 
-    // Call Nano Banana (AI Studio) with technical aspectRatio
-    const buffer = await generateNanoBananaImage(technicalPrompt, aspectRatio || '1:1');
+    // OPTIMIZATION: Skip Gemini Translator if the prompt is already technical
+    let technicalPrompt = prompt;
+    if (!isAlreadyTechnical) {
+      console.log("[API] Translating to technical English...");
+      technicalPrompt = await translateToTechnicalPrompt(prompt, 'image', aspectRatio || '1:1');
+    } else {
+      console.log("[API] Skipping translation. Using technical prompt directly.");
+    }
+
+    let base64Context = null;
+    // IMAGE-TO-IMAGE: Use original image as visual context if provided
+    if (originalImageUrl) {
+      try {
+        const imgResponse = await axios.get(originalImageUrl, { responseType: 'arraybuffer' });
+        base64Context = Buffer.from(imgResponse.data, 'binary').toString('base64');
+        console.log("Image-to-Image context captured.");
+      } catch (e) {
+        console.error("Failed to fetch image context:", e);
+      }
+    }
+
+    // Call Nano Banana (AI Studio) with visual context
+    const buffer = await generateNanoBananaImage(technicalPrompt, aspectRatio || '1:1', base64Context);
 
 
     // Upload to Firebase Storage

@@ -93,6 +93,8 @@ const GeneratorPage = () => {
   const [mediaFeedback, setMediaFeedback] = useState('');
   const [isMediaRefining, setIsMediaRefining] = useState(false);
   const [mediaHistory, setMediaHistory] = useState([]); // Array to store { type: 'image'|'video', url: string, prompt: string }
+  const [v1VisualPrompt, setV1VisualPrompt] = useState(null);
+  const [aiDetectionLog, setAiDetectionLog] = useState("");
 
   // Workspace States
   const [activeTab, setActiveTab] = useState('generator'); // 'generator' | 'workspaces'
@@ -501,7 +503,12 @@ const GeneratorPage = () => {
     try {
       const token = await user.getIdToken();
       const response = await axios.post(`${API_BASE_URL}/generate-image`, 
-        { prompt: targetPrompt.englishPrompt, aspectRatio: imageAspectRatio },
+        { 
+          prompt: targetPrompt.englishPrompt, 
+          aspectRatio: imageAspectRatio,
+          originalImageUrl: generatedImage, // Send the current image as context!
+          isAlreadyTechnical: true // Optimization: Skip redundant translation
+        },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -515,6 +522,12 @@ const GeneratorPage = () => {
       }
 
       setGeneratedImage(response.data.imageUrl);
+      
+      // Set V1 Anchor if this is the first generation in the session
+      if (!v1VisualPrompt) {
+        setV1VisualPrompt(targetPrompt);
+      }
+
       setMediaHistory(prev => [
         ...prev, 
         { type: 'image', url: response.data.imageUrl, prompt: targetPrompt.polishDescription, englishPrompt: targetPrompt.englishPrompt }
@@ -567,6 +580,7 @@ const GeneratorPage = () => {
   const handleRefineMedia = async () => {
     if (!mediaFeedback.trim() || !visualPlannedPrompt) return;
     setIsMediaRefining(true);
+    setAiDetectionLog(""); // Clear old log before new analysis starts
     try {
       const token = await user.getIdToken();
       
@@ -575,7 +589,8 @@ const GeneratorPage = () => {
 
       const response = await axios.post(`${API_BASE_URL}/refine-image-prompt`, 
         { 
-          originalPromptObject: visualPlannedPrompt, 
+          v1PromptObject: v1VisualPrompt, 
+          lastPromptObject: visualPlannedPrompt,
           instructions: mediaFeedback,
           mediaUrl,
           workspaceContext: activeWorkspace ? {
@@ -588,6 +603,7 @@ const GeneratorPage = () => {
       const vPlan = response.data.visualPlannedPrompt;
       setVisualPlannedPrompt(vPlan);
       setImagePrompt(vPlan.polishDescription);
+      setAiDetectionLog(vPlan.aiDetectionLog || "");
       setMediaFeedback('');
       
       // Auto trigger generation
@@ -640,6 +656,8 @@ const GeneratorPage = () => {
     setGeneratedImage(null);
     setGeneratedVideo(null);
     setMediaHistory([]);
+    setV1VisualPrompt(null);
+    setAiDetectionLog("");
     setCurrentRecordId(null);
   };
 
@@ -945,6 +963,8 @@ const GeneratorPage = () => {
               handleRefineMedia={handleRefineMedia}
               mediaHistory={mediaHistory}
               setMediaHistory={setMediaHistory}
+              aiDetectionLog={aiDetectionLog}
+              setAiDetectionLog={setAiDetectionLog}
             />
           </>
         )}

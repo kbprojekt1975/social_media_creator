@@ -38,7 +38,9 @@ const ResultSection = ({
   isVisualSyncing,
   handleSyncVisualPrompt,
   mediaHistory,
-  setMediaHistory
+  setMediaHistory,
+  aiDetectionLog,
+  setAiDetectionLog
 }) => {
   if (!result) return null;
 
@@ -329,6 +331,70 @@ const ResultSection = ({
                 </div>
               </div>
             ))}
+
+            {/* Loading Placeholder for new media refinement/generation */}
+            {(isMediaRefining || imageLoading) && (
+              <div className="glass" style={{ 
+                padding: '3rem 2rem', 
+                borderRadius: '25px', 
+                border: '2px dashed var(--color-primary)', 
+                marginTop: '1.5rem',
+                marginBottom: '1.5rem',
+                background: 'rgba(var(--color-primary-rgb), 0.05)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '1.5rem',
+                animation: 'pulse 2s infinite ease-in-out'
+              }}>
+                <div style={{ position: 'relative', width: '60px', height: '60px' }}>
+                  <div className="spinner" style={{ width: '60px', height: '60px', borderTopColor: 'var(--color-primary)', borderWidth: '4px' }}></div>
+                  <span className="material-icons" style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: 'var(--color-primary)', fontSize: '2rem', animation: 'bounce 1s infinite' }}>
+                    {isMediaRefining ? 'psychology' : 'brush'}
+                  </span>
+                </div>
+                
+                <div style={{ textAlign: 'center' }}>
+                  <h4 style={{ margin: 0, color: 'var(--color-primary)', fontSize: '1.1rem', fontWeight: '800' }}>
+                    {isMediaRefining ? 'Analizowanie kompozycji...' : 'Tworzenie nowej wersji...'}
+                  </h4>
+                  <p style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', opacity: 0.7, maxWidth: '300px' }}>
+                    {isMediaRefining 
+                      ? 'Gemini 2.0 Flash bada relacje przestrzenne i oświetlenie Twojego obrazu.' 
+                      : 'Nano Banana nakłada poprawki, dbając o spójność z oryginałem.'}
+                  </p>
+                </div>
+
+                {aiDetectionLog && (
+                  <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.8rem 1rem', borderRadius: '12px', width: '100%', maxWidth: '400px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem', opacity: 0.6 }}>
+                      <span className="material-icons" style={{ fontSize: '0.8rem' }}>terminal</span>
+                      <span style={{ fontSize: '0.65rem', fontWeight: '800', textTransform: 'uppercase' }}>Otrzymano raport audytu:</span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: '0.75rem', color: '#4ade80', fontFamily: 'monospace', lineHeight: '1.4' }}>
+                      {aiDetectionLog}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* AI Detection Log (Technical Feedback) */}
+            {aiDetectionLog && (
+              <div style={{ background: 'rgba(0,0,0,0.2)', borderLeft: '3px solid var(--color-primary)', padding: '0.8rem 1.2rem', borderRadius: '10px', marginTop: '1rem', animation: 'fadeIn 0.5s ease-out' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.3rem', opacity: 0.7 }}>
+                  <span className="material-icons" style={{ fontSize: '0.9rem' }}>terminal</span>
+                  <span style={{ fontSize: '0.7rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Raport Analizy Wizualnej</span>
+                  <button onClick={() => setAiDetectionLog("")} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0 }}>
+                    <span className="material-icons" style={{ fontSize: '1rem' }}>close</span>
+                  </button>
+                </div>
+                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-main)', fontFamily: 'monospace', lineHeight: '1.4' }}>
+                  {aiDetectionLog}
+                </p>
+              </div>
+            )}
             
             {/* Media Refinement Field (Sticky at the bottom of the list) */}
             <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'flex-start', background: 'var(--bg-app)', padding: '1.5rem', borderRadius: '25px', border: '1px solid var(--color-primary)', marginTop: '1rem', textAlign: 'left', boxShadow: 'var(--shadow-lg)' }}>

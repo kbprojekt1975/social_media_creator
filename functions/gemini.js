@@ -19,6 +19,29 @@ function initGemini() {
   return genAI;
 }
 
+/**
+ * Helper to call Gemini with retry logic for 429 errors.
+ */
+async function withRetry(fn, maxRetries = 3, delay = 2000) {
+  let lastError;
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      const isRateLimit = error.message?.includes("429") || error.message?.includes("Resource exhausted");
+      if (isRateLimit && i < maxRetries - 1) {
+        console.warn(`[Gemini Retry] Rate limit hit (429). Retrying in ${delay}ms... (Attempt ${i + 1}/${maxRetries})`);
+        await new Promise(res => setTimeout(res, delay));
+        delay *= 2; // Exponential backoff
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw lastError;
+}
+
 const PLATFORM_RULES = {
   'LinkedIn': 'Style: Professional, authoritative, industry-expert tone. Structure: Strong hook, bullet points for readability, professional storytelling, 3-5 relevant hashtags. Goal: B2B authority.',
   'Facebook': 'Style: Engaging, community-focused, relatable tone. Structure: Conversational, question at the end to boost comments, emojis throughout, 2-3 hashtags. Goal: High engagement/reach.',
@@ -317,11 +340,11 @@ async function translateToTechnicalPrompt(polishPrompt, type = 'image', aspectRa
   `;
 
   try {
-    const result = await model.generateContent(prompt);
+    const result = await withRetry(() => model.generateContent(prompt));
     const response = await result.response;
     return response.text().trim();
   } catch (error) {
-    console.error("Translation Error:", error);
+    console.error("Translation Error (Retries Failed):", error);
     return polishPrompt; // Fallback to original if translation fails
   }
 }
@@ -356,7 +379,7 @@ async function refinePost(originalPost, instructions, workspaceContext = null) {
   `;
 
   try {
-    const result = await model.generateContent(prompt);
+    const result = await withRetry(() => model.generateContent(prompt));
     const response = await result.response;
     const content = response.text().trim();
     
@@ -377,9 +400,10 @@ async function refinePost(originalPost, instructions, workspaceContext = null) {
 }
 
 /**
- * Refines a visual prompt based on user instructions, optionally analyzing the current image/video.
+ * Refines a visual prompt using "Deep Scene Reconstruction".
+ * Context-aware: takes Version 1 (Anchor) and Last Version to prevent style drift.
  */
-async function refineVisualPrompt(originalPromptObject, instructions, workspaceContext = null, mediaUrl = null) {
+async function refineVisualPrompt(v1PromptObject, lastPromptObject, instructions, workspaceContext = null, mediaUrl = null) {
   const ai = initGemini();
   if (!ai) throw new Error("Gemini API not initialized.");
 
@@ -387,9 +411,9 @@ async function refineVisualPrompt(originalPromptObject, instructions, workspaceC
 
   let promptParts = [];
 
+  // OPTIMIZATION: If we have an image, we send it for multimodal analysis
   if (mediaUrl) {
     try {
-      // Fetch image to send as inlineData
       const axios = require('axios');
       const response = await axios.get(mediaUrl, { responseType: 'arraybuffer' });
       const base64Image = Buffer.from(response.data, 'binary').toString('base64');
@@ -397,53 +421,68 @@ async function refineVisualPrompt(originalPromptObject, instructions, workspaceC
       promptParts.push({
         inlineData: {
           data: base64Image,
-          mimeType: "image/png" // Assuming PNG/JPG
+          mimeType: "image/png"
         }
       });
     } catch (e) {
-      console.error("Could not fetch image for multimodal refinement:", e);
+      console.error("Multimodal analysis fetch failed:", e);
     }
   }
 
   const textPrompt = `
-    Jesteś ekspertem od edycji kreatywnej. Użytkownik chce wprowadzić poprawki do załączonego/opisanego materiału wizualnego.
-    
-    BARDZO WAŻNE: Zachowaj MAKSYMALNĄ SPÓJNOŚĆ WIZUALNĄ.
-    - Przeanalizuj załączony obraz (jeśli jest) lub aktualny opis.
-    - Zmień TYLKO to, o co prosi użytkownik (np. zmiana koloru ekranu, zmiana postaci).
-    - Zachowaj tło, oświetlenie, styl i kompozycję bez zmian.
-    
-    AKTUALNY OPIS (PL): "${originalPromptObject.polishDescription}"
-    AKTUALNY PROMPT (EN): "${originalPromptObject.englishPrompt}"
-    INSTRUKCJE ZMIANY: "${instructions}"
-    
-    ${workspaceContext ? `WYTYCZNE MARKI: ${workspaceContext.visualStyle}` : ''}
+    Jesteś ekspertem od edycji wizualnej AI (Visual Auditor). Twoim celem jest stworzenie technicznego promptu, który zachowa 100% spójności z pierwowzorem, wprowadzając jedynie wskazane poprawki.
 
-    ZWRÓĆ JSON:
+    KONTEKST (KOTWICA):
+    - ORYGINALNY POMYSŁ (V1): "${v1PromptObject?.englishPrompt || v1PromptObject?.polishDescription}"
+    - OSTATNI STAN: "${lastPromptObject?.englishPrompt || lastPromptObject?.polishDescription}"
+    - ZMIANA UŻYTKOWNIKA: "${instructions}"
+
+    ZADANIA AUDYTU:
+    1. Zidentyfikuj relacje przestrzenne (Spatial Relationships) między obiektami na obrazie (np. odległości, pozycje).
+    2. Zmapuj oświetlenie (kierunek, temperatura) oraz charakterystykę obiektywu (depth of field).
+    3. Zachowaj rysy twarzy i pozę postaci zgodnie z V1 (Seed Persistence).
+
+    HIERARCHIA PROMPTU (BARDZO WAŻNE):
+    1. [START]: Kompozycja i relacje przestrzenne (np. "Fixed composition, [A] positioned [X] relative to [B]").
+    2. [ŚRODEK]: Mapowanie oświetlenia i technika (np. "Identical lighting mapping, 35mm lens").
+    3. [KONIEC]: Szczegóły obiektu i wprowadzona modyfikacja.
+
+    WYMAGANIA:
+    - Syntetyzuj opis: Maksymalnie 200 słów. Tylko twarde dane techniczne.
+    - Używaj fraz: "Maintaining exact composition", "Photogrammetric consistency".
+    - Umieść najważniejsze parametry techniczne na samym początku promptu.
+
+    ZWRÓĆ DANE TYLKO JAKO JSON:
     {
-      "polishDescription": "Zaktualizowany opis PL.",
-      "englishPrompt": "Updated technical EN prompt."
+      "polishDescription": "Zwięzły opis zmian po polsku.",
+      "englishPrompt": "Hierarchical technical EN prompt (max 200 words).",
+      "aiDetectionLog": "Raport dwujęzyczny w formacie: 'PL: [Krótki opis po polsku] | EN: [Technical summary in English]'"
     }
   `;
 
   promptParts.push(textPrompt);
 
   try {
-    const result = await model.generateContent(promptParts);
+    const result = await withRetry(() => model.generateContent(promptParts));
     const response = await result.response;
     const text = response.text().trim();
     
-    // Robust JSON extraction
+    // Robust JSON extraction for production reliability
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       console.error("No JSON found in visual refinement output:", text);
-      throw new Error("MODEL_JSON_ERROR: AI returned no JSON for visual refinement.");
+      throw new Error("AI nie zwróciło poprawnego formatu JSON.");
     }
     
-    return JSON.parse(jsonMatch[0]);
+    const parsed = JSON.parse(jsonMatch[0]);
+    return {
+      polishDescription: parsed.polishDescription || "Poprawiony projekt",
+      englishPrompt: parsed.englishPrompt || "",
+      aiDetectionLog: parsed.aiDetectionLog || "Analiza zakończona pomyślnie"
+    };
   } catch (error) {
-    console.error("Gemini Refine Visual Prompt Error:", error);
-    throw new Error(`Nie udało się zaktualizować opisu wizualnego: ${error.message}`);
+    console.error("Refine Visual Error (Visual Auditor):", error);
+    throw new Error(`Błąd audytu wizualnego: ${error.message}`);
   }
 }
 
@@ -526,15 +565,22 @@ async function generateVeoVideo(visualPrompt, aspectRatio = '1:1') {
 
 /**
  * Generates an image using the Nano Banana (Gemini 3.1 Flash Image) model via REST API.
+ * Supports Image-to-Image by providing originalImageBase64 as context.
  */
-async function generateNanoBananaImage(visualPrompt, aspectRatio = '1:1') {
+async function generateNanoBananaImage(visualPrompt, aspectRatio = '1:1', originalImageBase64 = null) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY not found.");
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${apiKey}`;
 
   const payload = {
-    contents: [{ parts: [{ text: visualPrompt }] }],
+    contents: [{ 
+      parts: [
+        // If we have an original image, provide it as context for Image-to-Image refinement
+        ...(originalImageBase64 ? [{ inlineData: { data: originalImageBase64, mimeType: "image/png" } }] : []),
+        { text: visualPrompt }
+      ] 
+    }],
     generationConfig: {
       responseModalities: ["IMAGE"]
     }
@@ -550,12 +596,12 @@ async function generateNanoBananaImage(visualPrompt, aspectRatio = '1:1') {
     if (part && part.inlineData) {
       return Buffer.from(part.inlineData.data, 'base64');
     } else {
-      console.error("Nano Banana REST Response:", JSON.stringify(data, null, 2));
-      throw new Error("No image data in response candidates.");
+      console.error("Nano Banana REST Response Error:", JSON.stringify(data, null, 2));
+      throw new Error("Nie otrzymano danych obrazu z modelu Nano Banana.");
     }
   } catch (error) {
     console.error("Nano Banana REST Error:", error.response?.data || error.message);
-    throw new Error(`Technical failure creating image: ${error.response?.data?.error?.message || error.message}`);
+    throw new Error(`Błąd techniczny generowania obrazu: ${error.response?.data?.error?.message || error.message}`);
   }
 }
 
