@@ -22,6 +22,18 @@ const PostGenerator = ({
   handleReset,
   onShowHelp
 }) => {
+  const [isModified, setIsModified] = React.useState(false);
+  const [isSyncSuccess, setIsSyncSuccess] = React.useState(false);
+
+  const onSyncClick = async () => {
+    try {
+      await handleSyncPrompt();
+      setIsSyncSuccess(true);
+      setIsModified(false);
+    } catch (error) {
+      console.error("Sync error:", error);
+    }
+  };
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       {activeWorkspace && (
@@ -171,49 +183,56 @@ const PostGenerator = ({
             </h4>
             <textarea 
               value={plannedPrompt.polishPlan || ''}
-              onChange={(e) => setPlannedPrompt({ ...plannedPrompt, polishPlan: e.target.value })}
+              onChange={(e) => {
+                setPlannedPrompt({ ...plannedPrompt, polishPlan: e.target.value });
+                setIsModified(true);
+                setIsSyncSuccess(false);
+              }}
               style={{
                 width: '100%',
                 minHeight: '100px',
                 background: 'var(--bg-app)',
-                border: '1px solid var(--border-color)',
+                border: isSyncSuccess ? '1px solid #10b981' : '1px solid var(--border-color)',
                 borderRadius: '12px',
                 color: 'var(--text-main)',
                 padding: '1rem',
                 fontSize: '0.95rem',
                 lineHeight: '1.6',
-                marginBottom: '0.5rem'
+                marginBottom: '0.5rem',
+                transition: 'border 0.3s ease'
               }}
             />
-          </div>
-
-          <div style={{ padding: '1.5rem', borderRadius: '20px', marginBottom: '1rem', background: 'var(--bg-white)', boxShadow: 'var(--shadow-sm)' }}>
-            <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.2rem', color: 'var(--color-primary)', fontWeight: '700' }}>
-              <span className="material-icons" style={{ fontSize: '1.1rem' }}>smart_toy</span>
-              Techniczny Prompt (EN)
-            </h4>
-            <textarea 
-              value={plannedPrompt.englishPrompt}
-              onChange={(e) => setPlannedPrompt({ ...plannedPrompt, englishPrompt: e.target.value })}
-              style={{ width: '100%', minHeight: '150px', background: 'var(--bg-app)', color: 'var(--text-main)', border: '1px solid var(--border-color)', padding: '1rem', borderRadius: '12px', fontSize: '0.85rem' }}
-            />
-            <div style={{ marginTop: '1rem' }}>
-              <button 
-                type="button"
-                onClick={handleSyncPrompt}
-                disabled={isSyncing || isReadOnly}
-                className="btn-secondary"
-                style={{ width: '100%', padding: '0.8rem', borderRadius: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-              >
-                {isSyncing ? 'Synchronizacja...' : (
-                  <>
-                    <span className="material-icons" style={{ fontSize: '1.1rem', marginRight: '0.5rem' }}>sync</span>
-                    Aktualizuj instrukcje techniczne (EN)
-                  </>
-                )}
-                {isSyncing && <span className="spinner"></span>}
-              </button>
-            </div>
+            <button 
+              type="button"
+              onClick={onSyncClick}
+              disabled={isSyncing || isReadOnly || !isModified}
+              className="btn-secondary"
+              style={{ 
+                width: '100%', 
+                marginTop: '0.8rem', 
+                padding: '0.7rem', 
+                borderRadius: '12px', 
+                fontSize: '0.85rem', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                gap: '0.5rem',
+                border: isSyncSuccess ? '1px solid #10b981' : (isModified ? '1px solid var(--color-primary)' : '1px solid var(--border-color)'),
+                color: isSyncSuccess ? '#10b981' : (isModified ? 'var(--color-primary)' : 'var(--text-muted)'),
+                background: isSyncSuccess ? 'rgba(16, 185, 129, 0.05)' : 'none',
+                cursor: isModified ? 'pointer' : 'default',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              {isSyncing ? <span className="spinner"></span> : (
+                <>
+                  <span className="material-icons" style={{ fontSize: '1.1rem' }}>
+                    {isSyncSuccess ? 'check_circle' : 'refresh'}
+                  </span>
+                  {isSyncSuccess ? 'Zmiany zapisane' : 'Aktualizuj instrukcje techniczne'}
+                </>
+              )}
+            </button>
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>

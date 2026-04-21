@@ -7,7 +7,7 @@ const admin = require("firebase-admin");
 const express = require("express");
 const cors = require("cors");
 const stripe = require("stripe");
-const { generatePost, generatePostPlan, syncEnglishPrompt, generateVisualPrompt, translateToTechnicalPrompt, generateNanoBananaImage, generateVeoVideo, refinePost, refineVisualPrompt, generateCampaignPlan, refineCampaignGoal, refineProductDescription, refineUSP } = require("./gemini");
+const { generatePost, generatePostPlan, syncEnglishPrompt, generateVisualPrompt, syncVisualPrompt, translateToTechnicalPrompt, generateNanoBananaImage, generateVeoVideo, refinePost, refineVisualPrompt, generateCampaignPlan, refineCampaignGoal, refineProductDescription, refineUSP } = require("./gemini");
 
 
 // Initialize Firebase Admin
@@ -67,6 +67,33 @@ const getStripe = () => {
 
 // --- ROUTES --- (Stripe extension handles checkout and webhooks)
 
+
+// Proxy to bypass CORS and force download
+app.get("/download-proxy", async (req, res) => {
+  const fileUrl = req.query.url;
+  if (!fileUrl) return res.status(400).send("No URL provided");
+  
+  try {
+    const response = await axios({
+      method: 'get',
+      url: fileUrl,
+      responseType: 'stream'
+    });
+    
+    // Determine extension from content-type or URL
+    const contentType = response.headers['content-type'] || 'application/octet-stream';
+    const extension = contentType.split('/')[1]?.split('+')[0] || 'bin';
+    const filename = `sm-creator-${Date.now()}.${extension}`;
+    
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Type', contentType);
+    
+    response.data.pipe(res);
+  } catch (error) {
+    console.error("Proxy Download Error:", error.message);
+    res.status(500).send("Failed to download file");
+  }
+});
 
 // Gemini Content Generation
 app.post("/generate", async (req, res) => {
@@ -599,17 +626,26 @@ exports.grantTokens = onDocumentCreated({
   // Stripe używa statusów 'active' lub 'trialing'
   if (subscription.status === "active" || subscription.status === "trialing") {
     const userRef = admin.firestore().collection("users").doc(userId);
-    const userDoc = await userRef.get();
-    const userData = userDoc.data() || {};
+    try {
+      await admin.firestore().runTransaction(async (transaction) => {
+        const userDoc = await transaction.get(userRef);
+        const userData = userDoc.data() || {};
 
-    if (!userData.lastSubscriptionId || userData.lastSubscriptionId !== event.params.subscriptionId) {
-      console.log(`🎁 Przyznawanie 10M tokenów dla ${userId} (Sub: ${event.params.subscriptionId})`);
-      await userRef.set({
-        balance: admin.firestore.FieldValue.increment(10000000),
-        lastSubscriptionId: event.params.subscriptionId,
-        subscriptionStatus: subscription.status,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
-      }, { merge: true });
+        if (userData.lastSubscriptionId === event.params.subscriptionId) {
+          console.log(`ℹ️ Tokeny dla subskrypcji ${event.params.subscriptionId} już przyznane.`);
+          return;
+        }
+
+        console.log(`🎁 Przyznawanie 10M tokenów dla ${userId}`);
+        transaction.set(userRef, {
+          balance: admin.firestore.FieldValue.increment(10000000),
+          lastSubscriptionId: event.params.subscriptionId,
+          subscriptionStatus: subscription.status,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+      });
+    } catch (e) {
+      console.error("Transaction failed:", e);
     }
   }
 });

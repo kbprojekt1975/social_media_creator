@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { auth, db } from '../firebase';
-import { doc, collection, query, orderBy, onSnapshot, limit, deleteDoc, addDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, collection, query, orderBy, onSnapshot, limit, deleteDoc, addDoc, updateDoc, serverTimestamp, arrayUnion } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -20,13 +20,17 @@ import { useNotification } from './common/NotificationContext';
 
 // Configure axios to retry on 429 errors
 axiosRetry(axios, { 
-  retries: 3, 
+  retries: 5, 
   retryDelay: (retryCount) => {
-    return retryCount * 2500; // 2.5s, 5s, 7.5s - to stay under the 15 RPM limit
+    // Exponential backoff: 3s, 9s, 27s, 81s, 243s
+    // This is safer for Gemini's 15 RPM / 2 RPM limits
+    return Math.pow(3, retryCount) * 1000; 
   },
   retryCondition: (error) => {
-    // Retry on 429 (Rate Limit) or network errors
-    return error.response?.status === 429 || axiosRetry.isNetworkOrIdempotentRequestError(error);
+    const status = error.response?.status;
+    const body = JSON.stringify(error.response?.data || "").toLowerCase();
+    // Retry on 429, 503 (Overloaded) or specific rate limit messages in body
+    return status === 429 || status === 503 || body.includes("rate limit") || body.includes("too many requests") || axiosRetry.isNetworkOrIdempotentRequestError(error);
   }
 });
 
@@ -108,6 +112,27 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
   const [newWorkspace, setNewWorkspace] = useState({ name: '', contentDirectives: '', visualStyle: '' });
 
   const { showError, showSuccess, showWarning, showInfo } = useNotification();
+
+  // Auto-scroll refs
+  const resultSectionRef = useRef(null);
+
+  // Auto-scroll logic for Post Generation
+  useEffect(() => {
+    if (loading && resultSectionRef.current) {
+      // Scroll to the bottom of the page to show the spinner/result appearing
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    }
+  }, [loading]);
+
+  // Auto-scroll logic for Media Generation/Refinement
+  useEffect(() => {
+    if ((imageLoading || isMediaRefining || isVisualSyncing) && resultSectionRef.current) {
+      // Small timeout to ensure the loading placeholder or section is rendered
+      setTimeout(() => {
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      }, 150);
+    }
+  }, [imageLoading, isMediaRefining, isVisualSyncing]);
 
   // Campaign States
   const [campaigns, setCampaigns] = useState([]);
@@ -515,10 +540,12 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
       // Step 3: Success! Update local state and history
       if (currentRecordId) {
         const recordRef = doc(db, 'users', user.uid, 'history', currentRecordId);
+        const newMediaItem = { type: 'video', url: videoUrl, prompt: targetPrompt.polishDescription, englishPrompt: targetPrompt.englishPrompt, createdAt: new Date().toISOString() };
         await updateDoc(recordRef, {
           videoUrl: videoUrl,
           videoPrompt: targetPrompt.englishPrompt,
-          imagePolishDescription: targetPrompt.polishDescription
+          imagePolishDescription: targetPrompt.polishDescription,
+          visuals: arrayUnion(newMediaItem)
         });
       }
 
@@ -527,7 +554,8 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
         ...prev, 
         { type: 'video', url: videoUrl, prompt: targetPrompt.polishDescription, englishPrompt: targetPrompt.englishPrompt }
       ]);
-      setVideoPromptData(null);
+      // Update current prompt data to the target one to keep refinement possible
+      setVideoPromptData(targetPrompt);
       setIsPromptMode(false);
       showSuccess('Klip wideo został wygenerowany!');
       setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 100);
@@ -557,10 +585,12 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
 
       if (currentRecordId) {
         const recordRef = doc(db, 'users', user.uid, 'history', currentRecordId);
+        const newMediaItem = { type: 'image', url: response.data.imageUrl, prompt: targetPrompt.polishDescription, englishPrompt: targetPrompt.englishPrompt, createdAt: new Date().toISOString() };
         await updateDoc(recordRef, {
           imageUrl: response.data.imageUrl,
           imagePrompt: targetPrompt.englishPrompt,
-          imagePolishDescription: targetPrompt.polishDescription
+          imagePolishDescription: targetPrompt.polishDescription,
+          visuals: arrayUnion(newMediaItem)
         });
       }
 
@@ -575,7 +605,8 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
         ...prev, 
         { type: 'image', url: response.data.imageUrl, prompt: targetPrompt.polishDescription, englishPrompt: targetPrompt.englishPrompt }
       ]);
-      setImagePromptData(null);
+      // Update current prompt data to the target one to keep refinement possible
+      setImagePromptData(targetPrompt);
       setIsPromptMode(false);
       showSuccess('Obraz został wygenerowany!');
       setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 100);
@@ -623,20 +654,36 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
     }
   };
 
-  const handleRefineMedia = async () => {
-    const currentPromptData = visualizationType === 'video' ? videoPromptData : imagePromptData;
+  const handleRefineMedia = async (index = null) => {
+    // If index is provided, we are refining a specific version from history
+    const targetMedia = (index !== null && mediaHistory[index]) ? mediaHistory[index] : null;
+    
+    // Determine the prompt data to use
+    let currentPromptData;
+    if (targetMedia) {
+      currentPromptData = {
+        polishDescription: targetMedia.prompt,
+        englishPrompt: targetMedia.englishPrompt
+      };
+    } else {
+      currentPromptData = visualizationType === 'video' ? videoPromptData : imagePromptData;
+    }
+
     if (!mediaFeedback.trim() || !currentPromptData) return;
+    
     setIsMediaRefining(true);
-    setAiDetectionLog(""); // Clear old log before new analysis starts
+    setAiDetectionLog(""); 
     try {
       const token = await user.getIdToken();
       
-      // Pass the current media URL if it exists
-      const mediaUrl = generatedImage || generatedVideo;
+      const mediaUrl = targetMedia ? targetMedia.url : (visualizationType === 'video' ? generatedVideo : generatedImage);
+
+      // Important: if v1VisualPrompt is missing (e.g. history session), use current as anchor
+      const anchorPrompt = v1VisualPrompt || currentPromptData;
 
       const response = await axios.post(`${API_BASE_URL}/refine-image-prompt`, 
         { 
-          v1PromptObject: v1VisualPrompt, 
+          v1PromptObject: anchorPrompt, 
           lastPromptObject: currentPromptData,
           instructions: mediaFeedback,
           mediaUrl,
@@ -656,14 +703,11 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
       setAiDetectionLog(vPlan.aiDetectionLog || "");
       setMediaFeedback('');
       
-      // Auto trigger generation
       if (visualizationType === 'video') {
         handleGenerateVideo(vPlan);
       } else {
         handleGenerateImage(vPlan);
       }
-      
-      // DO NOT clear generated media here, keep them visible
     } catch (error) {
       console.error('Refine Media Error:', error);
       handleApiError(error, 'Nie udało się przygotować poprawek dla modelu wizualnego.');
@@ -712,6 +756,7 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
   };
 
   const handleEditHistoryItem = (item) => {
+    setCurrentRecordId(item.id);
     setTopic(item.topic || '');
     setPlatform(item.platform || 'LinkedIn');
     setStyle(item.style || 'Profesjonalny');
@@ -743,20 +788,27 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
       
       const loadedPrompt = {
         polishDescription: item.imagePolishDescription || 'Edytowany projekt',
-        englishPrompt: technicalPrompt || ''
+        englishPrompt: (hasVideo ? item.videoPrompt : item.imagePrompt) || ''
       };
       
       if (activeType === 'video') {
         setVideoPromptData(loadedPrompt);
+        setImagePromptData(null);
       } else {
         setImagePromptData(loadedPrompt);
+        setVideoPromptData(null);
       }
 
-      // Populate mediaHistory from the item
-      const historyMedia = [];
-      if (item.videoUrl) historyMedia.push({ type: 'video', url: item.videoUrl, prompt: item.imagePolishDescription, englishPrompt: item.videoPrompt });
-      if (item.imageUrl) historyMedia.push({ type: 'image', url: item.imageUrl, prompt: item.imagePolishDescription, englishPrompt: item.imagePrompt });
-      setMediaHistory(historyMedia);
+      // Restore mediaHistory from the item's visuals array (or fallback to legacy single fields)
+      if (item.visuals && Array.isArray(item.visuals)) {
+        setMediaHistory(item.visuals);
+      } else {
+        const historyMedia = [];
+        if (item.videoUrl) historyMedia.push({ type: 'video', url: item.videoUrl, prompt: item.imagePolishDescription, englishPrompt: item.videoPrompt });
+        if (item.imageUrl) historyMedia.push({ type: 'image', url: item.imageUrl, prompt: item.imagePolishDescription, englishPrompt: item.imagePrompt });
+        setMediaHistory(historyMedia);
+      }
+      setIsPromptMode(false);
     } else {
       setImagePromptData(null);
       setVideoPromptData(null);
@@ -982,49 +1034,53 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
               onShowHelp={() => setShowHelp(true)}
             />
 
-            <ResultSection 
-              result={result}
-              setResult={setResult}
-              copyToClipboard={copyToClipboard}
-              textFeedback={textFeedback}
-              setTextFeedback={setTextFeedback}
-              isTextRefining={isTextRefining}
-              handleRefineText={handleRefineText}
-              isPromptMode={isPromptMode}
-              setIsPromptMode={setIsPromptMode}
-              imageAspectRatio={imageAspectRatio}
-              setImageAspectRatio={setImageAspectRatio}
-              activeImageLabel={activeImageLabel}
-              setActiveImageLabel={setActiveImageLabel}
-              imageLoading={imageLoading}
-              isReadOnly={isReadOnly}
-              visualizationType={visualizationType}
-              handleGeneratePrompt={handleGeneratePrompt}
-              handleGenerateVideo={handleGenerateVideo}
-              videoAspectRatio={videoAspectRatio}
-              setVideoAspectRatio={setVideoAspectRatio}
-              activeVideoLabel={activeVideoLabel}
-              setActiveVideoLabel={setActiveVideoLabel}
-              isVisualSyncing={isVisualSyncing}
-              handleSyncVisualPrompt={handleSyncVisualPrompt}
-              handleGenerateImage={handleGenerateImage}
-              generatedImage={generatedImage}
-              setGeneratedImage={setGeneratedImage}
-              generatedVideo={generatedVideo}
-              setGeneratedVideo={setGeneratedVideo}
-              mediaFeedback={mediaFeedback}
-              setMediaFeedback={setMediaFeedback}
-              isMediaRefining={isMediaRefining}
-              handleRefineMedia={handleRefineMedia}
-              imagePromptData={imagePromptData}
-              setImagePromptData={setImagePromptData}
-              videoPromptData={videoPromptData}
-              setVideoPromptData={setVideoPromptData}
-              mediaHistory={mediaHistory}
-              setMediaHistory={setMediaHistory}
-              aiDetectionLog={aiDetectionLog}
-              setAiDetectionLog={setAiDetectionLog}
-            />
+            <div ref={resultSectionRef}>
+              <ResultSection 
+                result={result}
+                setResult={setResult}
+                copyToClipboard={copyToClipboard}
+                textFeedback={textFeedback}
+                setTextFeedback={setTextFeedback}
+                isTextRefining={isTextRefining}
+                handleRefineText={handleRefineText}
+                isPromptMode={isPromptMode}
+                setIsPromptMode={setIsPromptMode}
+                imageAspectRatio={imageAspectRatio}
+                setImageAspectRatio={setImageAspectRatio}
+                activeImageLabel={activeImageLabel}
+                setActiveImageLabel={setActiveImageLabel}
+                imageLoading={imageLoading}
+                isReadOnly={isReadOnly}
+                visualizationType={visualizationType}
+                handleGeneratePrompt={handleGeneratePrompt}
+                handleGenerateVideo={handleGenerateVideo}
+                videoAspectRatio={videoAspectRatio}
+                setVideoAspectRatio={setVideoAspectRatio}
+                activeVideoLabel={activeVideoLabel}
+                setActiveVideoLabel={setActiveVideoLabel}
+                isVisualSyncing={isVisualSyncing}
+                handleSyncVisualPrompt={handleSyncVisualPrompt}
+                handleGenerateImage={handleGenerateImage}
+                generatedImage={generatedImage}
+                setGeneratedImage={setGeneratedImage}
+                generatedVideo={generatedVideo}
+                setGeneratedVideo={setGeneratedVideo}
+                mediaFeedback={mediaFeedback}
+                setMediaFeedback={setMediaFeedback}
+                isMediaRefining={isMediaRefining}
+                handleRefineMedia={handleRefineMedia}
+                imagePromptData={imagePromptData}
+                setImagePromptData={setImagePromptData}
+                videoPromptData={videoPromptData}
+                setVideoPromptData={setVideoPromptData}
+                mediaHistory={mediaHistory}
+                setMediaHistory={setMediaHistory}
+                aiDetectionLog={aiDetectionLog}
+                setAiDetectionLog={setAiDetectionLog}
+                API_BASE_URL={API_BASE_URL}
+                handleReset={handleReset}
+              />
+            </div>
           </>
         )}
 

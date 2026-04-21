@@ -37,9 +37,38 @@ const ResultSection = ({
   mediaHistory,
   setMediaHistory,
   aiDetectionLog,
-  setAiDetectionLog
+  setAiDetectionLog,
+  setGeneratedImage,
+  setGeneratedVideo,
+  API_BASE_URL,
+  handleReset
 }) => {
   const [mediaTab, setMediaTab] = useState('image');
+  const [isModified, setIsModified] = useState(false);
+  const [isSyncSuccess, setIsSyncSuccess] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  const onSyncClick = async () => {
+    try {
+      await handleSyncVisualPrompt();
+      setIsSyncSuccess(true);
+      setIsModified(false);
+    } catch (error) {
+      console.error("Sync error:", error);
+    }
+  };
+
+  const handleDownload = (url, type) => {
+    // Use backend proxy to bypass CORS and force download
+    const proxyUrl = `${API_BASE_URL}/download-proxy?url=${encodeURIComponent(url)}`;
+    
+    const link = document.createElement('a');
+    link.href = proxyUrl;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
   const currentPromptData = mediaTab === 'video' ? videoPromptData : imagePromptData;
   const setCurrentPromptData = mediaTab === 'video' ? setVideoPromptData : setImagePromptData;
   if (!result) return null;
@@ -87,6 +116,11 @@ const ResultSection = ({
             )}
           </button>
         </div>
+      </div>
+
+      {/* Visualization Section */}
+      <div className="glass" style={{ padding: '2.5rem', borderRadius: '30px', background: 'var(--bg-white)', border: 'none', animation: 'fadeIn 0.5s ease-out 0.2s both' }}>
+        <h3 style={{ color: 'var(--color-primary)', fontWeight: '700', marginBottom: '1.5rem' }}>Utwórz wizualizacje</h3>
         
         {/* Media Tab Bar */}
           <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
@@ -125,7 +159,7 @@ const ResultSection = ({
           </div>
           {/* Graphic Options */}
         {(!currentPromptData) && (
-          <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem' }}>
+          <div style={{ marginTop: '1rem' }}>
             
             {/* Image Generation Block */}
             {mediaTab === 'image' && ( <> <div style={{ marginBottom: '2.5rem' }}>
@@ -134,34 +168,62 @@ const ResultSection = ({
               </label>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.8rem', marginBottom: '1.2rem' }}>
                 {[
-                  { id: '1:1', label: 'crop_square', tip: 'Post' },
-                  { id: '4:5', label: 'portrait', tip: 'Portret' },
-                  { id: '9:16', label: 'smartphone', tip: 'Story' },
-                  { id: '16:9', label: 'desktop_windows', tip: 'Poziom' }
+                  { id: '1:1', label: 'crop_square', tip: 'Post', color: 'var(--color-primary)', desc: 'Idealny na Instagram Feed i Facebook. Klasyczny, uniwersalny kwadrat.' },
+                  { id: '4:5', label: 'portrait', tip: 'Portret', color: 'var(--color-info)', desc: 'Najlepszy zasięg na Instagramie. Zajmuje więcej miejsca na ekranie.' },
+                  { id: '9:16', label: 'smartphone', tip: 'Story', color: '#38bdf8', desc: 'Standard dla TikTok, Reels i Instagram Stories. Pełny ekran pionowy.' },
+                  { id: '16:9', label: 'desktop_windows', tip: 'Poziom', color: '#818cf8', desc: 'Idealny na YouTube, LinkedIn i Twitter (X). Format profesjonalny.' }
                 ].map(format => (
-                  <button
-                    key={format.id}
-                    onClick={() => {
-                      setImageAspectRatio(format.id);
-                      setActiveImageLabel(format.tip);
-                    }}
-                    style={{
-                      padding: '0.8rem 0.4rem',
-                      borderRadius: '15px',
-                      border: activeImageLabel === format.tip ? '2px solid var(--color-primary)' : '1px solid var(--border-color)',
-                      background: activeImageLabel === format.tip ? 'var(--bg-white)' : 'var(--bg-app)',
-                      color: 'var(--text-main)',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: '0.4rem',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    <span className="material-icons" style={{ fontSize: '1.3rem', color: activeImageLabel === format.tip ? 'var(--color-primary)' : 'var(--text-muted)' }}>{format.label}</span>
-                    <span style={{ fontSize: '0.65rem', fontWeight: '700' }}>{format.tip}</span>
-                  </button>
+                  <div key={format.id} style={{ position: 'relative' }} className="format-container">
+                    <button
+                      onClick={() => {
+                        setImageAspectRatio(format.id);
+                        setActiveImageLabel(format.tip);
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '0.8rem 0.4rem',
+                        borderRadius: '15px',
+                        border: activeImageLabel === format.tip ? `2px solid ${format.color}` : '1px solid var(--border-color)',
+                        background: activeImageLabel === format.tip ? 'var(--bg-white)' : 'var(--bg-app)',
+                        color: 'var(--text-main)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <span className="material-icons" style={{ fontSize: '1.3rem', color: activeImageLabel === format.tip ? format.color : 'var(--text-muted)' }}>{format.label}</span>
+                      <span style={{ fontSize: '0.65rem', fontWeight: '700' }}>{format.tip}</span>
+                    </button>
+                    <div className="format-info-trigger" style={{ position: 'absolute', top: '8px', right: '8px', cursor: 'help', color: format.color, opacity: 0.8 }}>
+                      <span className="material-icons" style={{ fontSize: '1.2rem' }}>info</span>
+                      <div className="format-tooltip" style={{
+                        position: 'absolute',
+                        bottom: '130%',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        width: '240px',
+                        background: 'var(--bg-card)',
+                        color: 'var(--text-main)',
+                        padding: '1rem',
+                        borderRadius: '16px',
+                        fontSize: '0.9rem',
+                        boxShadow: 'var(--shadow-lg)',
+                        border: `1px solid ${format.color}`,
+                        pointerEvents: 'none',
+                        opacity: 0,
+                        transition: 'all 0.3s ease',
+                        zIndex: 100,
+                        textAlign: 'center',
+                        lineHeight: '1.5'
+                      }}>
+                        <strong style={{ color: format.color, display: 'block', marginBottom: '0.3rem' }}>{format.tip}</strong>
+                        {format.desc}
+                      </div>
+                    </div>
+                  </div>
                 ))}
               </div>
               <button 
@@ -189,34 +251,62 @@ const ResultSection = ({
               </label>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.8rem', marginBottom: '1.2rem' }}>
                 {[
-                  { id: '9:16', label: 'movie', tip: 'Reels / TikTok 9:16' },
-                  { id: '9:16', label: 'history', tip: 'Stories 9:16' },
-                  { id: '4:5', label: 'portrait', tip: 'Feed (Post) 4:5' },
-                  { id: '1:1', label: 'crop_square', tip: 'Feed (Post) 1:1' }
+                  { id: '9:16', label: 'movie', tip: 'Reels / TikTok', color: '#38bdf8', desc: 'Idealny format dla krótkich wideo pionowych. Maksymalizuje zasięg na telefonach.' },
+                  { id: '9:16', label: 'history', tip: 'Stories', color: 'var(--color-primary)', desc: 'Standardowy format 9:16 dla relacji na Instagramie i Facebooku.' },
+                  { id: '4:5', label: 'portrait', tip: 'Feed (Pion)', color: 'var(--color-info)', desc: 'Zajmuje więcej miejsca w przewijanym kanale niż kwadrat.' },
+                  { id: '1:1', label: 'crop_square', tip: 'Feed (Kwadrat)', color: '#818cf8', desc: 'Klasyczny format kwadratowy, bezpieczny wybór dla każdego kanału.' }
                 ].map((format, idx) => (
-                  <button
-                    key={`${format.id}-${idx}`}
-                    onClick={() => {
-                      setVideoAspectRatio(format.id);
-                      setActiveVideoLabel(format.tip);
-                    }}
-                    style={{
-                      padding: '0.8rem 0.4rem',
-                      borderRadius: '15px',
-                      border: activeVideoLabel === format.tip ? '2px solid var(--color-primary)' : '1px solid var(--border-color)',
-                      background: activeVideoLabel === format.tip ? 'var(--bg-white)' : 'var(--bg-app)',
-                      color: 'var(--text-main)',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: '0.4rem',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    <span className="material-icons" style={{ fontSize: '1.3rem', color: activeVideoLabel === format.tip ? 'var(--color-primary)' : 'var(--text-muted)' }}>{format.label}</span>
-                    <span style={{ fontSize: '0.65rem', fontWeight: '700' }}>{format.tip}</span>
-                  </button>
+                  <div key={`${format.id}-${idx}`} style={{ position: 'relative' }} className="format-container">
+                    <button
+                      onClick={() => {
+                        setVideoAspectRatio(format.id);
+                        setActiveVideoLabel(format.tip);
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '0.8rem 0.4rem',
+                        borderRadius: '15px',
+                        border: activeVideoLabel === format.tip ? `2px solid ${format.color}` : '1px solid var(--border-color)',
+                        background: activeVideoLabel === format.tip ? 'var(--bg-white)' : 'var(--bg-app)',
+                        color: 'var(--text-main)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <span className="material-icons" style={{ fontSize: '1.3rem', color: activeVideoLabel === format.tip ? format.color : 'var(--text-muted)' }}>{format.label}</span>
+                      <span style={{ fontSize: '0.65rem', fontWeight: '700' }}>{format.tip}</span>
+                    </button>
+                    <div className="format-info-trigger" style={{ position: 'absolute', top: '8px', right: '8px', cursor: 'help', color: format.color, opacity: 0.8 }}>
+                      <span className="material-icons" style={{ fontSize: '1.2rem' }}>info</span>
+                      <div className="format-tooltip" style={{
+                        position: 'absolute',
+                        bottom: '130%',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        width: '240px',
+                        background: 'var(--bg-card)',
+                        color: 'var(--text-main)',
+                        padding: '1rem',
+                        borderRadius: '16px',
+                        fontSize: '0.9rem',
+                        boxShadow: 'var(--shadow-lg)',
+                        border: `1px solid ${format.color}`,
+                        pointerEvents: 'none',
+                        opacity: 0,
+                        transition: 'all 0.3s ease',
+                        zIndex: 100,
+                        textAlign: 'center',
+                        lineHeight: '1.5'
+                      }}>
+                        <strong style={{ color: format.color, display: 'block', marginBottom: '0.3rem' }}>{format.tip}</strong>
+                        {format.desc}
+                      </div>
+                    </div>
+                  </div>
                 ))}
               </div>
               <button 
@@ -251,7 +341,11 @@ const ResultSection = ({
               <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem', fontWeight: '700' }}>OPIS (PL) - Możesz edytować:</label>
               <textarea 
                 value={currentPromptData.polishDescription || ''}
-                onChange={(e) => setCurrentPromptData(prev => ({ ...prev, polishDescription: e.target.value }))}
+                onChange={(e) => {
+                  setCurrentPromptData(prev => ({ ...prev, polishDescription: e.target.value }));
+                  setIsModified(true);
+                  setIsSyncSuccess(false);
+                }}
                 style={{ 
                   width: '100%',
                   minHeight: '100px', 
@@ -259,46 +353,44 @@ const ResultSection = ({
                   background: 'var(--bg-white)',
                   color: 'var(--text-main)',
                   padding: '1rem',
-                  border: '1px solid var(--border-color)',
-                  borderRadius: '15px'
-                }}
-              />
-            </div>
-
-            {/* English Technical Prompt (View/Sync) */}
-            <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem', fontWeight: '700' }}>TECHNICZNY PROMPT (EN):</label>
-              <textarea 
-                value={currentPromptData.englishPrompt || ''}
-                readOnly
-                style={{ 
-                  width: '100%',
-                  minHeight: '120px', 
-                  fontSize: '0.85rem', 
-                  background: 'rgba(0,0,0,0.05)',
-                  color: 'var(--text-main)',
-                  padding: '1rem',
-                  border: '1px solid var(--border-color)',
+                  border: isSyncSuccess ? '1px solid #10b981' : '1px solid var(--border-color)',
                   borderRadius: '15px',
-                  fontFamily: 'monospace'
+                  transition: 'border 0.3s ease'
                 }}
               />
               <button 
-                onClick={handleSyncVisualPrompt}
-                disabled={isVisualSyncing || isReadOnly}
+                onClick={onSyncClick}
+                disabled={isVisualSyncing || isReadOnly || !isModified}
                 className="btn-secondary"
-                style={{ width: '100%', marginTop: '0.8rem', padding: '0.8rem', borderRadius: '12px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                style={{ 
+                  width: '100%', 
+                  marginTop: '0.8rem', 
+                  padding: '0.7rem', 
+                  borderRadius: '12px', 
+                  fontSize: '0.85rem', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  gap: '0.5rem',
+                  border: isSyncSuccess ? '1px solid #10b981' : (isModified ? '1px solid var(--color-primary)' : '1px solid var(--border-color)'),
+                  color: isSyncSuccess ? '#10b981' : (isModified ? 'var(--color-primary)' : 'var(--text-muted)'),
+                  background: isSyncSuccess ? 'rgba(16, 185, 129, 0.05)' : 'none',
+                  cursor: isModified ? 'pointer' : 'default',
+                  transition: 'all 0.3s ease'
+                }}
               >
                 {isVisualSyncing ? <span className="spinner"></span> : (
                   <>
-                    <span className="material-icons" style={{ fontSize: '1.1rem' }}>sync</span>
-                    Dostosuj instrukcje techniczne (EN) do moich zmian
+                    <span className="material-icons" style={{ fontSize: '1.1rem' }}>
+                      {isSyncSuccess ? 'check_circle' : 'auto_fix_high'}
+                    </span>
+                    {isSyncSuccess ? 'Zmiany zapisane' : 'Zastosuj zmiany w opisie'}
                   </>
                 )}
               </button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1.5rem' }}>
               <button onClick={() => setCurrentPromptData(null)} className="btn-secondary" style={{ padding: '0.8rem', borderRadius: '15px' }}>
                 Anuluj
               </button>
@@ -387,12 +479,80 @@ const ResultSection = ({
                   >
                     Usuń tę wersję
                   </button>
-                  <a href={media.url} target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ flex: 1.5, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '15px', fontSize: '0.85rem' }} download>
+                  <button 
+                    onClick={() => handleDownload(media.url, media.type)} 
+                    className="btn-primary" 
+                    style={{ flex: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '15px', fontSize: '0.85rem', cursor: 'pointer', border: 'none' }}
+                  >
+                    <span className="material-icons" style={{ fontSize: '1.2rem', marginRight: '0.5rem' }}>download</span>
                     Pobierz {media.type === 'video' ? 'Wideo' : 'Obraz'}
-                  </a>
+                  </button>
                 </div>
+
+                {/* Integrated Refinement Panel (Only for the latest version) */}
+                {idx === mediaHistory.filter(m => m.type === mediaTab).length - 1 && visualizationType === mediaTab && currentPromptData && (
+                  <div style={{ 
+                    marginTop: '1.5rem', 
+                    paddingTop: '1.5rem', 
+                    borderTop: '1px solid var(--border-color)',
+                    textAlign: 'left'
+                  }}>
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
+                      <div style={{ flex: 1 }}>
+                        <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-primary)', marginBottom: '0.6rem', fontWeight: '800' }}>
+                          <span className="material-icons" style={{ fontSize: '1.1rem', verticalAlign: 'middle', marginRight: '0.5rem' }}>auto_fix_high</span>
+                          Udoskonal ten projekt:
+                        </label>
+                        <textarea 
+                          value={mediaFeedback}
+                          onChange={(e) => setMediaFeedback(e.target.value)}
+                          placeholder="np. zmień kolorystykę, dodaj więcej detali, zmień postać..."
+                          style={{ 
+                            width: '100%', 
+                            minHeight: '80px', 
+                            padding: '1rem', 
+                            fontSize: '0.9rem', 
+                            borderRadius: '15px', 
+                            border: '1px solid var(--border-color)', 
+                            background: 'var(--bg-white)', 
+                            color: 'var(--text-main)', 
+                            resize: 'none' 
+                          }}
+                          disabled={isMediaRefining}
+                        />
+                      </div>
+                      <button 
+                        onClick={() => handleRefineMedia(idx)}
+                        disabled={!mediaFeedback.trim() || isMediaRefining}
+                        className="btn-primary"
+                        style={{ 
+                          width: '120px',
+                          height: '80px',
+                          borderRadius: '15px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '0.4rem',
+                          background: 'linear-gradient(135deg, var(--color-primary), #00d2ff)'
+                        }}
+                      >
+                        {isMediaRefining ? <span className="spinner"></span> : (
+                          <>
+                            <span className="material-icons" style={{ fontSize: '1.4rem' }}>auto_awesome</span>
+                            <span style={{ fontSize: '0.75rem', fontWeight: '800' }}>Zastosuj</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
+
+            <button onClick={handleReset} className="btn-secondary" style={{ width: '100%', padding: '0.8rem', borderRadius: '15px', marginTop: '1rem' }}>
+              Zapisz projekt
+            </button>
 
             {/* Loading Placeholder for new media refinement/generation */}
             {visualizationType === mediaTab && (isMediaRefining || imageLoading) && (
@@ -428,67 +588,9 @@ const ResultSection = ({
                   </p>
                 </div>
 
-                {aiDetectionLog && (
-                  <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.8rem 1rem', borderRadius: '12px', width: '100%', maxWidth: '400px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem', opacity: 0.6 }}>
-                      <span className="material-icons" style={{ fontSize: '0.8rem' }}>terminal</span>
-                      <span style={{ fontSize: '0.65rem', fontWeight: '800', textTransform: 'uppercase' }}>Otrzymano raport audytu:</span>
-                    </div>
-                    <p style={{ margin: 0, fontSize: '0.75rem', color: '#4ade80', fontFamily: 'monospace', lineHeight: '1.4' }}>
-                      {aiDetectionLog}
-                    </p>
-                  </div>
-                )}
               </div>
             )}
             
-            {/* AI Detection Log (Technical Feedback) */}
-            {visualizationType === mediaTab && aiDetectionLog && (
-              <div style={{ background: 'rgba(0,0,0,0.2)', borderLeft: '3px solid var(--color-primary)', padding: '0.8rem 1.2rem', borderRadius: '10px', marginTop: '1rem', animation: 'fadeIn 0.5s ease-out' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.3rem', opacity: 0.7 }}>
-                  <span className="material-icons" style={{ fontSize: '0.9rem' }}>terminal</span>
-                  <span style={{ fontSize: '0.7rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Raport Analizy Wizualnej</span>
-                  <button onClick={() => setAiDetectionLog("")} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0 }}>
-                    <span className="material-icons" style={{ fontSize: '1rem' }}>close</span>
-                  </button>
-                </div>
-                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-main)', fontFamily: 'monospace', lineHeight: '1.4' }}>
-                  {aiDetectionLog}
-                </p>
-              </div>
-            )}
-            
-            {/* Media Refinement Field (Sticky at the bottom of the list) */}
-            {visualizationType === mediaTab && currentPromptData && (
-              <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'flex-start', background: 'var(--bg-app)', padding: '1.5rem', borderRadius: '25px', border: '1px solid var(--color-primary)', marginTop: '1rem', textAlign: 'left', boxShadow: 'var(--shadow-lg)' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-primary)', marginBottom: '0.6rem', fontWeight: '800' }}>
-                    <span className="material-icons" style={{ fontSize: '1rem', verticalAlign: 'middle', marginRight: '0.4rem' }}>auto_fix_high</span>
-                    Zaproponuj poprawki do ostatniej wersji:
-                  </label>
-                  <textarea 
-                    value={mediaFeedback}
-                    onChange={(e) => setMediaFeedback(e.target.value)}
-                    placeholder="np. zmień postać na kobietę, niech tło będzie bardziej słoneczne..."
-                    style={{ width: '100%', minHeight: '80px', padding: '1rem', fontSize: '0.95rem', borderRadius: '15px', border: '1px solid var(--border-color)', background: 'var(--bg-white)', color: 'var(--text-main)', resize: 'vertical' }}
-                    disabled={isMediaRefining}
-                  />
-                </div>
-                <button 
-                  onClick={handleRefineMedia}
-                  disabled={!mediaFeedback.trim() || isMediaRefining}
-                  className="btn-primary"
-                  style={{ padding: '1rem 2rem', borderRadius: '15px', alignSelf: 'stretch', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', minWidth: '130px' }}
-                >
-                  {isMediaRefining ? <span className="spinner"></span> : (
-                    <>
-                      <span className="material-icons" style={{ fontSize: '1.5rem' }}>draw</span>
-                      Zastosuj
-                    </>
-                  )}
-                </button>
-              </div>
-            )}
           </div>
         )}
       </div>

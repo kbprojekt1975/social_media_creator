@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import heroImage from '../assets/hero.png'
 import InteractiveDemo from './InteractiveDemo'
+import HelpModal from './generator/HelpModal'
 
 const LandingPage = () => {
   const [isDarkMode, setIsDarkMode] = useState(true);
+  const [showHelp, setShowHelp] = useState(false);
 
   useEffect(() => {
     // Default to dark mode as suggested
@@ -18,7 +20,7 @@ const LandingPage = () => {
   return (
     <div className="landing-page" style={{ overflowX: 'hidden' }}>
       {/* Navigation */}
-      <nav className="glass" style={{
+      <nav style={{
         position: 'fixed',
         top: '20px',
         left: '50%',
@@ -30,7 +32,10 @@ const LandingPage = () => {
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        zIndex: 1000
+        zIndex: 1000,
+        backgroundColor: 'var(--bg-app)',
+        border: '1px solid var(--border-color)',
+        boxShadow: '0 10px 30px rgba(0,0,0,0.3)'
       }}>
         <div className="logo" style={{ fontWeight: '700', fontSize: '1.5rem', letterSpacing: '-1px' }}>
           SOCIAL<span className="gradient-text">CREATOR</span>
@@ -40,10 +45,32 @@ const LandingPage = () => {
           <a href="#showcase" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>Możliwości</a>
           <button 
             onClick={() => setIsDarkMode(!isDarkMode)}
-            style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer', fontSize: '1.2rem' }}
+            style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer', fontSize: '1.2rem', display: 'flex', alignItems: 'center' }}
+            title="Przełącz tryb"
           >
             {isDarkMode ? '☀️' : '🌙'}
           </button>
+          <button 
+             onClick={() => setShowHelp(true)}
+             style={{ 
+               background: 'rgba(56, 189, 248, 0.1)', 
+               border: '1px solid rgba(56, 189, 248, 0.3)', 
+               color: '#38bdf8', 
+               cursor: 'pointer', 
+               width: '40px', 
+               height: '40px', 
+               borderRadius: '50%', 
+               display: 'flex', 
+               alignItems: 'center', 
+               justifyContent: 'center',
+               transition: 'all 0.3s ease'
+             }}
+             onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(56, 189, 248, 0.2)'}
+             onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(56, 189, 248, 0.1)'}
+             title="Jak to działa?"
+           >
+             <span className="material-icons" style={{ fontSize: '1.4rem' }}>info</span>
+           </button>
           <Link to="/login" className="btn-primary" style={{ boxShadow: '0 0 15px var(--primary-glow)' }}>
             Rozpocznij
           </Link>
@@ -181,9 +208,10 @@ const LandingPage = () => {
           Zacznij tworzyć
         </Link>
       </section>
+
+      {showHelp && <HelpModal isOpen={true} onClose={() => setShowHelp(false)} />}
     </div>
   )
 }
 
 export default LandingPage
-

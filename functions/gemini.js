@@ -22,14 +22,16 @@ function initGemini() {
 /**
  * Helper to call Gemini with retry logic for 429 errors.
  */
-async function withRetry(fn, maxRetries = 3, delay = 2000) {
+async function withRetry(fn, maxRetries = 5, delay = 4000) {
   let lastError;
   for (let i = 0; i < maxRetries; i++) {
     try {
       return await fn();
     } catch (error) {
       lastError = error;
-      const isRateLimit = error.message?.includes("429") || error.message?.includes("Resource exhausted");
+      const errorMsg = error.message?.toLowerCase() || "";
+      const isRateLimit = errorMsg.includes("429") || errorMsg.includes("resource exhausted") || errorMsg.includes("too many requests");
+      
       if (isRateLimit && i < maxRetries - 1) {
         console.warn(`[Gemini Retry] Rate limit hit (429). Retrying in ${delay}ms... (Attempt ${i + 1}/${maxRetries})`);
         await new Promise(res => setTimeout(res, delay));
@@ -72,7 +74,7 @@ async function generatePostPlan({ platform, topic, style = "engaging", workspace
   const ai = initGemini();
   if (!ai) throw new Error("Gemini API not initialized.");
   
-  const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+  const model = ai.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
   const rules = PLATFORM_RULES[platform] || PLATFORM_RULES['Default'];
 
   const prompt = `
@@ -153,7 +155,7 @@ async function syncEnglishPrompt({ polishPlan, platform, topic, style, workspace
   const ai = initGemini();
   if (!ai) throw new Error("Gemini API not initialized.");
   
-  const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+  const model = ai.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
   
   const prompt = `
     You are an expert Prompt Engineer. 
@@ -204,7 +206,7 @@ async function generatePost({ platform, topic, style = "engaging", plannedPrompt
   const ai = initGemini();
   if (!ai) throw new Error("Gemini API not initialized.");
   
-  const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+  const model = ai.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
   const rules = PLATFORM_RULES[platform] || PLATFORM_RULES['Default'];
 
   let prompt;
@@ -274,7 +276,7 @@ async function generateVisualPrompt(postContent, aspectRatio = '1:1', platform =
   const ai = initGemini();
   if (!ai) throw new Error("Gemini API not initialized.");
 
-  const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+  const model = ai.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
   const aesthetic = IMAGE_AESTHETICS[platform] || IMAGE_AESTHETICS['Default'];
 
   const prompt = `
@@ -327,7 +329,7 @@ async function translateToTechnicalPrompt(polishPrompt, type = 'image', aspectRa
   const ai = initGemini();
   if (!ai) throw new Error("Gemini API not initialized.");
 
-  const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+  const model = ai.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
   const prompt = `
     Transform the following Polish visual description into a high-end, technical English prompt for ${type === 'video' ? 'Veo 3.1 Video Generator' : 'Nano Banana Image Generator'}.
@@ -365,7 +367,7 @@ async function refinePost(originalPost, instructions, workspaceContext = null) {
   const ai = initGemini();
   if (!ai) throw new Error("Gemini API not initialized.");
   
-  const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+  const model = ai.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
   const prompt = `
     Jesteś profesjonalnym Social Media Managerem.
@@ -413,7 +415,7 @@ async function refineVisualPrompt(v1PromptObject, lastPromptObject, instructions
   const ai = initGemini();
   if (!ai) throw new Error("Gemini API not initialized.");
 
-  const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+  const model = ai.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
   let promptParts = [];
 
@@ -499,7 +501,7 @@ async function syncVisualPrompt({ polishDescription, aspectRatio = '1:1', type =
   const ai = initGemini();
   if (!ai) throw new Error("Gemini API not initialized.");
 
-  const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+  const model = ai.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
   const prompt = `
     Transform the following Polish visual description into a high-end, technical English prompt for ${type === 'video' ? 'Veo 3.1 Video Generator' : 'Nano Banana Image Generator'}.
@@ -641,7 +643,7 @@ async function generateCampaignPlan(data) {
   const ai = initGemini();
   if (!ai) throw new Error("Gemini API not initialized.");
   
-  const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+  const model = ai.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
   const platformRules = platforms.map(p => `[${p}]: ${PLATFORM_RULES[p] || PLATFORM_RULES['Default']}`).join('\n');
 
@@ -721,7 +723,7 @@ async function refineCampaignGoal(rawGoal) {
   const ai = initGemini();
   if (!ai) throw new Error("Gemini API not initialized.");
   
-  const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+  const model = ai.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
   const prompt = `
     Jesteś ekspertem od strategii marketingowej. Użytkownik podał własny cel kampanii, który może być niejasny lub mało profesjonalny.
@@ -761,7 +763,7 @@ async function refineProductDescription(rawDescription) {
   const ai = initGemini();
   if (!ai) throw new Error("Gemini API not initialized.");
   
-  const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+  const model = ai.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
   const prompt = `
     Jesteś copywriterem sprzedażowym. Użytkownik podał opis swojego produktu lub usługi.
@@ -791,7 +793,7 @@ async function refineUSP(rawUSP) {
   const ai = initGemini();
   if (!ai) throw new Error("Gemini API not initialized.");
   
-  const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+  const model = ai.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
   const prompt = `
     Jesteś ekspertem od brandingu. Użytkownik podał swoje USP (Unique Selling Proposition).
@@ -814,6 +816,6 @@ async function refineUSP(rawUSP) {
   }
 }
 
-module.exports = { generatePost, generatePostPlan, syncEnglishPrompt, generateVisualPrompt, translateToTechnicalPrompt, generateNanoBananaImage, generateVeoVideo, refinePost, refineVisualPrompt, generateCampaignPlan, refineCampaignGoal, refineProductDescription, refineUSP };
+module.exports = { generatePost, generatePostPlan, syncEnglishPrompt, generateVisualPrompt, syncVisualPrompt, translateToTechnicalPrompt, generateNanoBananaImage, generateVeoVideo, refinePost, refineVisualPrompt, generateCampaignPlan, refineCampaignGoal, refineProductDescription, refineUSP };
 
 

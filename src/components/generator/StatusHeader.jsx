@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 const StatusHeader = ({ 
   user, 
@@ -13,6 +13,20 @@ const StatusHeader = ({
   deferredPrompt,
   setDeferredPrompt
 }) => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setIsMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const handleInstallClick = async () => {
     if (!deferredPrompt) return;
     deferredPrompt.prompt();
@@ -20,7 +34,9 @@ const StatusHeader = ({
     if (outcome === 'accepted') {
       setDeferredPrompt(null);
     }
+    setIsMenuOpen(false);
   };
+
   return (
     <header style={{
       display: 'flex',
@@ -35,8 +51,8 @@ const StatusHeader = ({
         SOCIAL<span style={{ color: '#2a8ca8' }}>CREATOR</span>
       </div>
       
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-        {/* Status Pill */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        {/* Status Pill - Keep this visible */}
         <div className="glass" style={{ 
           padding: '0.4rem 0.6rem 0.4rem 1.2rem', 
           borderRadius: '40px', 
@@ -60,7 +76,7 @@ const StatusHeader = ({
                 />
               </svg>
             </div>
-            <span style={{ color: 'var(--text-muted)' }}>Status konta: <span style={{ fontWeight: '600', color: '#4ade80' }}>{perc.toFixed(0)}%</span></span>
+            <span style={{ color: 'var(--text-muted)', fontWeight: '500' }}>Balans: <span style={{ color: '#4ade80', fontWeight: '700' }}>{perc.toFixed(1)}%</span></span>
           </div>
 
           {showTooltip && (
@@ -91,67 +107,119 @@ const StatusHeader = ({
           )}
         </div>
 
-        <span style={{ color: 'var(--text-main)', fontSize: '0.9rem', fontWeight: '500' }}>{user?.email}</span>
-        
-        {deferredPrompt && (
+        {/* User Profile Dropdown */}
+        <div ref={menuRef} style={{ position: 'relative' }}>
           <button 
-            onClick={handleInstallClick}
-            className="btn-primary"
-            style={{ 
-              padding: '0.6rem 1.2rem', 
-              borderRadius: '30px', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '0.5rem',
-              background: 'linear-gradient(135deg, #4ade80, #22c55e)',
-              boxShadow: '0 4px 10px rgba(34, 197, 94, 0.3)'
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            style={{
+              width: '45px',
+              height: '45px',
+              borderRadius: '50%',
+              background: isMenuOpen ? 'var(--color-primary)' : 'var(--bg-card)',
+              border: '1px solid var(--border-color)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              color: isMenuOpen ? 'white' : 'var(--text-main)',
+              boxShadow: isMenuOpen ? '0 0 15px rgba(var(--color-primary-rgb), 0.3)' : 'none'
             }}
           >
-            <span className="material-icons" style={{ fontSize: '1.2rem' }}>download_for_offline</span>
-            Zainstaluj
+            <span className="material-icons" style={{ fontSize: '1.8rem' }}>account_circle</span>
           </button>
-        )}
 
-        <button 
-          onClick={onShowHelp}
-          className="btn-secondary"
-          style={{ 
-            padding: '0.6rem', 
-            borderRadius: '50%', 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center',
-            width: '40px',
-            height: '40px',
-            color: 'var(--color-primary)'
-          }}
-          title="Pomoc i Przewodnik"
-        >
-          <span className="material-icons" style={{ fontSize: '1.4rem' }}>info</span>
-        </button>
+          {isMenuOpen && (
+            <div className="glass" style={{
+              position: 'absolute',
+              top: '120%',
+              right: 0,
+              width: '280px',
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '20px',
+              padding: '1rem',
+              boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
+              zIndex: 100,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.5rem'
+            }}>
+              <div style={{ padding: '0.5rem', borderBottom: '1px solid var(--border-color)', marginBottom: '0.5rem' }}>
+                <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Zalogowano jako</p>
+                <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.95rem', fontWeight: '600', color: 'var(--text-main)', wordBreak: 'break-all' }}>{user?.email}</p>
+              </div>
 
-        <button 
-          onClick={() => setIsDark(!isDark)}
-          className="btn-secondary"
-          style={{ 
-            padding: '0.6rem', 
-            borderRadius: '50%', 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center',
-            width: '40px',
-            height: '40px'
-          }}
-          title={isDark ? "Przełącz na tryb jasny" : "Przełącz na tryb ciemny"}
-        >
-          <span className="material-icons" style={{ fontSize: '1.4rem', color: isDark ? '#fbbf24' : '#64748b' }}>
-            {isDark ? 'light_mode' : 'dark_mode'}
-          </span>
-        </button>
+              <button 
+                onClick={() => { setIsDark(!isDark); setIsMenuOpen(false); }}
+                className="btn-secondary"
+                style={{ 
+                  width: '100%', 
+                  justifyContent: 'flex-start', 
+                  gap: '1rem', 
+                  padding: '0.8rem 1rem',
+                  borderRadius: '12px'
+                }}
+              >
+                <span className="material-icons" style={{ color: isDark ? '#fbbf24' : '#64748b' }}>
+                  {isDark ? 'light_mode' : 'dark_mode'}
+                </span>
+                {isDark ? 'Tryb jasny' : 'Tryb ciemny'}
+              </button>
 
-        <button onClick={handleLogout} className="btn-secondary" style={{ padding: '0.6rem 1.4rem' }}>
-          Wyloguj
-        </button>
+              <button 
+                onClick={() => { onShowHelp(); setIsMenuOpen(false); }}
+                className="btn-secondary"
+                style={{ 
+                  width: '100%', 
+                  justifyContent: 'flex-start', 
+                  gap: '1rem', 
+                  padding: '0.8rem 1rem',
+                  borderRadius: '12px'
+                }}
+              >
+                <span className="material-icons" style={{ color: 'var(--color-primary)' }}>info</span>
+                Pomoc i instrukcja
+              </button>
+
+              {deferredPrompt && (
+                <button 
+                  onClick={handleInstallClick}
+                  className="btn-primary"
+                  style={{ 
+                    width: '100%', 
+                    justifyContent: 'flex-start', 
+                    gap: '1rem', 
+                    padding: '0.8rem 1rem',
+                    borderRadius: '12px',
+                    background: 'linear-gradient(135deg, #4ade80, #22c55e)'
+                  }}
+                >
+                  <span className="material-icons">download_for_offline</span>
+                  Zainstaluj aplikację
+                </button>
+              )}
+
+              <div style={{ height: '1px', background: 'var(--border-color)', margin: '0.5rem 0' }}></div>
+
+              <button 
+                onClick={() => { handleLogout(); setIsMenuOpen(false); }}
+                className="btn-secondary"
+                style={{ 
+                  width: '100%', 
+                  justifyContent: 'flex-start', 
+                  gap: '1rem', 
+                  padding: '0.8rem 1rem',
+                  borderRadius: '12px',
+                  color: '#ef4444'
+                }}
+              >
+                <span className="material-icons">logout</span>
+                Wyloguj się
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

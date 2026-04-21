@@ -261,3 +261,14 @@ body {
   scrollbar-width: thin;
   scrollbar-color: var(--border-color) transparent;
 }
+
+/* Format Tooltips */
+.format-info-trigger:hover {
+  opacity: 1 !important;
+}
+
+.format-info-trigger:hover .format-tooltip {
+  opacity: 1 !important;
+  transform: translateX(-50%) translateY(-5px) !important;
+  pointer-events: auto !important;
+}

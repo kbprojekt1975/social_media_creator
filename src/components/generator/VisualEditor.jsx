@@ -26,6 +26,18 @@ const VisualEditor = ({
   const fileInputRef = useRef(null);
   const { showSuccess, showError, showInfo } = useNotification();
 
+  const handleDownload = (url, type) => {
+    // Use backend proxy to bypass CORS and force download
+    const proxyUrl = `${API_BASE_URL}/download-proxy?url=${encodeURIComponent(url)}`;
+    
+    const link = document.createElement('a');
+    link.href = proxyUrl;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
     if (selectedFile) {
@@ -80,14 +92,13 @@ const VisualEditor = ({
       // Step 2: Generate the media
       if (type === 'video') {
         await generateVideo(vPlan, uploadedUrl);
+        // Success notification for video is handled inside pollVideoStatus
       } else {
         await generateImage(vPlan, uploadedUrl);
+        showSuccess("Pierwsza wersja wygenerowana!");
       }
-      
-      showSuccess("Pierwsza wersja wygenerowana!");
     } catch (error) {
       console.error("Initial generation failed:", error);
-      // Fallback to local showError if handleApiError is not provided or fails
       if (handleApiError) {
         handleApiError(error, "Nie udało się przetworzyć obrazu. Spróbuj ponownie za chwilę.");
       } else {
@@ -96,8 +107,7 @@ const VisualEditor = ({
           : "Wystąpił błąd podczas generowania.";
         showError(msg);
       }
-    } finally {
-      setLoadingType(null);
+      setLoadingType(null); // Clear on error
     }
   };
 
@@ -112,9 +122,9 @@ const VisualEditor = ({
       headers: { Authorization: `Bearer ${token}` }
     });
     
-    const newMedia = { type: 'image', url: response.data.imageUrl };
     setGeneratedMedia(newMedia);
     setMediaHistory(prev => [...prev, { ...newMedia, prompt: promptData }]);
+    setLoadingType(null); // Success for image
   };
 
   const generateVideo = async (promptData, contextUrl) => {
@@ -162,6 +172,7 @@ const VisualEditor = ({
         console.error("Polling error:", e);
       }
     }
+    setLoadingType(null);
   };
 
   const handleRefine = async () => {
@@ -309,12 +320,44 @@ const VisualEditor = ({
               border: '1px solid var(--border-color)',
               position: 'relative'
             }}>
-              {generatedMedia ? (
-                generatedMedia.type === 'video' ? (
-                  <video src={generatedMedia.url} controls autoPlay loop style={{ maxWidth: '100%', maxHeight: '400px', borderRadius: '10px' }} />
-                ) : (
-                  <img src={generatedMedia.url} alt="Wygenerowany" style={{ maxWidth: '100%', maxHeight: '400px', borderRadius: '10px' }} />
-                )
+              {loadingType === 'video' || (loadingType === null && !generatedMedia && mediaHistory.some(m => m.type === 'video' && !m.url)) ? (
+                <div style={{ textAlign: 'center' }}>
+                  <div className="spinner" style={{ width: '50px', height: '50px', marginBottom: '1rem' }}></div>
+                  <p style={{ color: 'var(--text-muted)' }}>Renderowanie wideo przez AI...<br/><small>(może to potrwać do 2 minut)</small></p>
+                </div>
+              ) : generatedMedia ? (
+                <>
+                  {generatedMedia.type === 'video' ? (
+                    <video src={generatedMedia.url} controls autoPlay loop style={{ maxWidth: '100%', maxHeight: '400px', borderRadius: '10px' }} />
+                  ) : (
+                    <img src={generatedMedia.url} alt="Wygenerowany" style={{ maxWidth: '100%', maxHeight: '400px', borderRadius: '10px' }} />
+                  )}
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); handleDownload(generatedMedia.url, generatedMedia.type); }}
+                    style={{
+                      position: 'absolute',
+                      top: '1rem',
+                      right: '1rem',
+                      background: 'rgba(var(--color-primary-rgb), 0.9)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '50%',
+                      width: '40px',
+                      height: '40px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                      transition: 'transform 0.2s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+                    onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                    title="Pobierz ten plik"
+                  >
+                    <span className="material-icons">download</span>
+                  </button>
+                </>
               ) : (
                 <div style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
                   <span className="material-icons" style={{ fontSize: '4rem', opacity: 0.2 }}>auto_awesome</span>
@@ -371,7 +414,6 @@ const VisualEditor = ({
             {mediaHistory.map((item, idx) => (
               <div 
                 key={idx} 
-                onClick={() => setGeneratedMedia(item)}
                 style={{ 
                   minWidth: '150px', 
                   height: '150px', 
@@ -380,16 +422,40 @@ const VisualEditor = ({
                   cursor: 'pointer',
                   border: generatedMedia?.url === item.url ? '3px solid var(--color-primary)' : '1px solid var(--border-color)',
                   opacity: generatedMedia?.url === item.url ? 1 : 0.7,
-                  transition: 'all 0.2s ease'
+                  transition: 'all 0.2s ease',
+                  position: 'relative'
                 }}
               >
-                {item.type === 'video' ? (
-                   <div style={{ width: '100%', height: '100%', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <span className="material-icons" style={{ color: '#fff' }}>play_circle</span>
-                   </div>
-                ) : (
-                  <img src={item.url} alt={`Wersja ${idx}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                )}
+                <div onClick={() => setGeneratedMedia(item)} style={{ width: '100%', height: '100%' }}>
+                  {item.type === 'video' ? (
+                    <div style={{ width: '100%', height: '100%', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <span className="material-icons" style={{ color: '#fff' }}>play_circle</span>
+                    </div>
+                  ) : (
+                    <img src={item.url} alt={`Wersja ${idx}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  )}
+                </div>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); handleDownload(item.url, item.type); }}
+                  style={{
+                    position: 'absolute',
+                    bottom: '5px',
+                    right: '5px',
+                    background: 'rgba(0,0,0,0.6)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '30px',
+                    height: '30px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer'
+                  }}
+                  title="Pobierz"
+                >
+                  <span className="material-icons" style={{ fontSize: '1.1rem' }}>download</span>
+                </button>
               </div>
             ))}
           </div>
