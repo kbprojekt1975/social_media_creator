@@ -9,8 +9,18 @@ const StatusHeader = ({
   isDark, 
   setIsDark, 
   handleLogout,
-  onShowHelp
+  onShowHelp,
+  deferredPrompt,
+  setDeferredPrompt
 }) => {
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
+    }
+  };
   return (
     <header style={{
       display: 'flex',
@@ -83,6 +93,25 @@ const StatusHeader = ({
 
         <span style={{ color: 'var(--text-main)', fontSize: '0.9rem', fontWeight: '500' }}>{user?.email}</span>
         
+        {deferredPrompt && (
+          <button 
+            onClick={handleInstallClick}
+            className="btn-primary"
+            style={{ 
+              padding: '0.6rem 1.2rem', 
+              borderRadius: '30px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.5rem',
+              background: 'linear-gradient(135deg, #4ade80, #22c55e)',
+              boxShadow: '0 4px 10px rgba(34, 197, 94, 0.3)'
+            }}
+          >
+            <span className="material-icons" style={{ fontSize: '1.2rem' }}>download_for_offline</span>
+            Zainstaluj
+          </button>
+        )}
+
         <button 
           onClick={onShowHelp}
           className="btn-secondary"

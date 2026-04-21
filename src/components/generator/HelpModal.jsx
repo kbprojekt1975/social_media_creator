@@ -50,7 +50,7 @@ const HelpModal = ({ isOpen, onClose }) => {
         </h2>
         
         <p style={{ fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '2rem', opacity: 0.8 }}>
-          Witaj w profesjonalnym studio kreatywnym napędzanym przez modele Gemini 2.0 i Imagen 3. 
+          Witaj w profesjonalnym studio kreatywnym napędzanym modelami GEMINI. 
           Poniżej znajdziesz wszystko, co musisz wiedzieć, aby tworzyć treści najwyższej jakości.
         </p>
 
@@ -74,7 +74,7 @@ const HelpModal = ({ isOpen, onClose }) => {
             </h3>
             <p style={{ margin: 0, lineHeight: '1.6' }}>
               Po wygenerowaniu tekstu, pod postem pojawią się opcje wizualne. Wybierz format (np. 1:1 dla Instagrama lub 9:16 dla TikTok/Reels) i kliknij <strong>Generuj Obraz</strong> lub <strong>Wideo</strong>. 
-              System wykorzystuje model Imagen 3 (Nano Banana), oferując fotorealistyczną jakość.
+              System wykorzystuje najnowsze modele GEMINI, oferując fotorealistyczną jakość.
             </p>
           </section>
 
@@ -96,6 +96,17 @@ const HelpModal = ({ isOpen, onClose }) => {
           <section>
             <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', color: 'var(--color-primary)', fontWeight: '700', marginBottom: '0.8rem' }}>
               <div style={{ background: 'var(--color-primary)', color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem' }}>3</div>
+              Edytor Wizualny (Własne Obrazy)
+            </h3>
+            <p style={{ margin: 0, lineHeight: '1.6' }}>
+              Chcesz edytować własne zdjęcie? Przejdź do zakładki <strong>Edytor Wizualny</strong>. Wgraj obraz, opisz co chcesz zmienić (np. "zmień tło", "dodaj napis") i generuj nową wersję lub klip wideo. 
+              Każda kolejna zmiana w edytorze opiera się na poprzednim kroku, zachowując spójność Twojego projektu.
+            </p>
+          </section>
+
+          <section>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', color: 'var(--color-primary)', fontWeight: '700', marginBottom: '0.8rem' }}>
+              <div style={{ background: 'var(--color-primary)', color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem' }}>4</div>
               Przestrzenie Robocze (Workspaces)
             </h3>
             <p style={{ margin: 0, lineHeight: '1.6' }}>
@@ -106,7 +117,7 @@ const HelpModal = ({ isOpen, onClose }) => {
 
           <section>
             <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', color: 'var(--color-primary)', fontWeight: '700', marginBottom: '0.8rem' }}>
-              <div style={{ background: 'var(--color-primary)', color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem' }}>4</div>
+              <div style={{ background: 'var(--color-primary)', color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem' }}>5</div>
               Planowanie Kampanii (Strategia)
             </h3>
             <p style={{ margin: 0, lineHeight: '1.6' }}>
@@ -117,7 +128,7 @@ const HelpModal = ({ isOpen, onClose }) => {
 
           <section>
             <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', color: 'var(--color-primary)', fontWeight: '700', marginBottom: '0.8rem' }}>
-              <div style={{ background: 'var(--color-primary)', color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem' }}>5</div>
+              <div style={{ background: 'var(--color-primary)', color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem' }}>6</div>
               Zarządzanie i Historia
             </h3>
             <p style={{ margin: 0, lineHeight: '1.6' }}>
@@ -127,7 +138,18 @@ const HelpModal = ({ isOpen, onClose }) => {
 
           <section>
             <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', color: 'var(--color-primary)', fontWeight: '700', marginBottom: '0.8rem' }}>
-              <div style={{ background: 'var(--color-primary)', color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem' }}>6</div>
+              <div style={{ background: 'var(--color-primary)', color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem' }}>7</div>
+              Instalacja Aplikacji (PWA)
+            </h3>
+            <p style={{ margin: 0, lineHeight: '1.6' }}>
+              Możesz używać Social Media Creator jako natywnej aplikacji na swoim komputerze lub telefonie. 
+              Jeśli Twoja przeglądarka to wspiera, w prawym górnym rogu zobaczysz zielony przycisk <strong>Zainstaluj</strong>. Dzięki temu zyskasz szybki dostęp do narzędzia bezpośrednio z pulpitu.
+            </p>
+          </section>
+
+          <section>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', color: 'var(--color-primary)', fontWeight: '700', marginBottom: '0.8rem' }}>
+              <div style={{ background: 'var(--color-primary)', color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem' }}>8</div>
               Raporty Analizy (Visual Auditor)
             </h3>
             <p style={{ margin: 0, lineHeight: '1.6' }}>

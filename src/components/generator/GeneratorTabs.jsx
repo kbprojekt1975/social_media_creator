@@ -28,6 +28,14 @@ const GeneratorTabs = ({ activeTab, setActiveTab, activeWorkspace }) => {
         <span className="material-icons" style={{ fontSize: '1.2rem' }}>event_note</span>
         Planuj kampanię
       </button>
+      <button 
+        onClick={() => setActiveTab('visual_editor')}
+        className={activeTab === 'visual_editor' ? 'btn-primary' : 'btn-secondary'}
+        style={{ padding: '0.8rem 2rem', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+      >
+        <span className="material-icons" style={{ fontSize: '1.2rem' }}>brush</span>
+        Edytor Wizualny
+      </button>
     </div>
   );
 };

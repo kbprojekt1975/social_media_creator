@@ -15,6 +15,7 @@ import ResultSection from './generator/ResultSection';
 import axiosRetry from 'axios-retry';
 import CampaignPlanner from './generator/CampaignPlanner';
 import HelpModal from './generator/HelpModal';
+import VisualEditor from './generator/VisualEditor';
 import { useNotification } from './common/NotificationContext';
 
 // Configure axios to retry on 429 errors
@@ -29,7 +30,7 @@ axiosRetry(axios, {
   }
 });
 
-const GeneratorPage = () => {
+const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
   const [topic, setTopic] = useState('');
   const [platform, setPlatform] = useState('LinkedIn');
   const [style, setStyle] = useState('Profesjonalny');
@@ -205,9 +206,9 @@ const GeneratorPage = () => {
     const serverError = error?.response?.data?.error || error?.message || '';
     const status = error?.response?.status;
 
-    if (status === 429 || serverError.includes('429') || serverError.includes('Resource exhausted')) {
+    if (status === 429 || serverError.includes('429') || serverError.includes('Resource exhausted') || serverError.includes('Too Many Requests')) {
       showError('🚀 System jest obecnie przeciążony (zbyt wiele zapytań). Odczekaj 30-60 sekund i spróbuj ponownie.');
-    } else if (status === 500 || serverError.includes('500')) {
+    } else if (status === 500 || serverError.includes('500') || serverError.includes('Internal Server Error')) {
       showError('🛠️ Wystąpił błąd po stronie serwerów Google Gemini. Zwykle pomaga odczekanie chwili i ponowna próba.');
     } else if (serverError.includes('safety') || serverError.includes('SAFETY')) {
       showWarning('🛡️ Treść została zablokowana przez filtry bezpieczeństwa AI. Spróbuj zmienić temat lub opis.');
@@ -922,6 +923,8 @@ const GeneratorPage = () => {
         setIsDark={setIsDark}
         handleLogout={handleLogout}
         onShowHelp={() => setShowHelp(true)}
+        deferredPrompt={deferredPrompt}
+        setDeferredPrompt={setDeferredPrompt}
       />
 
       <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
@@ -1053,7 +1056,17 @@ const GeneratorPage = () => {
             isReadOnly={isReadOnly}
           />
         )}
-    </div>
+
+        {activeTab === 'visual_editor' && (
+          <VisualEditor 
+            balance={balance}
+            isReadOnly={isReadOnly}
+            activeWorkspace={activeWorkspace}
+            handleApiError={handleApiError}
+            API_BASE_URL={API_BASE_URL}
+          />
+        )}
+      </div>
   </div>
   );
 };

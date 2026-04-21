@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import LandingPage from './components/LandingPage'
 import LoginPage from './components/LoginPage'
@@ -9,6 +9,16 @@ import ErrorBoundary from './components/common/ErrorBoundary'
 import { NotificationProvider } from './components/common/NotificationContext'
 
 function App() {
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
   return (
     <ErrorBoundary>
       <NotificationProvider>
@@ -20,7 +30,7 @@ function App() {
               <Route path="/payment" element={<PaymentPage />} />
               <Route path="/success" element={<SuccessPage />} />
               <Route path="/cancel" element={<PaymentPage />} />
-              <Route path="/dashboard" element={<GeneratorPage />} />
+              <Route path="/dashboard" element={<GeneratorPage deferredPrompt={deferredPrompt} setDeferredPrompt={setDeferredPrompt} />} />
             </Routes>
           </div>
         </Router>
