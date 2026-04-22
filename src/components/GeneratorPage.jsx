@@ -826,9 +826,9 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
       setMediaFeedback('');
       
       if (visualizationType === 'video') {
-        handleGenerateVideo(vPlan);
+        await handleGenerateVideo(vPlan);
       } else {
-        handleGenerateImage(vPlan);
+        await handleGenerateImage(vPlan);
       }
     } catch (error) {
       console.error('Refine Media Error:', error);
@@ -1162,6 +1162,38 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
               handleReset={handleReset}
               onShowHelp={() => setShowHelp(true)}
             />
+
+            {loading && (
+              <div id="text-loading-placeholder" className="glass" style={{ 
+                padding: '3rem 2rem', 
+                borderRadius: '25px', 
+                border: '2px dashed var(--color-primary)', 
+                marginTop: '1.5rem',
+                background: 'rgba(var(--color-primary-rgb), 0.05)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '1.5rem',
+                animation: 'pulse 2s infinite ease-in-out'
+              }}>
+                <div style={{ position: 'relative', width: '60px', height: '60px' }}>
+                  <div className="spinner" style={{ width: '60px', height: '60px', borderTopColor: 'var(--color-primary)', borderWidth: '4px' }}></div>
+                  <span className="material-icons" style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: 'var(--color-primary)', fontSize: '2rem', animation: 'bounce 1s infinite' }}>
+                    auto_awesome
+                  </span>
+                </div>
+                
+                <div style={{ textAlign: 'center' }}>
+                  <h4 style={{ margin: 0, color: 'var(--color-primary)', fontSize: '1.1rem', fontWeight: '800' }}>
+                    Generowanie treści posta...
+                  </h4>
+                  <p style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', opacity: 0.7, maxWidth: '300px' }}>
+                    Model AI analizuje Twoje wytyczne i tworzy idealny przekaz.
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div ref={resultSectionRef}>
               <ResultSection 

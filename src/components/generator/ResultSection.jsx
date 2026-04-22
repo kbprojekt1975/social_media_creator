@@ -246,7 +246,7 @@ const ResultSection = ({
             </label>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.2rem', marginBottom: '3.5rem' }}>
-              {(mediaTab === 'image' ? [
+              {(visualizationType === 'image' ? [
                 { id: '1:1', label: 'crop_square', tip: 'Post', color: 'var(--color-primary)', desc: 'Idealny na Instagram Feed i Facebook. Klasyczny, uniwersalny kwadrat.', aspect: '1/1' },
                 { id: '4:5', label: 'portrait', tip: 'Portret', color: 'var(--color-info)', desc: 'Najlepszy zasięg na Instagramie. Zajmuje więcej miejsca na ekranie.', aspect: '4/5' },
                 { id: '9:16', label: 'smartphone', tip: 'Story', color: '#38bdf8', desc: 'Standard dla TikTok, Reels i Instagram Stories. Pełny ekran pionowy.', aspect: '9:16' },
@@ -395,7 +395,7 @@ const ResultSection = ({
                   <span className="spinner"></span>
                 ) : (
                   <>
-                    <span className="material-icons" style={{ fontSize: '1.6rem', color: 'var(--color-primary)' }}>{mediaTab === 'video' ? 'movie_filter' : 'auto_fix_high'}</span>
+                    <span className="material-icons" style={{ fontSize: '1.6rem', color: 'var(--color-primary)' }}>{visualizationType === 'video' ? 'movie_filter' : 'auto_fix_high'}</span>
                     <span>Przygotuj {visualizationType === 'image' ? 'obraz' : 'wideo'}</span>
                     <div className="format-info-trigger" style={{ 
                       position: 'absolute',
@@ -462,7 +462,7 @@ const ResultSection = ({
                   <span className="spinner"></span>
                 ) : (
                   <>
-                    <span className="material-icons" style={{ fontSize: '1.6rem' }}>{mediaTab === 'video' ? 'movie' : 'rocket_launch'}</span>
+                    <span className="material-icons" style={{ fontSize: '1.6rem' }}>{visualizationType === 'video' ? 'movie' : 'rocket_launch'}</span>
                     <span>Wygeneruj {visualizationType === 'image' ? 'obraz' : 'wideo'}</span>
                     <div className="format-info-trigger" style={{ 
                       position: 'absolute',
@@ -802,7 +802,7 @@ const ResultSection = ({
             )}
 
             {/* Loading Placeholder for new media refinement/generation */}
-            {visualizationType === visualizationType && (isMediaRefining || (imageLoading && isPromptMode)) && (
+            {(isMediaRefining || imageLoading) && (
               <div id="media-loading-placeholder" className="glass" style={{ 
                 padding: '3rem 2rem', 
                 borderRadius: '25px', 
@@ -826,10 +826,12 @@ const ResultSection = ({
                 
                 <div style={{ textAlign: 'center' }}>
                   <h4 style={{ margin: 0, color: 'var(--color-primary)', fontSize: '1.1rem', fontWeight: '800' }}>
-                    Tworzenie nowej wersji...
+                    {isMediaRefining ? 'Tworzenie nowej wersji...' : `Generowanie ${visualizationType === 'image' ? 'obrazu' : 'wideo'}...`}
                   </h4>
                   <p style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', opacity: 0.7, maxWidth: '300px' }}>
-                    Nano Banana nakłada poprawki, dbając o spójność z oryginałem.
+                    {isMediaRefining 
+                      ? 'Nano Banana nakłada poprawki, dbając o spójność z oryginałem.' 
+                      : 'AI przygotowuje profesjonalny materiał wizualny. To może potrwać kilka chwil.'}
                   </p>
                 </div>
 
