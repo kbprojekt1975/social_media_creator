@@ -72,15 +72,14 @@ const ResultSection = ({
   }, [animatingMediaIdx]);
 
   React.useEffect(() => {
-    // Only scroll to the bottom placeholder for INITIAL generation (when not refining or animating an existing item)
-    // AND we are already in prompt mode (meaning we are generating the actual media, not just the prompt)
-    if (imageLoading && editingMediaIdx === null && animatingMediaIdx === null && !isMediaRefining && isPromptMode) {
+    // Scroll to the new prompt description panel as soon as it appears/is ready
+    if (isPromptMode && !imageLoading) {
       setTimeout(() => {
-        const el = document.getElementById("media-loading-placeholder");
+        const el = document.getElementById("current-prompt-panel");
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 150);
+      }, 200);
     }
-  }, [imageLoading, isMediaRefining, editingMediaIdx, animatingMediaIdx, isPromptMode]);
+  }, [isPromptMode, imageLoading]);
 
   const onSyncClick = async () => {
     try {
@@ -405,99 +404,6 @@ const ResultSection = ({
           </div>
         )}
 
-        {currentPromptData && (
-          <div style={{ marginTop: '2rem', padding: '1.5rem', background: 'var(--bg-card)', borderRadius: '25px', border: '1px solid var(--border-color)' }}>
-            <p style={{ fontSize: '0.95rem', marginBottom: '1rem', color: 'var(--color-primary)', fontWeight: '600' }}>
-              <span className="material-icons" style={{ fontSize: '1.1rem', verticalAlign: 'middle', marginRight: '0.5rem' }}>auto_awesome</span>
-              Nano Banana przygotował opis {visualizationType === 'video' ? 'klipu wideo' : 'grafiki'}:
-            </p>
-            
-            <div style={{ position: 'relative', marginBottom: '1.5rem' }}>
-              <textarea 
-                value={currentPromptData.polishDescription || ''}
-                onChange={(e) => {
-                  setCurrentPromptData(prev => ({ ...prev, polishDescription: e.target.value }));
-                  setIsModified(true);
-                  setIsSyncSuccess(false);
-                }}
-                style={{ 
-                  width: '100%',
-                  minHeight: '120px', 
-                  fontSize: '1rem', 
-                  lineHeight: '1.6',
-                  background: 'var(--bg-app)',
-                  color: 'var(--text-main)',
-                  padding: '1.2rem',
-                  border: isSyncSuccess ? '2px solid #10b981' : (isModified ? '2px solid var(--color-primary)' : '1px solid var(--border-color)'),
-                  borderRadius: '15px',
-                  transition: 'all 0.3s ease',
-                  resize: 'vertical',
-                  fontStyle: 'italic'
-                }}
-              />
-            </div>
-
-            <button 
-              onClick={onSyncClick}
-              disabled={isVisualSyncing || isReadOnly || !isModified}
-              className="btn-secondary"
-              style={{ 
-                width: '100%', 
-                marginBottom: '2rem',
-                padding: '1rem', 
-                borderRadius: '15px', 
-                fontSize: '0.9rem', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                gap: '0.6rem',
-                border: isSyncSuccess ? '1px solid #10b981' : (isModified ? '1px solid var(--color-primary)' : '1px solid var(--border-color)'),
-                color: isSyncSuccess ? '#10b981' : (isModified ? 'var(--color-primary)' : 'var(--text-muted)'),
-                background: isSyncSuccess ? 'rgba(16, 185, 129, 0.05)' : 'none',
-                cursor: isModified ? 'pointer' : 'default',
-                transition: 'all 0.3s ease',
-                fontWeight: '700'
-              }}
-            >
-              {isVisualSyncing ? <span className="spinner"></span> : (
-                <>
-                  <span className="material-icons" style={{ fontSize: '1.2rem' }}>
-                    {isSyncSuccess ? 'check_circle' : 'auto_fix_high'}
-                  </span>
-                  {isSyncSuccess ? 'Opis gotowy do generowania' : 'Zastosuj zmiany i pozwól AI przeanalizować opis'}
-                </>
-              )}
-            </button>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1.5rem' }}>
-              <button onClick={() => setCurrentPromptData(null)} className="btn-secondary" style={{ padding: '0.8rem', borderRadius: '15px' }}>
-                Anuluj
-              </button>
-              <button 
-                onClick={() => mediaTab === 'video' ? handleGenerateVideo() : handleGenerateImage()} 
-                disabled={imageLoading || isReadOnly || isVisualSyncing || (isModified && !isSyncSuccess)} 
-                className="btn-primary" 
-                style={{ 
-                  padding: '1rem', 
-                  borderRadius: '15px', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  opacity: (isModified && !isSyncSuccess) ? 0.5 : 1,
-                  cursor: (isModified && !isSyncSuccess) ? 'not-allowed' : 'pointer'
-                }}
-              >
-                {imageLoading ? 'Generowanie...' : (
-                  <>
-                    <span className="material-icons" style={{ marginRight: '0.5rem' }}>{mediaTab === 'video' ? 'movie' : 'rocket_launch'}</span>
-                    {mediaTab === 'video' ? 'Generuj Klip' : 'Generuj obraz'}
-                  </>
-                )}
-                {imageLoading && <span className="spinner"></span>}
-              </button>
-            </div>
-          </div>
-        )}
         {mediaHistory && mediaHistory.filter(m => m.type === mediaTab).length > 0 && (
           <div style={{ marginTop: '2.5rem', display: 'flex', flexDirection: 'column', gap: '3rem' }}>
             <h3 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
@@ -794,7 +700,7 @@ const ResultSection = ({
             )}
 
             {/* Loading Placeholder for new media refinement/generation */}
-            {visualizationType === mediaTab && (isMediaRefining || imageLoading) && (
+            {visualizationType === mediaTab && (isMediaRefining || (imageLoading && isPromptMode)) && (
               <div id="media-loading-placeholder" className="glass" style={{ 
                 padding: '3rem 2rem', 
                 borderRadius: '25px', 
@@ -828,6 +734,138 @@ const ResultSection = ({
               </div>
             )}
             
+          </div>
+        )}
+
+        {currentPromptData && (
+          <div id="current-prompt-panel" className="glass" style={{ 
+            marginTop: '2.5rem', 
+            padding: '2rem', 
+            borderRadius: '30px', 
+            border: isSyncSuccess ? '2px solid #10b981' : '1px solid var(--border-color)',
+            animation: 'fadeIn 0.5s ease-out',
+            background: 'rgba(var(--color-primary-rgb), 0.02)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '1.5rem' }}>
+              <div style={{ 
+                width: '40px', 
+                height: '40px', 
+                borderRadius: '12px', 
+                background: 'rgba(56, 189, 248, 0.1)', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                color: 'var(--color-primary)'
+              }}>
+                <span className="material-icons">auto_awesome</span>
+              </div>
+              <div>
+                <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '800' }}>Projekt wizualny Nano Banana</h4>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>AI przygotowało opis {visualizationType === 'video' ? 'klipu wideo' : 'grafiki'} na bazie Twojego posta</p>
+              </div>
+            </div>
+            
+            <div style={{ position: 'relative', marginBottom: '2rem' }}>
+              <textarea 
+                value={currentPromptData.polishDescription || ''}
+                onChange={(e) => {
+                  setCurrentPromptData(prev => ({ ...prev, polishDescription: e.target.value }));
+                  setIsModified(true);
+                  setIsSyncSuccess(false);
+                }}
+                placeholder="Tutaj pojawi się opis obrazu..."
+                style={{ 
+                  width: '100%',
+                  minHeight: '140px', 
+                  fontSize: '1.05rem', 
+                  lineHeight: '1.7',
+                  background: 'var(--bg-app)',
+                  color: 'var(--text-main)',
+                  padding: '1.5rem',
+                  border: isSyncSuccess ? '2px solid #10b981' : (isModified ? '2px solid var(--color-primary)' : '1px solid var(--border-color)'),
+                  borderRadius: '20px',
+                  transition: 'all 0.3s ease',
+                  resize: 'vertical',
+                  boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)'
+                }}
+              />
+              {isModified && !isSyncSuccess && (
+                <div style={{ 
+                  position: 'absolute', 
+                  top: '10px', 
+                  right: '10px', 
+                  fontSize: '0.7rem', 
+                  background: 'var(--color-primary)', 
+                  color: 'white', 
+                  padding: '2px 8px', 
+                  borderRadius: '10px',
+                  fontWeight: '700'
+                }}>
+                  ZMIENIONO
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <button 
+                onClick={onSyncClick}
+                disabled={isVisualSyncing || isReadOnly || !isModified}
+                className="btn-secondary"
+                style={{ 
+                  width: '100%', 
+                  padding: '1.2rem', 
+                  borderRadius: '18px', 
+                  fontSize: '0.95rem', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  gap: '0.8rem',
+                  border: isSyncSuccess ? '2px solid #10b981' : (isModified ? '2px solid var(--color-primary)' : '1px solid var(--border-color)'),
+                  color: isSyncSuccess ? '#10b981' : (isModified ? 'var(--color-primary)' : 'var(--text-muted)'),
+                  background: isSyncSuccess ? 'rgba(16, 185, 129, 0.05)' : 'rgba(255,255,255,0.02)',
+                  cursor: isModified ? 'pointer' : 'default',
+                  fontWeight: '800'
+                }}
+              >
+                {isVisualSyncing ? <span className="spinner"></span> : (
+                  <>
+                    <span className="material-icons">
+                      {isSyncSuccess ? 'check_circle' : 'sync'}
+                    </span>
+                    {isSyncSuccess ? 'Instrukcje zsynchronizowane' : 'Zsynchronizuj zmiany z AI'}
+                  </>
+                )}
+              </button>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem' }}>
+                <button onClick={() => setCurrentPromptData(null)} className="btn-secondary" style={{ padding: '1rem', borderRadius: '18px', fontWeight: '700' }}>
+                  Anuluj
+                </button>
+                <button 
+                  onClick={() => mediaTab === 'video' ? handleGenerateVideo() : handleGenerateImage()} 
+                  disabled={imageLoading || isReadOnly || isVisualSyncing || (isModified && !isSyncSuccess)} 
+                  className="btn-primary" 
+                  style={{ 
+                    padding: '1.2rem', 
+                    borderRadius: '18px', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    gap: '0.8rem',
+                    fontSize: '1rem',
+                    boxShadow: '0 10px 20px rgba(56, 189, 248, 0.2)',
+                    opacity: (isModified && !isSyncSuccess) ? 0.5 : 1
+                  }}
+                >
+                  {imageLoading ? <span className="spinner"></span> : (
+                    <>
+                      <span className="material-icons">{mediaTab === 'video' ? 'movie' : 'rocket_launch'}</span>
+                      {mediaTab === 'video' ? 'Generuj Klip Wideo' : 'Generuj Grafikę'}
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
