@@ -3,6 +3,7 @@
 :root {
   /* Main Palette - Anti-Glare (Light) */
   --bg-app: #FAF9F6;      /* Ivory (Main Background) */
+  --bg-app-rgb: 250, 249, 246;
   --bg-card: #F2F0E6;     /* Subtle Grey/Popiel (Containers) */
   --bg-white: #ffffff;
   
@@ -29,6 +30,7 @@
 
 [data-theme='dark'] {
   --bg-app: #0A0A0A;      /* Neutral 'Almost Black' (Zinc 950) */
+  --bg-app-rgb: 10, 10, 10;
   --bg-card: #171717;     /* Dark Grey (Zinc 900) */
   --bg-white: #262626;    /* Slightly lighter for distinct elements (Zinc 800) */
   

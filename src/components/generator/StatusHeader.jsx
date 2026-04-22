@@ -12,7 +12,8 @@ const StatusHeader = ({
   handleLogout,
   onShowHelp,
   deferredPrompt,
-  setDeferredPrompt
+  setDeferredPrompt,
+  activeWorkspace
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef(null);
@@ -43,10 +44,15 @@ const StatusHeader = ({
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center',
-      padding: '1.5rem 0',
-      marginBottom: '1rem',
-      position: 'relative',
-      zIndex: 50
+      padding: '1rem 2rem',
+      position: 'sticky',
+      top: 0,
+      zIndex: 1000,
+      background: 'rgba(var(--bg-app-rgb), 0.85)',
+      backdropFilter: 'blur(20px) saturate(180%)',
+      borderBottom: '1px solid var(--border-color)',
+      margin: '0 -4rem 1.5rem -4rem',
+      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
     }}>
       <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }}>
         <div className="logo" style={{ 
@@ -87,6 +93,30 @@ const StatusHeader = ({
             </div>
             <span style={{ color: 'var(--text-muted)', fontWeight: '500' }}>Balans: <span style={{ color: '#4ade80', fontWeight: '700' }}>{perc.toFixed(1)}%</span></span>
           </div>
+
+          {activeWorkspace && (
+            <>
+              <div style={{ width: '1px', height: '20px', background: 'var(--border-color)' }}></div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', paddingRight: '0.4rem' }}>
+                <div style={{ 
+                  width: '24px', 
+                  height: '24px', 
+                  borderRadius: '8px', 
+                  background: 'rgba(56, 189, 248, 0.1)', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  color: 'var(--color-primary)'
+                }}>
+                  <span className="material-icons" style={{ fontSize: '1rem' }}>business_center</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.5px', lineHeight: 1 }}>Marka</span>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-main)', fontWeight: '800', lineHeight: 1.2 }}>{activeWorkspace.name}</span>
+                </div>
+              </div>
+            </>
+          )}
 
           {showTooltip && (
             <div className="buy-credits-tooltip" style={{ zIndex: 9999, top: '130%' }}>

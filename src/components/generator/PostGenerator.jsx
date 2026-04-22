@@ -36,23 +36,6 @@ const PostGenerator = ({
   };
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      {activeWorkspace && (
-        <div className="glass" style={{ 
-          padding: '0.8rem 1.5rem', 
-          background: 'rgba(56, 189, 248, 0.1)', 
-          borderRadius: '15px', 
-          border: '1px solid rgba(56, 189, 248, 0.2)',
-          color: 'var(--color-primary)',
-          fontSize: '0.9rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.6rem',
-          marginBottom: '-1rem'
-        }}>
-          <span className="material-icons" style={{ fontSize: '1.1rem' }}>verified</span>
-          Aktywna przestrzeń: <strong>{activeWorkspace.name}</strong>
-        </div>
-      )}
       
       <div className="premium-border" style={{ padding: '2.5rem', animation: 'fadeIn 0.5s ease-out 0.2s both' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>

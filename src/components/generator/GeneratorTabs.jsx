@@ -5,7 +5,7 @@ const GeneratorTabs = ({ activeTab, setActiveTab, activeWorkspace, showAdvanced,
     <div style={{ display: 'flex', gap: '0.8rem', marginBottom: '2.5rem', maxWidth: '1000px', margin: '0 auto', position: 'relative', zIndex: 10, alignItems: 'center' }}>
       <button 
         onClick={() => setActiveTab('generator')}
-        className={activeTab === 'generator' ? 'btn-primary' : 'btn-secondary'}
+        className={activeTab === 'generator' ? 'premium-button' : 'btn-secondary'}
         style={{ padding: '0.8rem 1.5rem', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}
       >
         <span className="material-icons" style={{ fontSize: '1.2rem' }}>bolt</span>
@@ -16,7 +16,7 @@ const GeneratorTabs = ({ activeTab, setActiveTab, activeWorkspace, showAdvanced,
         <div style={{ display: 'flex', gap: '0.8rem', animation: 'fadeIn 0.3s ease-out' }}>
           <button 
             onClick={() => setActiveTab('workspaces')}
-            className={activeTab === 'workspaces' ? 'btn-primary' : 'btn-secondary'}
+            className={activeTab === 'workspaces' ? 'premium-button' : 'btn-secondary'}
             style={{ padding: '0.8rem 1.5rem', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}
           >
             <span className="material-icons" style={{ fontSize: '1.2rem' }}>business_center</span>
@@ -25,7 +25,7 @@ const GeneratorTabs = ({ activeTab, setActiveTab, activeWorkspace, showAdvanced,
           </button>
           <button 
             onClick={() => setActiveTab('campaigns')}
-            className={activeTab === 'campaigns' ? 'btn-primary' : 'btn-secondary'}
+            className={activeTab === 'campaigns' ? 'premium-button' : 'btn-secondary'}
             style={{ padding: '0.8rem 1.5rem', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}
           >
             <span className="material-icons" style={{ fontSize: '1.2rem' }}>event_note</span>
@@ -33,7 +33,7 @@ const GeneratorTabs = ({ activeTab, setActiveTab, activeWorkspace, showAdvanced,
           </button>
           <button 
             onClick={() => setActiveTab('visual_editor')}
-            className={activeTab === 'visual_editor' ? 'btn-primary' : 'btn-secondary'}
+            className={activeTab === 'visual_editor' ? 'premium-button' : 'btn-secondary'}
             style={{ padding: '0.8rem 1.5rem', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}
           >
             <span className="material-icons" style={{ fontSize: '1.2rem' }}>brush</span>

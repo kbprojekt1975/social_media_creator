@@ -459,6 +459,50 @@ const ResultSection = ({
                   </div>
                 )}
 
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '1.2rem', marginBottom: '1.5rem' }}>
+                  <button 
+                    onClick={() => {
+                      const newHistory = [...mediaHistory];
+                      newHistory.splice(idx, 1);
+                      setMediaHistory(newHistory);
+                      if (newHistory.length === 0) {
+                        setGeneratedImage(null);
+                        setGeneratedVideo(null);
+                      }
+                    }} 
+                    className="btn-secondary" 
+                    style={{ flex: 1, borderRadius: '15px', fontSize: '0.8rem' }}
+                  >
+                    Usuń
+                  </button>
+                  <button 
+                    onClick={() => setEditingMediaIdx(editingMediaIdx === idx ? null : idx)}
+                    className="btn-secondary"
+                    style={{ 
+                      flex: 1, 
+                      borderRadius: '15px', 
+                      fontSize: '0.85rem', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center', 
+                      gap: '0.4rem',
+                      border: editingMediaIdx === idx ? '1px solid var(--color-primary)' : '1px solid var(--border-color)',
+                      color: editingMediaIdx === idx ? 'var(--color-primary)' : 'var(--text-main)'
+                    }}
+                  >
+                    <span className="material-icons" style={{ fontSize: '1.1rem' }}>edit</span>
+                    Edytuj
+                  </button>
+                  <button 
+                    onClick={() => handleDownload(media.url, media.type)} 
+                    className="btn-primary" 
+                    style={{ flex: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '15px', fontSize: '0.85rem', cursor: 'pointer', border: 'none' }}
+                  >
+                    <span className="material-icons" style={{ fontSize: '1.2rem', marginRight: '0.5rem' }}>download</span>
+                    Pobierz
+                  </button>
+                </div>
+
                 {/* Animation Prompt Panel */}
                 {media.type === 'image' && animatingMediaIdx === idx && (
                   <div id={`animation-panel-${idx}`} style={{ 
@@ -566,49 +610,7 @@ const ResultSection = ({
                   </div>
                 )}
 
-                <div style={{ display: 'flex', gap: '1rem', marginTop: '1.2rem' }}>
-                  <button 
-                    onClick={() => {
-                      const newHistory = [...mediaHistory];
-                      newHistory.splice(idx, 1);
-                      setMediaHistory(newHistory);
-                      if (newHistory.length === 0) {
-                        setGeneratedImage(null);
-                        setGeneratedVideo(null);
-                      }
-                    }} 
-                    className="btn-secondary" 
-                    style={{ flex: 1, borderRadius: '15px', fontSize: '0.8rem' }}
-                  >
-                    Usuń
-                  </button>
-                  <button 
-                    onClick={() => setEditingMediaIdx(editingMediaIdx === idx ? null : idx)}
-                    className="btn-secondary"
-                    style={{ 
-                      flex: 1, 
-                      borderRadius: '15px', 
-                      fontSize: '0.85rem', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center', 
-                      gap: '0.4rem',
-                      border: editingMediaIdx === idx ? '1px solid var(--color-primary)' : '1px solid var(--border-color)',
-                      color: editingMediaIdx === idx ? 'var(--color-primary)' : 'var(--text-main)'
-                    }}
-                  >
-                    <span className="material-icons" style={{ fontSize: '1.1rem' }}>edit</span>
-                    Edytuj
-                  </button>
-                  <button 
-                    onClick={() => handleDownload(media.url, media.type)} 
-                    className="btn-primary" 
-                    style={{ flex: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '15px', fontSize: '0.85rem', cursor: 'pointer', border: 'none' }}
-                  >
-                    <span className="material-icons" style={{ fontSize: '1.2rem', marginRight: '0.5rem' }}>download</span>
-                    Pobierz
-                  </button>
-                </div>
+
 
 
                 {/* Integrated Refinement Panel */}
@@ -866,6 +868,26 @@ const ResultSection = ({
                 </button>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Save Project / Next Project Action */}
+        {(result || (mediaHistory && mediaHistory.length > 0)) && (
+          <div style={{ marginTop: '4rem', display: 'flex', justifyContent: 'center', borderTop: '1px solid var(--border-color)', paddingTop: '3rem', animation: 'fadeIn 0.8s ease-out' }}>
+            <button 
+              onClick={handleReset}
+              className="premium-button"
+              style={{ 
+                padding: '1.2rem 4rem', 
+                borderRadius: '50px', 
+                fontSize: '1.1rem',
+                gap: '1rem',
+                boxShadow: '0 15px 35px rgba(0,0,0,0.2)'
+              }}
+            >
+              <span className="material-icons" style={{ fontSize: '1.4rem' }}>cloud_done</span>
+              Zakończ i Zapisz Projekt
+            </button>
           </div>
         )}
       </div>

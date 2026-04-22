@@ -1038,6 +1038,7 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
         onShowHelp={() => setShowHelp(true)}
         deferredPrompt={deferredPrompt}
         setDeferredPrompt={setDeferredPrompt}
+        activeWorkspace={activeWorkspace}
       />
 
       <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
