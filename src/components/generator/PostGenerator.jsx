@@ -131,9 +131,6 @@ const PostGenerator = ({
             </select>
           </div>
 
-          <div style={{ marginBottom: '1.5rem', fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-            Zużywasz tokeny zgodnie z licznikiem Gemini.
-          </div>
 
           <div style={{ display: 'flex', gap: '1rem' }}>
             <button 

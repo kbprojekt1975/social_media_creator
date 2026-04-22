@@ -60,6 +60,25 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
   const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
   const [visualizationType, setVisualizationType] = useState('image'); // 'image' or 'video'
   const [generatedVideo, setGeneratedVideo] = useState(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const [isAtTop, setIsAtTop] = useState(true);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrolled = window.scrollY > 300;
+      setShowScrollTop(scrolled);
+      setIsAtTop(window.scrollY < 100);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToPosition = (direction) => {
+    window.scrollTo({
+      top: direction === 'up' ? 0 : document.body.scrollHeight,
+      behavior: 'smooth'
+    });
+  };
 
   // Plan/PEaaS States
   const [plannedPrompt, setPlannedPrompt] = useState(null);
@@ -441,11 +460,45 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
         setImagePromptData(vPlan);
       }
       setIsPromptMode(true);
-      setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 100);
     } catch (error) {
       console.error('Prompt generation failed:', error);
       handleApiError(error, `Nie udało się przygotować opisu ${type === 'video' ? 'wideo' : 'obrazu'}.`);
     } finally {
+      setImageLoading(false);
+    }
+  };
+
+  const handleAnimateImage = async (imageUrl, instruction) => {
+    if (!imageUrl || !instruction.trim() || isVisualSyncing || isReadOnly) return;
+    setIsVisualSyncing(true);
+    setImageLoading(true);
+    try {
+      const token = await user.getIdToken();
+      
+      // Step 1: AI Analysis of the animation instruction
+      // We use the sync-visual-prompt endpoint with video type to get a technical prompt for Veo
+      const syncResponse = await axios.post(`${API_BASE_URL}/sync-visual-prompt`, 
+        { 
+          polishDescription: instruction,
+          aspectRatio: videoAspectRatio,
+          type: 'video',
+          isAnimation: true,
+          sourceImageUrl: imageUrl
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      const technicalPrompt = syncResponse.data.englishPrompt;
+      
+      // Step 2: Generate the video using the technical prompt and source image
+      await handleGenerateVideo({ englishPrompt: technicalPrompt, polishDescription: instruction }, imageUrl);
+      
+      showSuccess('Instrukcje ożywienia zostały przetworzone!');
+    } catch (error) {
+      console.error('Failed to animate image:', error);
+      handleApiError(error, 'Nie udało się ożywić zdjęcia.');
+    } finally {
+      setIsVisualSyncing(false);
       setImageLoading(false);
     }
   };
@@ -541,7 +594,14 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
       // Step 3: Success! Update local state and history
       if (currentRecordId) {
         const recordRef = doc(db, 'users', user.uid, 'history', currentRecordId);
-        const newMediaItem = { type: 'video', url: videoUrl, prompt: targetPrompt.polishDescription, englishPrompt: targetPrompt.englishPrompt, createdAt: new Date().toISOString() };
+        const newMediaItem = { 
+          type: 'video', 
+          url: videoUrl, 
+          prompt: targetPrompt.polishDescription, 
+          englishPrompt: targetPrompt.englishPrompt, 
+          createdAt: new Date().toISOString(),
+          parentUrl: imageUrl 
+        };
         await updateDoc(recordRef, {
           videoUrl: videoUrl,
           videoPrompt: targetPrompt.englishPrompt,
@@ -553,7 +613,7 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
       setGeneratedVideo(videoUrl);
       setMediaHistory(prev => [
         ...prev, 
-        { type: 'video', url: videoUrl, prompt: targetPrompt.polishDescription, englishPrompt: targetPrompt.englishPrompt }
+        { type: 'video', url: videoUrl, prompt: targetPrompt.polishDescription, englishPrompt: targetPrompt.englishPrompt, parentUrl: imageUrl }
       ]);
       // Update current prompt data to the target one to keep refinement possible
       setVideoPromptData(targetPrompt);
@@ -1064,6 +1124,7 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
                 isVisualSyncing={isVisualSyncing}
                 handleSyncVisualPrompt={handleSyncVisualPrompt}
                 handleGenerateImage={handleGenerateImage}
+                handleAnimateImage={handleAnimateImage}
                 generatedImage={generatedImage}
                 setGeneratedImage={setGeneratedImage}
                 generatedVideo={generatedVideo}
@@ -1126,6 +1187,41 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
           />
         )}
       </div>
+
+      {/* Floating Scroll Navigation */}
+      <button 
+        onClick={() => scrollToPosition(showScrollTop ? 'up' : 'down')}
+        className="glass"
+        style={{
+          position: 'fixed',
+          bottom: '2.5rem',
+          right: '2.5rem',
+          width: '55px',
+          height: '55px',
+          borderRadius: '50%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          zIndex: 9999,
+          border: '1px solid rgba(255,255,255,0.1)',
+          boxShadow: 'var(--shadow-lg)',
+          background: showScrollTop ? 'var(--color-primary)' : 'rgba(255,255,255,0.05)',
+          color: showScrollTop ? '#fff' : 'var(--text-main)',
+          transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+          opacity: (showScrollTop || isAtTop) ? 1 : 0,
+          pointerEvents: (showScrollTop || isAtTop) ? 'auto' : 'none',
+          transform: (showScrollTop || isAtTop) ? 'scale(1)' : 'scale(0.8)'
+        }}
+      >
+        <span className="material-icons" style={{ 
+          fontSize: '1.8rem',
+          transform: showScrollTop ? 'rotate(0deg)' : 'rotate(180deg)',
+          transition: 'transform 0.4s ease'
+        }}>
+          arrow_upward
+        </span>
+      </button>
   </div>
   );
 };

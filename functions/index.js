@@ -176,10 +176,17 @@ app.post("/sync-visual-prompt", async (req, res) => {
   if (!idToken) return res.status(401).send("Unauthorized");
 
   try {
-    const { polishDescription, aspectRatio, type, workspaceContext } = req.body;
+    const { polishDescription, aspectRatio, type, workspaceContext, isAnimation, sourceImageUrl } = req.body;
     if (!polishDescription) return res.status(400).send("Polish description is required.");
 
-    const englishPrompt = await syncVisualPrompt({ polishDescription, aspectRatio, type, workspaceContext });
+    const englishPrompt = await syncVisualPrompt({ 
+      polishDescription, 
+      aspectRatio, 
+      type, 
+      workspaceContext,
+      isAnimation,
+      sourceImageUrl
+    });
     res.json({ englishPrompt });
 
   } catch (error) {
@@ -545,35 +552,39 @@ app.get("/video-status", async (req, res) => {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) throw new Error("GEMINI_API_KEY not found.");
 
-    console.log("Checking AI Studio LRO Status for:", operationName);
+    console.log(`Checking status for operation: ${operationName}`);
 
-    // AI Studio operations endpoint
-    const url = `https://generativelanguage.googleapis.com/v1beta/${operationName}?key=${apiKey}`;
+    // AI Studio operations endpoint - ensure URL is correctly formed
+    const cleanOperationName = operationName.startsWith('/') ? operationName.substring(1) : operationName;
+    const url = `https://generativelanguage.googleapis.com/v1beta/${cleanOperationName}?key=${apiKey}`;
     
     const response = await axios.get(url);
     const data = response.data;
     
-    console.log("AI Studio Status Response:", data.done ? "DONE" : "IN_PROGRESS");
+    console.log("AI Studio Status Response (Full):", JSON.stringify(data, null, 2));
 
     // 2. Handle Completion
     if (data.done) {
       if (data.error) {
         console.error("AI Studio LRO reported an error:", data.error);
-        return res.status(500).json({ status: "failed", error: data.error.message });
+        return res.status(500).json({ status: "failed", error: data.error.message || "Błąd modelu Veo." });
       }
 
-      // 1. Extract the URI from the new AI Studio response structure
-      const videoUri = data.response?.generateVideoResponse?.generatedSamples?.[0]?.video?.uri;
+      // Extract the URI with fallback paths
+      const videoUri = 
+        data.response?.generateVideoResponse?.generatedSamples?.[0]?.video?.uri ||
+        data.response?.generatedSamples?.[0]?.video?.uri ||
+        data.response?.video?.uri;
 
       if (!videoUri) {
-        console.error("AI Studio finished but no video URI found. Data:", JSON.stringify(data, null, 2));
-        throw new Error("Nie znaleziono linku do filmu w odpowiedzi AI Studio.");
+        console.error("AI Studio finished but no video URI found. Check the full response above.");
+        throw new Error("Wideo zostało wygenerowane, ale nie znaleźliśmy linku do pliku. Sprawdź logi serwera.");
       }
 
       console.log("Downloading video bytes from Google File API:", videoUri);
 
       // 2. Download the actual video bytes using the API Key
-      const videoResponse = await axios.get(`${videoUri}&key=${apiKey}`, { 
+      const videoResponse = await axios.get(`${videoUri}${videoUri.includes('?') ? '&' : '?'}key=${apiKey}`, { 
         responseType: 'arraybuffer' 
       });
       
@@ -605,8 +616,13 @@ app.get("/video-status", async (req, res) => {
       res.json({ status: "processing" });
     }
   } catch (error) {
-    console.error("Hardened Status Check Error:", error.response?.data || error.message);
-    res.status(500).json({ error: "Failed to check video status detail: " + (error.response?.data?.error?.message || error.message) });
+    const errorData = error.response?.data;
+    console.error("Hardened Status Check Error:", JSON.stringify(errorData || error.message, null, 2));
+    res.status(500).json({ 
+      error: "Failed to check video status", 
+      detail: errorData?.error?.message || error.message,
+      code: errorData?.error?.code
+    });
   }
 });
 

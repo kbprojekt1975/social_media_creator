@@ -90,7 +90,7 @@ const LandingPage = () => {
           cursor: 'pointer',
           textTransform: 'uppercase'
         }}>
-          KREATOR
+          KUŹNIA TREŚCI
         </a>
         <div className="nav-links" style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
           <a 

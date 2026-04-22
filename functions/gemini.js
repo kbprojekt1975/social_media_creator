@@ -497,13 +497,44 @@ async function refineVisualPrompt(v1PromptObject, lastPromptObject, instructions
 /**
  * Synchronizes the English technical prompt based on manual edits to the Polish description.
  */
-async function syncVisualPrompt({ polishDescription, aspectRatio = '1:1', type = 'image', workspaceContext = null }) {
+async function syncVisualPrompt({ polishDescription, aspectRatio = '1:1', type = 'image', workspaceContext = null, isAnimation = false, sourceImageUrl = null }) {
   const ai = initGemini();
   if (!ai) throw new Error("Gemini API not initialized.");
 
-  const model = ai.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+  // Use multimodal model for animation analysis if image is provided
+  const modelId = (isAnimation && sourceImageUrl) ? "gemini-2.5-flash-lite" : "gemini-2.5-flash-lite";
+  const model = ai.getGenerativeModel({ model: modelId });
 
-  const prompt = `
+  let promptParts = [];
+
+  if (isAnimation && sourceImageUrl) {
+    try {
+      const response = await axios.get(sourceImageUrl, { responseType: 'arraybuffer' });
+      const base64Image = Buffer.from(response.data, 'binary').toString('base64');
+      promptParts.push({
+        inlineData: {
+          data: base64Image,
+          mimeType: "image/png"
+        }
+      });
+    } catch (e) {
+      console.error("Failed to fetch source image for animation sync:", e);
+    }
+  }
+
+  const textPrompt = isAnimation 
+    ? `
+    Jesteś reżyserem animacji AI. Masz przed sobą zdjęcie oraz instrukcję ruchu od użytkownika: "${polishDescription}".
+    Twoim zadaniem jest stworzenie bardzo szczegółowego, technicznego promptu w języku ANGIELSKIM dla modelu wideo (Veo 3.1).
+    
+    WYMAGANIA:
+    - Zachowaj 100% zgodności wizualnej z załączonym zdjęciem.
+    - Opisz dynamikę: co się porusza, w jaki sposób, jaka jest trajektoria kamery (np. "Slow zoom in", "Handheld shake", "Fluid motion").
+    - Skup się na fizyce: jak światło reaguje na ruch, jak poruszają się materiały.
+    - Format: ${aspectRatio}.
+    - Zwróć TYLKO techniczny prompt po angielsku.
+    `
+    : `
     Transform the following Polish visual description into a high-end, technical English prompt for ${type === 'video' ? 'Veo 3.1 Video Generator' : 'Nano Banana Image Generator'}.
     
     Polish Description:
@@ -521,13 +552,15 @@ async function syncVisualPrompt({ polishDescription, aspectRatio = '1:1', type =
     Return ONLY the English prompt text.
   `;
 
+  promptParts.push(textPrompt);
+
   try {
-    const result = await model.generateContent(prompt);
+    const result = await model.generateContent(promptParts);
     const response = await result.response;
     return response.text().trim();
   } catch (error) {
     console.error("Sync Visual Prompt Error:", error);
-    return `Cinematic ${type} based on: ${polishDescription}`;
+    return isAnimation ? `Cinematic animation of this image with motion: ${polishDescription}` : `Cinematic ${type} based on: ${polishDescription}`;
   }
 }
 

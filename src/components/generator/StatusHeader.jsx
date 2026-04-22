@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 
 const StatusHeader = ({ 
   user, 
@@ -47,9 +48,17 @@ const StatusHeader = ({
       position: 'relative',
       zIndex: 50
     }}>
-      <div className="logo" style={{ fontSize: '1.4rem', fontWeight: '800', letterSpacing: '-0.5px' }}>
-        SOCIAL<span style={{ color: '#2a8ca8' }}>CREATOR</span>
-      </div>
+      <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }}>
+        <div className="logo" style={{ 
+          fontSize: '1.4rem', 
+          fontWeight: '800', 
+          letterSpacing: '-0.5px',
+          cursor: 'pointer',
+          transition: 'opacity 0.2s ease'
+        }}>
+          KUŹNIA<span style={{ color: '#2a8ca8' }}>TREŚCI</span>
+        </div>
+      </Link>
       
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
         {/* Status Pill - Keep this visible */}
