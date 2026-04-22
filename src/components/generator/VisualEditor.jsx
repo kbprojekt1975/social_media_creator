@@ -112,20 +112,22 @@ const VisualEditor = ({
   };
 
   const generateImage = async (promptData, contextUrl) => {
-    const token = await auth.currentUser.getIdToken();
-    const response = await axios.post(`${API_BASE_URL}/generate-image`, {
-      prompt: promptData.englishPrompt,
-      aspectRatio: aspectRatio,
-      originalImageUrl: contextUrl,
-      isAlreadyTechnical: true
-    }, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    
-    setGeneratedMedia(newMedia);
-    setMediaHistory(prev => [...prev, { ...newMedia, prompt: promptData }]);
-    setLoadingType(null); // Success for image
-  };
+  const token = await auth.currentUser.getIdToken();
+  const response = await axios.post(`${API_BASE_URL}/generate-image`, {
+    prompt: promptData.englishPrompt,
+    aspectRatio: aspectRatio,
+    originalImageUrl: contextUrl,
+    isAlreadyTechnical: true
+  }, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+
+  // Construct media object from API response
+  const newMedia = { type: 'image', url: response.data.imageUrl };
+  setGeneratedMedia(newMedia);
+  setMediaHistory(prev => [...prev, { ...newMedia, prompt: promptData }]);
+  setLoadingType(null); // Success for image
+};;
 
   const generateVideo = async (promptData, contextUrl) => {
     const token = await auth.currentUser.getIdToken();

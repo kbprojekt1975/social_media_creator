@@ -68,16 +68,19 @@ const WorkspaceManager = ({
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
         {workspaces.map(ws => (
-          <div key={ws.id} className="glass" style={{ 
+          <div key={ws.id} className={`glass ${activeWorkspace?.id === ws.id ? 'format-card-active' : ''}`} style={{ 
             padding: '1.8rem', 
             borderRadius: '25px', 
-            background: 'var(--bg-white)', 
-            border: activeWorkspace?.id === ws.id ? '2px solid #4ade80' : '1px solid var(--border-color)',
+            background: activeWorkspace?.id === ws.id
+              ? `linear-gradient(var(--bg-card), var(--bg-card)) padding-box, linear-gradient(135deg, #4285f4, #9b72cb, #d96570, #f4af45) border-box`
+              : 'var(--bg-card)', 
+            border: activeWorkspace?.id === ws.id ? '2px solid transparent' : '1px solid var(--border-color)',
             position: 'relative',
             display: 'flex',
             flexDirection: 'column',
             gap: '1.2rem',
-            transition: 'all 0.3s'
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            boxShadow: activeWorkspace?.id === ws.id ? '0 15px 35px rgba(0,0,0,0.15)' : 'none'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
@@ -87,10 +90,15 @@ const WorkspaceManager = ({
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <button 
                   onClick={() => handleActivateWorkspace(ws.id, activeWorkspace?.id === ws.id)}
-                  className={activeWorkspace?.id === ws.id ? 'btn-primary' : 'btn-secondary'}
-                  style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', borderRadius: '10px' }}
+                  className={activeWorkspace?.id === ws.id ? 'btn-secondary' : 'btn-primary'}
+                  style={{ 
+                    padding: '0.4rem 0.8rem', 
+                    fontSize: '0.75rem', 
+                    borderRadius: '10px',
+                    minWidth: '80px'
+                  }}
                 >
-                  {activeWorkspace?.id === ws.id ? 'Aktywna' : 'Aktywuj'}
+                  {activeWorkspace?.id === ws.id ? 'Wyłącz' : 'Aktywuj'}
                 </button>
                 <button 
                   onClick={() => handleDeleteWorkspace(ws.id)}

@@ -48,6 +48,10 @@ const PLATFORM_RULES = {
   'LinkedIn': 'Style: Professional, authoritative, industry-expert tone. Structure: Strong hook, bullet points for readability, professional storytelling, 3-5 relevant hashtags. Goal: B2B authority.',
   'Facebook': 'Style: Engaging, community-focused, relatable tone. Structure: Conversational, question at the end to boost comments, emojis throughout, 2-3 hashtags. Goal: High engagement/reach.',
   'Instagram': 'Style: Vibrant, lifestyle-oriented, punchy tone. Structure: Short sentences, many emojis, storytelling focus, up to 15 relevant hashtags. Goal: Visual impact/brand image.',
+  'Twitter / X': 'Style: Concise, news-oriented, or thought-provoking. Structure: Very short text, focus on engagement/replies, 1-2 hashtags. Goal: Viral reach.',
+  'TikTok': 'Style: High-energy, trend-aware, entertaining, and raw. Structure: Hooks for video script/caption, emphasis on music/trends, use of trending hashtags, maximum relatability. Goal: Viral entertainment.',
+  'YouTube': 'Style: Educational, comprehensive, and search-optimized. Structure: Strong title hook, detailed description, chapter suggestions, CTA for subscription, use of tags/hashtags. Goal: Long-form authority.',
+  'Pinterest': 'Style: Inspirational, aesthetic, and how-to oriented. Structure: Keyword-rich titles, helpful descriptions with bullet points, focus on utility/beauty, 3-5 specific hashtags. Goal: Clicks/Traffic.',
   'Default': 'Style: Engaging and helpful social media manager tone. Structure: Balanced hook, clear information, and relevant hashtags.'
 };
 
@@ -55,6 +59,10 @@ const IMAGE_AESTHETICS = {
   'LinkedIn': 'Professional business photography, clean 3D render, minimalist corporate office, professional studio lighting, neutral or blue-toned color palette. Cinematic and high-end B2B look.',
   'Facebook': 'Relatable lifestyle photography, vibrant outdoor or home settings, friendly and warm lighting, natural colors. Emotional and community-oriented aesthetic.',
   'Instagram': 'High-fashion aesthetic, vibrant and saturated colors, creative and trendy compositions, soft sunset or neon lighting, shallow depth of field. Trendy and visually "pop" aesthetic.',
+  'Twitter / X': 'Clean digital illustration, news-style infographic, or punchy minimal photography. Focus on clarity and high contrast.',
+  'TikTok': 'Dynamic lifestyle action, bright and saturated colors, vlog-style "raw" feel, high energy, neon or natural daylight. Authentic and high-energy feel.',
+  'YouTube': 'High-contrast thumbnail style, bold text placeholders (if applicable), dramatic lighting, clear facial expressions or products, cinematic depth. High-click-through rate aesthetic.',
+  'Pinterest': 'Clean, aesthetic layout, high-quality product or DIY photography, warm natural lighting, minimalist backgrounds, soft color palettes. Inspiring and "save-worthy" aesthetic.',
   'Default': 'High-quality professional photography with balanced lighting and clear subjects.'
 };
 
@@ -70,7 +78,7 @@ const STYLE_GUIDELINES = {
  * Generates technical instructions (prompt) for a social media post.
  * @param {Object} params - Parameters.
  */
-async function generatePostPlan({ platform, topic, style = "engaging", workspaceContext }) {
+async function generatePostPlan({ platform, topic, style = "engaging", workspaceContext, customStyleGuidelines }) {
   const ai = initGemini();
   if (!ai) throw new Error("Gemini API not initialized.");
   
@@ -84,7 +92,7 @@ async function generatePostPlan({ platform, topic, style = "engaging", workspace
     Topic: ${topic}
     Platform: ${platform}
     Style: ${style}
-    Style Guidelines: ${STYLE_GUIDELINES[style] || STYLE_GUIDELINES['Default']}
+    Style Guidelines: ${customStyleGuidelines || STYLE_GUIDELINES[style] || STYLE_GUIDELINES['Default']}
     
     ${workspaceContext ? `WORKSPACE CONTEXT (MANDATORY RULES):
     - Brand Directives: ${workspaceContext.contentDirectives || "Brak szczegółowych wytycznych."}
@@ -151,7 +159,7 @@ async function generatePostPlan({ platform, topic, style = "engaging", workspace
  * Transforms a modified Polish strategy into a fresh technical English prompt.
  * @param {Object} params - Parameters.
  */
-async function syncEnglishPrompt({ polishPlan, platform, topic, style, workspaceContext }) {
+async function syncEnglishPrompt({ polishPlan, platform, topic, style, workspaceContext, customStyleGuidelines }) {
   const ai = initGemini();
   if (!ai) throw new Error("Gemini API not initialized.");
   
@@ -165,6 +173,7 @@ async function syncEnglishPrompt({ polishPlan, platform, topic, style, workspace
     - Topic: ${topic}
     - Platform: ${platform}
     - Style: ${style}
+    - Style Guidelines: ${customStyleGuidelines || STYLE_GUIDELINES[style] || STYLE_GUIDELINES['Default']}
     
     User's Polish Strategy (Source):
     "${polishPlan}"
@@ -202,7 +211,7 @@ async function syncEnglishPrompt({ polishPlan, platform, topic, style, workspace
  * @param {string} [params.plannedPrompt] - Optional pre-generated instructions.
  * @returns {Promise<Object>} - The generated content and token count.
  */
-async function generatePost({ platform, topic, style = "engaging", plannedPrompt = null, workspaceContext }) {
+async function generatePost({ platform, topic, style = "engaging", plannedPrompt = null, workspaceContext, customStyleGuidelines }) {
   const ai = initGemini();
   if (!ai) throw new Error("Gemini API not initialized.");
   
@@ -230,7 +239,7 @@ async function generatePost({ platform, topic, style = "engaging", plannedPrompt
       
       Topic: ${topic}
       Style: ${style}
-      Style Guidelines: ${STYLE_GUIDELINES[style] || STYLE_GUIDELINES['Default']}
+      Style Guidelines: ${customStyleGuidelines || STYLE_GUIDELINES[style] || STYLE_GUIDELINES['Default']}
       
       ${workspaceContext ? `WORKSPACE CONTEXT (MANDATORY RULES):
       - Brand Directives: ${workspaceContext.contentDirectives || "Brak szczegółowych wytycznych."}
@@ -291,7 +300,7 @@ async function generateVisualPrompt(postContent, aspectRatio = '1:1', platform =
     ${workspaceContext.visualStyle}` : ''}
 
     Treść posta:
-    "${postContent.substring(0, 500)}"
+    "${postContent.substring(0, 3000)}"
     
     ZWRÓĆ DANE W FORMACIE JSON:
     {
@@ -316,8 +325,8 @@ async function generateVisualPrompt(postContent, aspectRatio = '1:1', platform =
   } catch (error) {
     console.error("Gemini Visual Prompt Error:", error);
     return {
-      polishDescription: `Wysokiej jakości ${type} przedstawiający: ${postContent.substring(0, 50).trim()}...`,
-      englishPrompt: `High quality cinematic ${type} of ${postContent.substring(0, 50).trim()}, professional lighting, 8k, highly detailed.`
+      polishDescription: `Wysokiej jakości ${type} przedstawiający: ${postContent.substring(0, 200).trim()}...`,
+      englishPrompt: `High quality cinematic ${type} of ${postContent.substring(0, 200).trim()}, professional lighting, 8k, highly detailed.`
     };
   }
 }

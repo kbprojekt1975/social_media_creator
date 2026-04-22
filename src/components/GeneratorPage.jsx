@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { auth, db } from '../firebase';
 import { doc, collection, query, orderBy, onSnapshot, limit, deleteDoc, addDoc, updateDoc, serverTimestamp, arrayUnion } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 
 import PaymentPage from './PaymentPage';
@@ -62,6 +62,8 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
   const [generatedVideo, setGeneratedVideo] = useState(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [isAtTop, setIsAtTop] = useState(true);
+  const [isAutoGenerating, setIsAutoGenerating] = useState(false);
+  const [customStyles, setCustomStyles] = useState([]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -111,6 +113,7 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
   }, [perc, balance, subscriptionStatus]);
 
   const navigate = useNavigate();
+  const location = useLocation();
   const [user, setUser] = useState(auth.currentUser);
 
   // Stany dla funkcji poprawiania (Refinement)
@@ -123,7 +126,7 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
   const [aiDetectionLog, setAiDetectionLog] = useState("");
 
   // Workspace States
-  const [activeTab, setActiveTab] = useState('generator'); // 'generator' | 'workspaces' | 'campaigns'
+  const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'generator'); // 'generator' | 'workspaces' | 'campaigns'
   const [showHelp, setShowHelp] = useState(false);
   const [workspaces, setWorkspaces] = useState([]);
   const [activeWorkspace, setActiveWorkspace] = useState(null);
@@ -238,12 +241,23 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
       setCampaigns(campData);
     });
 
+    // 6. Nasłuchiwanie własnych stylów
+    const stylesQuery = query(
+      collection(db, 'users', user.uid, 'customStyles'),
+      orderBy('createdAt', 'desc')
+    );
+    const stylesUnsubscribe = onSnapshot(stylesQuery, (snapshot) => {
+      const stylesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setCustomStyles(stylesData);
+    });
+
     return () => {
       userUnsubscribe();
       stripeUnsubscribe();
       historyUnsubscribe();
       workspacesUnsubscribe();
       campaignsUnsubscribe();
+      stylesUnsubscribe();
     };
   }, [user]);
 
@@ -317,6 +331,35 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
     }
   };
 
+  const handleAddCustomStyle = async (name, description) => {
+    if (!user) return;
+    try {
+      await addDoc(collection(db, 'users', user.uid, 'customStyles'), {
+        name,
+        description,
+        createdAt: serverTimestamp()
+      });
+      showSuccess('Nowy styl został dodany.');
+    } catch (error) {
+      console.error('Error adding custom style:', error);
+      showError('Nie udało się dodać stylu.');
+    }
+  };
+
+  const handleDeleteCustomStyle = async (id) => {
+    if (!user || !window.confirm('Czy na pewno chcesz usunąć ten styl?')) return;
+    try {
+      await deleteDoc(doc(db, 'users', user.uid, 'customStyles', id));
+      if (style === customStyles.find(s => s.id === id)?.name) {
+        setStyle('Profesjonalny');
+      }
+      showSuccess('Styl został usunięty.');
+    } catch (error) {
+      console.error('Error deleting custom style:', error);
+      showError('Nie udało się usunąć stylu.');
+    }
+  };
+
   const handleGenerate = async (e) => {
     e.preventDefault();
     if (!topic || subscriptionStatus !== 'active') return;
@@ -336,6 +379,7 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
           topic, 
           platform, 
           style, 
+          customStyleGuidelines: customStyles.find(s => s.name === style)?.description || null,
           plannedPrompt: planActive && plannedPrompt ? plannedPrompt.englishPrompt : null,
           workspaceContext: activeWorkspace ? {
             contentDirectives: activeWorkspace.contentDirectives,
@@ -371,8 +415,10 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
     try {
       const token = await user.getIdToken();
       const response = await axios.post(`${API_BASE_URL}/generate-plan`, {
-        topic,
         platform,
+        topic,
+        style,
+        customStyleGuidelines: customStyles.find(s => s.name === style)?.description || null,
         workspaceContext: activeWorkspace ? {
           contentDirectives: activeWorkspace.contentDirectives,
           visualStyle: activeWorkspace.visualStyle
@@ -412,6 +458,7 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
           topic, 
           platform, 
           style,
+          customStyleGuidelines: customStyles.find(s => s.name === style)?.description || null,
           workspaceContext: activeWorkspace ? {
             contentDirectives: activeWorkspace.contentDirectives,
             visualStyle: activeWorkspace.visualStyle
@@ -432,20 +479,21 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
     }
   };
 
-  const handleGeneratePrompt = async (type = 'image') => {
-    if (!result) return;
+  const handleGeneratePrompt = async (type, autoGenerate = false) => {
+    if (!result || imageLoading || isReadOnly) return;
+    
     setImageLoading(true);
+    setIsAutoGenerating(autoGenerate);
     setVisualizationType(type);
     setGeneratedImage(null);
     setGeneratedVideo(null);
+
     try {
       const token = await user.getIdToken();
-      const currentAspectRatio = type === 'video' ? videoAspectRatio : imageAspectRatio;
       const response = await axios.post(`${API_BASE_URL}/generate-image-prompt`, {
         postContent: result,
-        aspectRatio: currentAspectRatio,
-        platform,
-        type,
+        type: type,
+        aspectRatio: type === 'video' ? videoAspectRatio : imageAspectRatio,
         workspaceContext: activeWorkspace ? {
           visualStyle: activeWorkspace.visualStyle
         } : null
@@ -459,7 +507,20 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
       } else {
         setImagePromptData(vPlan);
       }
-      setIsPromptMode(true);
+      
+      // ONLY show prompt mode if NOT auto-generating
+      if (!autoGenerate) {
+        setIsPromptMode(true);
+      }
+
+      // If auto-generation is requested, proceed immediately
+      if (autoGenerate) {
+        if (type === 'video') {
+          await handleGenerateVideo(vPlan);
+        } else {
+          await handleGenerateImage(vPlan);
+        }
+      }
     } catch (error) {
       console.error('Prompt generation failed:', error);
       handleApiError(error, `Nie udało się przygotować opisu ${type === 'video' ? 'wideo' : 'obrazu'}.`);
@@ -1039,6 +1100,7 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
         deferredPrompt={deferredPrompt}
         setDeferredPrompt={setDeferredPrompt}
         activeWorkspace={activeWorkspace}
+        setActiveTab={setActiveTab}
       />
 
       <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
@@ -1093,6 +1155,9 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
               loading={loading}
               balance={balance}
               isReadOnly={isReadOnly}
+              customStyles={customStyles}
+              handleAddCustomStyle={handleAddCustomStyle}
+              handleDeleteCustomStyle={handleDeleteCustomStyle}
               setForcePaymentView={setForcePaymentView}
               handleReset={handleReset}
               onShowHelp={() => setShowHelp(true)}
@@ -1116,6 +1181,7 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
                 imageLoading={imageLoading}
                 isReadOnly={isReadOnly}
                 visualizationType={visualizationType}
+                isAutoGenerating={isAutoGenerating}
                 handleGeneratePrompt={handleGeneratePrompt}
                 handleGenerateVideo={handleGenerateVideo}
                 videoAspectRatio={videoAspectRatio}

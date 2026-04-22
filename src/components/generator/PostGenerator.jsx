@@ -20,10 +20,16 @@ const PostGenerator = ({
   balance, 
   isReadOnly, 
   handleReset,
-  onShowHelp
+  onShowHelp,
+  customStyles = [],
+  handleAddCustomStyle,
+  handleDeleteCustomStyle
 }) => {
   const [isModified, setIsModified] = React.useState(false);
   const [isSyncSuccess, setIsSyncSuccess] = React.useState(false);
+  const [showStyleModal, setShowStyleModal] = React.useState(false);
+  const [newStyleName, setNewStyleName] = React.useState('');
+  const [newStyleDesc, setNewStyleDesc] = React.useState('');
 
   const onSyncClick = async () => {
     try {
@@ -86,7 +92,7 @@ const PostGenerator = ({
 
           <div style={{ marginBottom: '2rem' }}>
             <label style={{ display: 'block', marginBottom: '0.8rem', color: 'var(--text-main)', fontSize: '0.95rem', fontWeight: '500' }}>Styl postu</label>
-            <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap', alignItems: 'center' }}>
               {['Profesjonalny', 'Humorystyczny', 'Entuzjastyczny', 'Nietuzinkowy'].map(s => (
                 <button
                   key={s}
@@ -97,6 +103,47 @@ const PostGenerator = ({
                   {s}
                 </button>
               ))}
+              
+              {/* Custom Styles */}
+              {customStyles.map(s => (
+                <div key={s.id} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={() => setStyle(s.name)}
+                    className={`chip ${style === s.name ? 'active' : ''}`}
+                    style={{ paddingRight: '2.5rem' }}
+                  >
+                    {s.name}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); handleDeleteCustomStyle(s.id); }}
+                    style={{ 
+                      position: 'absolute', 
+                      right: '8px', 
+                      background: 'none', 
+                      border: 'none', 
+                      color: style === s.name ? '#fff' : 'var(--text-muted)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      opacity: 0.6
+                    }}
+                  >
+                    <span className="material-icons" style={{ fontSize: '1rem' }}>close</span>
+                  </button>
+                </div>
+              ))}
+
+              <button
+                type="button"
+                onClick={() => setShowStyleModal(true)}
+                className="chip"
+                style={{ border: '1px dashed var(--color-primary)', color: 'var(--color-primary)', background: 'none' }}
+              >
+                <span className="material-icons" style={{ fontSize: '1.1rem', marginRight: '0.4rem' }}>add</span>
+                Własny styl
+              </button>
             </div>
           </div>
 
@@ -111,6 +158,9 @@ const PostGenerator = ({
               <option>Instagram</option>
               <option>Facebook</option>
               <option>Twitter / X</option>
+              <option>TikTok</option>
+              <option>YouTube</option>
+              <option>Pinterest</option>
             </select>
           </div>
 
@@ -239,6 +289,96 @@ const PostGenerator = ({
         <p style={{ textAlign: 'center', color: '#ef4444', fontSize: '0.9rem', fontWeight: '500' }}>
           Wymagane doładowanie konta, aby kontynuować generowanie.
         </p>
+      )}
+
+      {/* Add Custom Style Modal */}
+      {showStyleModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.7)',
+          backdropFilter: 'blur(5px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 2000,
+          padding: '1rem'
+        }}>
+          <div className="glass" style={{
+            width: '100%',
+            maxWidth: '500px',
+            padding: '2.5rem',
+            borderRadius: '30px',
+            background: 'var(--bg-card)',
+            boxShadow: '0 25px 50px rgba(0,0,0,0.4)',
+            animation: 'fadeIn 0.3s ease-out'
+          }}>
+            <h3 style={{ margin: '0 0 1.5rem', fontSize: '1.5rem', fontWeight: '800' }}>Zdefiniuj własny styl</h3>
+            
+            <div className="input-group" style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Nazwa stylu</label>
+              <input 
+                type="text" 
+                value={newStyleName}
+                onChange={(e) => setNewStyleName(e.target.value)}
+                placeholder="np. Agresywny marketing"
+                style={{
+                  width: '100%',
+                  padding: '0.8rem 1rem',
+                  background: 'var(--bg-app)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '12px',
+                  color: 'var(--text-main)'
+                }}
+              />
+            </div>
+
+            <div className="input-group" style={{ marginBottom: '2rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Opis stylu / Wytyczne dla AI</label>
+              <textarea 
+                value={newStyleDesc}
+                onChange={(e) => setNewStyleDesc(e.target.value)}
+                placeholder="np. Pisz krótkimi zdaniami, używaj mocnych słów, skup się na bólu klienta i szybkim rozwiązaniu..."
+                style={{
+                  width: '100%',
+                  minHeight: '120px',
+                  padding: '1rem',
+                  background: 'var(--bg-app)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '15px',
+                  color: 'var(--text-main)',
+                  fontSize: '0.9rem',
+                  lineHeight: '1.5'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button 
+                onClick={() => setShowStyleModal(false)}
+                className="btn-secondary"
+                style={{ flex: 1, padding: '0.8rem', borderRadius: '15px' }}
+              >
+                Anuluj
+              </button>
+              <button 
+                onClick={() => {
+                  if (newStyleName && newStyleDesc) {
+                    handleAddCustomStyle(newStyleName, newStyleDesc);
+                    setNewStyleName('');
+                    setNewStyleDesc('');
+                    setShowStyleModal(false);
+                  }
+                }}
+                disabled={!newStyleName || !newStyleDesc}
+                className="btn-primary"
+                style={{ flex: 1.5, padding: '0.8rem', borderRadius: '15px' }}
+              >
+                Zapisz styl
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

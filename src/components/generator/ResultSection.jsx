@@ -18,6 +18,7 @@ const ResultSection = ({
   isReadOnly, 
   visualizationType, 
   handleGeneratePrompt, 
+  isAutoGenerating,
   videoAspectRatio, 
   setVideoAspectRatio, 
   activeVideoLabel, 
@@ -44,7 +45,6 @@ const ResultSection = ({
   API_BASE_URL,
   handleReset
 }) => {
-  const [mediaTab, setMediaTab] = useState('image');
   const [isModified, setIsModified] = useState(false);
   const [isSyncSuccess, setIsSyncSuccess] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -102,8 +102,8 @@ const ResultSection = ({
     link.click();
     document.body.removeChild(link);
   };
-  const currentPromptData = mediaTab === 'video' ? videoPromptData : imagePromptData;
-  const setCurrentPromptData = mediaTab === 'video' ? setVideoPromptData : setImagePromptData;
+  const currentPromptData = visualizationType === 'video' ? videoPromptData : imagePromptData;
+  const setCurrentPromptData = visualizationType === 'video' ? setVideoPromptData : setImagePromptData;
   if (!result) return null;
 
   return (
@@ -180,7 +180,7 @@ const ResultSection = ({
       <div className="glass" style={{ padding: '3.5rem 2.5rem', borderRadius: '40px', background: 'var(--bg-white)', border: 'none', animation: 'fadeIn 0.5s ease-out 0.2s both', marginTop: '1rem' }}>
         <div style={{ marginBottom: '3rem', textAlign: 'left' }}>
           <h2 style={{ color: 'var(--text-main)', fontWeight: '800', fontSize: '2.2rem', marginBottom: '0.8rem', letterSpacing: '-0.5px' }}>Utwórz wizualizacje</h2>
-          {!currentPromptData && (
+          {!isPromptMode && (
             <p style={{ color: 'var(--text-muted)', fontSize: '1.05rem', fontWeight: '400' }}>Wybierz platformę i wygeneruj profesjonalne materiały AI.</p>
           )}
         </div>
@@ -188,15 +188,15 @@ const ResultSection = ({
         {/* Media Tab Bar - Segmented Control Look */}
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '3rem', background: 'var(--bg-app)', padding: '0.4rem', borderRadius: '18px', border: '1px solid var(--border-color)' }}>
           <button
-            onClick={() => setMediaTab('image')}
+            onClick={() => setVisualizationType('image')}
             style={{
               flex: 1,
               padding: '1rem',
               borderRadius: '14px',
               border: 'none',
-              background: mediaTab === 'image' ? 'var(--bg-white)' : 'transparent',
-              color: mediaTab === 'image' ? 'var(--color-primary)' : 'var(--text-muted)',
-              boxShadow: mediaTab === 'image' ? '0 4px 15px rgba(0,0,0,0.05)' : 'none',
+              background: visualizationType === 'image' ? 'var(--bg-white)' : 'transparent',
+              color: visualizationType === 'image' ? 'var(--color-primary)' : 'var(--text-muted)',
+              boxShadow: visualizationType === 'image' ? '0 4px 15px rgba(0,0,0,0.05)' : 'none',
               cursor: 'pointer',
               fontWeight: '700',
               transition: 'all 0.3s ease'
@@ -205,15 +205,15 @@ const ResultSection = ({
             Obraz
           </button>
           <button
-            onClick={() => setMediaTab('video')}
+            onClick={() => setVisualizationType('video')}
             style={{
               flex: 1,
               padding: '1rem',
               borderRadius: '14px',
               border: 'none',
-              background: mediaTab === 'video' ? 'var(--bg-white)' : 'transparent',
-              color: mediaTab === 'video' ? 'var(--color-primary)' : 'var(--text-muted)',
-              boxShadow: mediaTab === 'video' ? '0 4px 15px rgba(0,0,0,0.05)' : 'none',
+              background: visualizationType === 'video' ? 'var(--bg-white)' : 'transparent',
+              color: visualizationType === 'video' ? 'var(--color-primary)' : 'var(--text-muted)',
+              boxShadow: visualizationType === 'video' ? '0 4px 15px rgba(0,0,0,0.05)' : 'none',
               cursor: 'pointer',
               fontWeight: '700',
               transition: 'all 0.3s ease',
@@ -239,10 +239,10 @@ const ResultSection = ({
         </div>
 
         {/* Graphic Options */}
-        {(!currentPromptData) && (
+        {(!isPromptMode) && (
           <div style={{ marginTop: '1.5rem' }}>
             <label style={{ display: 'block', fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1.5rem', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '1px' }}>
-              1. Wybierz format {mediaTab === 'image' ? 'obrazu' : 'wideo'}
+              1. Wybierz format {visualizationType === 'image' ? 'obrazu' : 'wideo'}
             </label>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.2rem', marginBottom: '3.5rem' }}>
@@ -257,12 +257,13 @@ const ResultSection = ({
                 { id: '4:5', label: 'portrait', tip: 'Feed (Pion)', color: 'var(--color-info)', desc: 'Zajmuje więcej miejsca w przewijanym kanale niż kwadrat.', aspect: '4/5' },
                 { id: '1:1', label: 'crop_square', tip: 'Feed (Kwadrat)', color: '#818cf8', desc: 'Klasyczny format kwadratowy, bezpieczny wybór dla każdego kanału.', aspect: '1/1' }
               ]).map((format, idx) => {
-                const isActive = mediaTab === 'image' ? activeImageLabel === format.tip : activeVideoLabel === format.tip;
+                const isActive = visualizationType === 'image' ? activeImageLabel === format.tip : activeVideoLabel === format.tip;
                 return (
                   <div key={`${format.id}-${idx}`} style={{ position: 'relative' }} className="format-card-container">
-                    <button
+                    <button 
+                      className={isActive ? 'format-card-active' : ''}
                       onClick={() => {
-                        if (mediaTab === 'image') {
+                        if (visualizationType === 'image') {
                           setImageAspectRatio(format.id);
                           setActiveImageLabel(format.tip);
                         } else {
@@ -275,8 +276,10 @@ const ResultSection = ({
                         minHeight: '220px',
                         padding: '1.5rem 1rem',
                         borderRadius: '24px',
-                        border: isActive ? `2px solid ${format.color}` : '1px solid var(--border-color)',
-                        background: isActive ? `rgba(${format.color === 'var(--color-primary)' ? '56, 189, 248' : '100, 100, 100'}, 0.03)` : 'var(--bg-app)',
+                        border: isActive ? '2px solid transparent' : '1px solid var(--border-color)',
+                        background: isActive 
+                          ? `linear-gradient(var(--bg-app), var(--bg-app)) padding-box, linear-gradient(135deg, #4285f4, #9b72cb, #d96570, #f4af45) border-box`
+                          : 'var(--bg-app)',
                         color: 'var(--text-main)',
                         cursor: 'pointer',
                         display: 'flex',
@@ -285,7 +288,8 @@ const ResultSection = ({
                         justifyContent: 'space-between',
                         gap: '1.2rem',
                         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                        boxShadow: isActive ? `0 10px 25px rgba(0,0,0,0.08)` : 'none'
+                        boxShadow: isActive ? `0 15px 35px rgba(0,0,0,0.15)` : 'none',
+                        outline: 'none'
                       }}
                     >
                       {/* Frame Preview Visual */}
@@ -357,17 +361,89 @@ const ResultSection = ({
               })}
             </div>
 
-            {/* Main Action Button - Centered and Premium */}
-            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '3rem' }}>
+            {/* Main Action Buttons - Grid Layout */}
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: '1fr 1fr', 
+              gap: '2rem', 
+              marginTop: '3rem',
+              maxWidth: '1000px',
+              margin: '3rem auto 0 auto'
+            }}>
+              {/* Option 1: Prepare/Edit Prompt (The current way) */}
               <button 
-                onClick={() => handleGeneratePrompt(mediaTab)}
+                onClick={() => handleGeneratePrompt(visualizationType, false)}
+                disabled={imageLoading || isReadOnly}
+                className="btn-secondary" 
+                style={{ 
+                  padding: '1.4rem 2rem', 
+                  borderRadius: '50px', 
+                  fontSize: '1.1rem', 
+                  fontWeight: '800',
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  gap: '1rem',
+                  border: '2px solid var(--border-color)',
+                  color: 'var(--text-main)',
+                  cursor: (imageLoading || isReadOnly) ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.3s ease',
+                  position: 'relative'
+                }}
+              >
+                {imageLoading && visualizationType === visualizationType && !isAutoGenerating ? (
+                  <span className="spinner"></span>
+                ) : (
+                  <>
+                    <span className="material-icons" style={{ fontSize: '1.6rem', color: 'var(--color-primary)' }}>{mediaTab === 'video' ? 'movie_filter' : 'auto_fix_high'}</span>
+                    <span>Przygotuj {visualizationType === 'image' ? 'obraz' : 'wideo'}</span>
+                    <div className="format-info-trigger" style={{ 
+                      position: 'absolute',
+                      right: '25px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      color: 'var(--text-muted)', 
+                      opacity: 0.8,
+                      cursor: 'help'
+                    }}>
+                      <span className="material-icons" style={{ fontSize: '1.4rem' }}>info</span>
+                      <div className="format-tooltip" style={{
+                        position: 'absolute',
+                        bottom: '140%',
+                        right: '-10px',
+                        width: '320px',
+                        background: 'var(--bg-card)',
+                        color: 'var(--text-main)',
+                        padding: '1.5rem',
+                        borderRadius: '24px',
+                        fontSize: '1rem',
+                        boxShadow: '0 20px 50px rgba(0,0,0,0.3)',
+                        border: '1px solid var(--color-primary)',
+                        pointerEvents: 'none',
+                        opacity: 0,
+                        transition: 'all 0.3s ease',
+                        zIndex: 100,
+                        textAlign: 'left',
+                        lineHeight: '1.6',
+                        fontWeight: 'normal'
+                      }}>
+                        <strong style={{ color: 'var(--color-primary)', display: 'block', marginBottom: '0.6rem', fontSize: '1.1rem' }}>Tryb Kontrolowany</strong>
+                        AI przygotuje najpierw opis techniczny (prompt), który będziesz mógł dowolnie edytować przed generacją finalnego dzieła. Idealne, gdy potrzebujesz precyzji.
+                      </div>
+                    </div>
+                  </>
+                )}
+              </button>
+
+              {/* Option 2: Quick Generate (The new way) */}
+              <button 
+                onClick={() => handleGeneratePrompt(visualizationType, true)}
                 disabled={imageLoading || isReadOnly}
                 className="btn-primary" 
                 style={{ 
-                  minWidth: '450px', 
-                  padding: '1.4rem 3rem', 
+                  padding: '1.4rem 2rem', 
                   borderRadius: '50px', 
-                  fontSize: '1.2rem', 
+                  fontSize: '1.1rem', 
                   fontWeight: '800',
                   display: 'flex', 
                   alignItems: 'center', 
@@ -378,25 +454,49 @@ const ResultSection = ({
                   border: 'none',
                   color: '#fff',
                   cursor: (imageLoading || isReadOnly) ? 'not-allowed' : 'pointer',
-                  transition: 'transform 0.2s, box-shadow 0.2s'
-                }}
-                onMouseEnter={(e) => {
-                  if (!imageLoading && !isReadOnly) {
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.boxShadow = '0 25px 50px rgba(56, 189, 248, 0.35)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 20px 40px rgba(56, 189, 248, 0.25)';
+                  transition: 'all 0.3s ease',
+                  position: 'relative'
                 }}
               >
-                {imageLoading && visualizationType === mediaTab ? (
+                {imageLoading && visualizationType === visualizationType && isAutoGenerating ? (
                   <span className="spinner"></span>
                 ) : (
                   <>
-                    <span className="material-icons" style={{ fontSize: '1.6rem' }}>{mediaTab === 'video' ? 'movie' : 'auto_fix_high'}</span>
-                    <span>{isReadOnly ? 'Brak AI' : `Przygotuj ${mediaTab === 'image' ? 'obraz' : 'wideo'}`}</span>
+                    <span className="material-icons" style={{ fontSize: '1.6rem' }}>{mediaTab === 'video' ? 'movie' : 'rocket_launch'}</span>
+                    <span>Wygeneruj {visualizationType === 'image' ? 'obraz' : 'wideo'}</span>
+                    <div className="format-info-trigger" style={{ 
+                      position: 'absolute',
+                      right: '25px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      color: 'rgba(255,255,255,0.8)',
+                      cursor: 'help'
+                    }}>
+                      <span className="material-icons" style={{ fontSize: '1.4rem' }}>info</span>
+                      <div className="format-tooltip" style={{
+                        position: 'absolute',
+                        bottom: '140%',
+                        right: '-10px',
+                        width: '320px',
+                        background: 'var(--bg-card)',
+                        color: 'var(--text-main)',
+                        padding: '1.5rem',
+                        borderRadius: '24px',
+                        fontSize: '1rem',
+                        boxShadow: '0 20px 50px rgba(0,0,0,0.3)',
+                        border: '1px solid var(--color-primary)',
+                        pointerEvents: 'none',
+                        opacity: 0,
+                        transition: 'all 0.3s ease',
+                        zIndex: 100,
+                        textAlign: 'left',
+                        lineHeight: '1.6',
+                        fontWeight: 'normal'
+                      }}>
+                        <strong style={{ color: 'var(--color-primary)', display: 'block', marginBottom: '0.6rem', fontSize: '1.1rem' }}>Tryb Błyskawiczny</strong>
+                        AI automatycznie przygotuje opis i natychmiast wygeneruje obraz na podstawie treści posta. Najszybszy sposób na stworzenie profesjonalnej grafiki.
+                      </div>
+                    </div>
                   </>
                 )}
               </button>
@@ -404,13 +504,13 @@ const ResultSection = ({
           </div>
         )}
 
-        {mediaHistory && mediaHistory.filter(m => m.type === mediaTab).length > 0 && (
+        {mediaHistory && mediaHistory.filter(m => m.type === visualizationType).length > 0 && (
           <div style={{ marginTop: '2.5rem', display: 'flex', flexDirection: 'column', gap: '3rem' }}>
             <h3 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
               Historia Wygenerowanych Mediów
             </h3>
             
-            {mediaHistory.filter(m => m.type === mediaTab && !m.parentUrl).map((media, idx) => (
+            {mediaHistory.filter(m => m.type === visualizationType && !m.parentUrl).map((media, idx) => (
               <div key={idx} id={`media-item-${idx}`} style={{ textAlign: 'center', background: 'var(--bg-app)', padding: '1.5rem', borderRadius: '30px', border: '1px solid var(--border-color)', position: 'relative' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginBottom: '1.2rem', color: 'var(--text-muted)' }}>
                   <span className="material-icons" style={{ fontSize: '1.2rem' }}>{media.type === 'video' ? 'movie' : 'image'}</span>
@@ -419,47 +519,20 @@ const ResultSection = ({
                   </span>
                 </div>
 
-                {media.type === 'video' ? (
+                {media.type === 'image' ? (
+                  <div style={{ position: 'relative' }}>
+                    <img src={media.url} alt={`Generated version ${idx + 1}`} style={{ width: '100%', borderRadius: '20px', boxShadow: 'var(--shadow-md)' }} />
+                  </div>
+                ) : (
                   <video 
                     src={media.url} 
                     controls 
                     style={{ width: '100%', borderRadius: '20px', boxShadow: 'var(--shadow-md)', background: '#000' }} 
                   />
-                ) : (
-                  <div style={{ position: 'relative' }}>
-                    <img src={media.url} alt={`Generated version ${idx + 1}`} style={{ width: '100%', borderRadius: '20px', boxShadow: 'var(--shadow-md)' }} />
-                    <button 
-                      onClick={() => {
-                        setAnimatingMediaIdx(animatingMediaIdx === idx ? null : idx);
-                        setAnimationFeedback('');
-                      }}
-                      disabled={imageLoading || isReadOnly}
-                      className="glass"
-                      style={{ 
-                        position: 'absolute', 
-                        bottom: '1rem', 
-                        right: '1rem', 
-                        padding: '0.6rem 1rem', 
-                        borderRadius: '15px', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: '0.5rem', 
-                        fontSize: '0.75rem', 
-                        fontWeight: '700',
-                        color: animatingMediaIdx === idx ? '#fff' : 'var(--text-main)',
-                        border: '1px solid rgba(255,255,255,0.2)',
-                        boxShadow: 'var(--shadow-lg)',
-                        background: animatingMediaIdx === idx ? 'var(--color-primary)' : 'rgba(255,255,255,0.1)',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <span className="material-icons" style={{ fontSize: '1.1rem', color: animatingMediaIdx === idx ? '#fff' : 'var(--color-primary)' }}>{animatingMediaIdx === idx ? 'close' : 'movie'}</span>
-                      {animatingMediaIdx === idx ? 'Anuluj' : 'Ożyw to zdjęcie (wideo)'}
-                    </button>
-                  </div>
                 )}
 
-                <div style={{ display: 'flex', gap: '1rem', marginTop: '1.2rem', marginBottom: '1.5rem' }}>
+                {/* Main Action Buttons (Image/Video specific) */}
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '1.2rem' }}>
                   <button 
                     onClick={() => {
                       const newHistory = [...mediaHistory];
@@ -471,7 +544,7 @@ const ResultSection = ({
                       }
                     }} 
                     className="btn-secondary" 
-                    style={{ flex: 1, borderRadius: '15px', fontSize: '0.8rem' }}
+                    style={{ flex: 1, borderRadius: '15px', fontSize: '0.85rem' }}
                   >
                     Usuń
                   </button>
@@ -503,120 +576,10 @@ const ResultSection = ({
                   </button>
                 </div>
 
-                {/* Animation Prompt Panel */}
-                {media.type === 'image' && animatingMediaIdx === idx && (
-                  <div id={`animation-panel-${idx}`} style={{ 
-                    marginTop: '1.5rem', 
-                    padding: '1.5rem', 
-                    background: 'var(--bg-card)', 
-                    borderRadius: '20px', 
-                    border: '1px solid var(--color-primary)',
-                    textAlign: 'left',
-                    animation: 'fadeIn 0.3s ease-out'
-                  }}>
-                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
-                      <div style={{ flex: 1 }}>
-                        <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-primary)', marginBottom: '0.6rem', fontWeight: '800' }}>
-                          <span className="material-icons" style={{ fontSize: '1.1rem', verticalAlign: 'middle', marginRight: '0.5rem' }}>movie_filter</span>
-                          Instrukcja animacji:
-                        </label>
-                        <textarea 
-                          value={animationFeedback}
-                          onChange={(e) => setAnimationFeedback(e.target.value)}
-                          placeholder="Opisz jak zdjęcie ma zostać ożywione (np. postać się uśmiecha, tło lekko faluje...)"
-                          style={{ 
-                            width: '100%', 
-                            minHeight: '80px', 
-                            padding: '1rem', 
-                            fontSize: '0.9rem', 
-                            borderRadius: '15px', 
-                            border: '1px solid var(--border-color)', 
-                            background: 'var(--bg-white)', 
-                            color: 'var(--text-main)', 
-                            resize: 'none' 
-                          }}
-                          disabled={imageLoading}
-                        />
-                      </div>
-                      <button 
-                        onClick={async () => {
-                          await handleAnimateImage(media.url, animationFeedback);
-                          setAnimatingMediaIdx(null);
-                        }}
-                        disabled={!animationFeedback.trim() || imageLoading}
-                        className="btn-primary"
-                        style={{ 
-                          width: '120px',
-                          height: '80px',
-                          borderRadius: '15px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '0.4rem',
-                          background: 'linear-gradient(135deg, var(--color-primary), #1d4ed8)'
-                        }}
-                      >
-                        {imageLoading ? <span className="spinner"></span> : (
-                          <>
-                            <span className="material-icons" style={{ fontSize: '1.4rem' }}>play_circle_filled</span>
-                            <span style={{ fontSize: '0.75rem', fontWeight: '800' }}>Rozkaż AI</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Grouped Child Videos */}
-                {media.type === 'image' && mediaHistory.some(m => m.parentUrl === media.url) && (
-                  <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px dashed var(--border-color)' }}>
-                    <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-primary)' }}>
-                      <span className="material-icons" style={{ fontSize: '1.1rem' }}>auto_videocam</span>
-                      <span style={{ fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase' }}>Ożywione wersje tego zdjęcia</span>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
-                      {mediaHistory.filter(m => m.parentUrl === media.url).map((video, vIdx) => (
-                        <div key={vIdx} style={{ background: 'rgba(var(--color-primary-rgb), 0.03)', padding: '1rem', borderRadius: '20px', border: '1px solid var(--border-color)' }}>
-                           <video 
-                            src={video.url} 
-                            controls 
-                            style={{ width: '100%', borderRadius: '15px', boxShadow: 'var(--shadow-sm)', background: '#000' }} 
-                          />
-                          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.8rem' }}>
-                            <button 
-                              onClick={() => handleDownload(video.url, 'video')} 
-                              className="btn-primary" 
-                              style={{ flex: 1, padding: '0.5rem', borderRadius: '10px', fontSize: '0.75rem' }}
-                            >
-                              Pobierz
-                            </button>
-                            <button 
-                              onClick={() => {
-                                const newHistory = [...mediaHistory];
-                                const actualIdx = mediaHistory.indexOf(video);
-                                newHistory.splice(actualIdx, 1);
-                                setMediaHistory(newHistory);
-                              }} 
-                              className="btn-secondary" 
-                              style={{ flex: 0.5, padding: '0.5rem', borderRadius: '10px', fontSize: '0.75rem' }}
-                            >
-                              Usuń
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-
-
-
-                {/* Integrated Refinement Panel */}
+                {/* Integrated Refinement Panel for Image */}
                 {editingMediaIdx === idx && (
                   <div id={`edit-panel-${idx}`} style={{ 
-                    marginTop: '1.5rem', 
+                    marginTop: '1rem', 
                     padding: '1.5rem', 
                     background: 'var(--bg-card)', 
                     borderRadius: '20px', 
@@ -674,6 +637,143 @@ const ResultSection = ({
                     </div>
                   </div>
                 )}
+
+                {/* Animation Section - Now clearly separated and below image actions */}
+                {media.type === 'image' && (
+                  <div style={{ marginTop: '2rem', textAlign: 'left', borderTop: '1px dashed var(--border-color)', paddingTop: '1.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'var(--text-muted)' }}>
+                        <span className="material-icons" style={{ fontSize: '1.2rem' }}>auto_videocam</span>
+                        <span style={{ fontSize: '0.85rem', fontWeight: '700', textTransform: 'uppercase' }}>Ożywienie obrazu</span>
+                      </div>
+                      <button 
+                        onClick={() => {
+                          setAnimatingMediaIdx(animatingMediaIdx === idx ? null : idx);
+                          setAnimationFeedback('');
+                        }}
+                        disabled={imageLoading || isReadOnly}
+                        style={{ 
+                          background: animatingMediaIdx === idx ? 'var(--color-primary)' : 'rgba(var(--color-primary-rgb), 0.1)', 
+                          border: 'none',
+                          color: animatingMediaIdx === idx ? '#fff' : 'var(--color-primary)',
+                          padding: '0.6rem 1.2rem',
+                          borderRadius: '12px',
+                          fontSize: '0.85rem',
+                          fontWeight: '800',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          transition: 'all 0.3s ease'
+                        }}
+                      >
+                        <span className="material-icons" style={{ fontSize: '1.1rem' }}>{animatingMediaIdx === idx ? 'close' : 'movie'}</span>
+                        {animatingMediaIdx === idx ? 'Anuluj' : 'Ożyw to zdjęcie (wideo)'}
+                      </button>
+                    </div>
+
+                    {/* Animation Prompt Panel */}
+                    {animatingMediaIdx === idx && (
+                      <div id={`animation-panel-${idx}`} style={{ 
+                        padding: '1.5rem', 
+                        background: 'var(--bg-card)', 
+                        borderRadius: '20px', 
+                        border: '1px solid var(--color-primary)',
+                        animation: 'fadeIn 0.3s ease-out',
+                        marginBottom: '1.5rem'
+                      }}>
+                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
+                          <div style={{ flex: 1 }}>
+                            <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-primary)', marginBottom: '0.6rem', fontWeight: '800' }}>
+                              Instrukcja animacji:
+                            </label>
+                            <textarea 
+                              value={animationFeedback}
+                              onChange={(e) => setAnimationFeedback(e.target.value)}
+                              placeholder="Opisz jak zdjęcie ma zostać ożywione (np. postać się uśmiecha, tło lekko faluje...)"
+                              style={{ 
+                                width: '100%', 
+                                minHeight: '80px', 
+                                padding: '1rem', 
+                                fontSize: '0.9rem', 
+                                borderRadius: '15px', 
+                                border: '1px solid var(--border-color)', 
+                                background: 'var(--bg-white)', 
+                                color: 'var(--text-main)', 
+                                resize: 'none' 
+                              }}
+                              disabled={imageLoading}
+                            />
+                          </div>
+                          <button 
+                            onClick={async () => {
+                              await handleAnimateImage(media.url, animationFeedback);
+                              setAnimatingMediaIdx(null);
+                            }}
+                            disabled={!animationFeedback.trim() || imageLoading}
+                            className="btn-primary"
+                            style={{ 
+                              width: '120px',
+                              height: '80px',
+                              borderRadius: '15px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '0.4rem',
+                              background: 'linear-gradient(135deg, var(--color-primary), #1d4ed8)'
+                            }}
+                          >
+                            {imageLoading ? <span className="spinner"></span> : (
+                              <>
+                                <span className="material-icons" style={{ fontSize: '1.4rem' }}>play_circle_filled</span>
+                                <span style={{ fontSize: '0.75rem', fontWeight: '800' }}>Rozkaż AI</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Grouped Child Videos (Animations List) */}
+                    {mediaHistory.some(m => m.parentUrl === media.url) && (
+                      <div style={{ marginTop: '1.5rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                          {mediaHistory.filter(m => m.parentUrl === media.url).map((video, vIdx) => (
+                            <div key={vIdx} style={{ background: 'rgba(var(--color-primary-rgb), 0.03)', padding: '1rem', borderRadius: '20px', border: '1px solid var(--border-color)' }}>
+                              <video 
+                                src={video.url} 
+                                controls 
+                                style={{ width: '100%', borderRadius: '15px', boxShadow: 'var(--shadow-sm)', background: '#000' }} 
+                              />
+                              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.8rem' }}>
+                                <button 
+                                  onClick={() => handleDownload(video.url, 'video')} 
+                                  className="btn-primary" 
+                                  style={{ flex: 1, padding: '0.5rem', borderRadius: '10px', fontSize: '0.75rem' }}
+                                >
+                                  Pobierz
+                                </button>
+                                <button 
+                                  onClick={() => {
+                                    const newHistory = [...mediaHistory];
+                                    const actualIdx = mediaHistory.indexOf(video);
+                                    newHistory.splice(actualIdx, 1);
+                                    setMediaHistory(newHistory);
+                                  }} 
+                                  className="btn-secondary" 
+                                  style={{ flex: 0.5, padding: '0.5rem', borderRadius: '10px', fontSize: '0.75rem' }}
+                                >
+                                  Usuń
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
 
@@ -702,7 +802,7 @@ const ResultSection = ({
             )}
 
             {/* Loading Placeholder for new media refinement/generation */}
-            {visualizationType === mediaTab && (isMediaRefining || (imageLoading && isPromptMode)) && (
+            {visualizationType === visualizationType && (isMediaRefining || (imageLoading && isPromptMode)) && (
               <div id="media-loading-placeholder" className="glass" style={{ 
                 padding: '3rem 2rem', 
                 borderRadius: '25px', 
@@ -739,7 +839,7 @@ const ResultSection = ({
           </div>
         )}
 
-        {currentPromptData && (
+        {isPromptMode && currentPromptData && (
           <div id="current-prompt-panel" className="glass" style={{ 
             marginTop: '2.5rem', 
             padding: '2rem', 
@@ -844,7 +944,7 @@ const ResultSection = ({
                   Anuluj
                 </button>
                 <button 
-                  onClick={() => mediaTab === 'video' ? handleGenerateVideo() : handleGenerateImage()} 
+                  onClick={() => visualizationType === 'video' ? handleGenerateVideo() : handleGenerateImage()} 
                   disabled={imageLoading || isReadOnly || isVisualSyncing || (isModified && !isSyncSuccess)} 
                   className="btn-primary" 
                   style={{ 
@@ -861,8 +961,8 @@ const ResultSection = ({
                 >
                   {imageLoading ? <span className="spinner"></span> : (
                     <>
-                      <span className="material-icons">{mediaTab === 'video' ? 'movie' : 'rocket_launch'}</span>
-                      {mediaTab === 'video' ? 'Generuj Klip Wideo' : 'Generuj Grafikę'}
+                      <span className="material-icons">{visualizationType === 'video' ? 'movie' : 'rocket_launch'}</span>
+                      {visualizationType === 'video' ? 'Generuj Klip Wideo' : 'Generuj Grafikę'}
                     </>
                   )}
                 </button>

@@ -25,7 +25,7 @@ function App() {
         <Router>
           <div className="app-container">
             <Routes>
-              <Route path="/" element={<LandingPage />} />
+              <Route path="/" element={<LandingPage deferredPrompt={deferredPrompt} setDeferredPrompt={setDeferredPrompt} />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/payment" element={<PaymentPage />} />
               <Route path="/success" element={<SuccessPage />} />

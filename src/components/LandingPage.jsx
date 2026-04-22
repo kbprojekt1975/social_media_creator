@@ -1,14 +1,71 @@
 import React, { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { auth, db } from '../firebase'
+import { onAuthStateChanged, signOut } from 'firebase/auth'
+import { doc, onSnapshot, query, collection, orderBy } from 'firebase/firestore'
 import heroImage from '../assets/hero.png'
 import InteractiveDemo from './InteractiveDemo'
 import HelpModal from './generator/HelpModal'
+import StatusHeader from './generator/StatusHeader'
 
-const LandingPage = () => {
+import { StatusPill, ProfileDropdown } from './generator/HeaderComponents'
+
+const LandingPage = ({ deferredPrompt, setDeferredPrompt }) => {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [showHelp, setShowHelp] = useState(false);
   const [activeSection, setActiveSection] = useState('');
   const [mousePos, setMousePos] = useState({ x: 50, y: 50 });
+  const navigate = useNavigate();
+
+  // Auth & Data States
+  const [user, setUser] = useState(null);
+  const [balance, setBalance] = useState(0);
+  const [activeWorkspace, setActiveWorkspace] = useState(null);
+  const [showTooltip, setShowTooltip] = useState(false);
+  const MAX_TOKENS = 10000000;
+  const perc = Math.max(0, Math.min(100, (balance / MAX_TOKENS) * 100));
+
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        // Fetch Balance - Fix field name to 'balance' to match GeneratorPage
+        const userRef = doc(db, 'users', currentUser.uid);
+        const unsubUser = onSnapshot(userRef, (docSnap) => {
+          if (docSnap.exists()) {
+            setBalance(docSnap.data().balance || 0);
+          }
+        });
+
+        // Fetch Workspaces
+        const workspacesQuery = query(
+          collection(db, 'users', currentUser.uid, 'workspaces'),
+          orderBy('createdAt', 'desc')
+        );
+        const unsubWorkspaces = onSnapshot(workspacesQuery, (snapshot) => {
+          const wsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          const active = wsData.find(ws => ws.isActive);
+          setActiveWorkspace(active || null);
+        });
+
+        return () => {
+          unsubUser();
+          unsubWorkspaces();
+        };
+      }
+    });
+    return () => unsubscribeAuth();
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      setUser(null);
+      navigate('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
 
   useEffect(() => {
     // Default to dark mode as suggested
@@ -66,7 +123,6 @@ const LandingPage = () => {
 
   return (
     <div className="landing-page" style={{ overflowX: 'hidden' }}>
-      {/* Navigation */}
       <nav className="premium-border" style={{
         position: 'fixed',
         top: '20px',
@@ -79,19 +135,22 @@ const LandingPage = () => {
         justifyContent: 'space-between',
         alignItems: 'center',
         zIndex: 1000,
-        boxShadow: '0 10px 30px rgba(0,0,0,0.3)'
+        boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
+        background: 'rgba(var(--bg-app-rgb), 0.8)',
+        backdropFilter: 'blur(20px)'
       }}>
         <a href="#hero" className="logo" style={{ 
           fontWeight: '800', 
           fontSize: '1.5rem', 
           letterSpacing: '-1px', 
           textDecoration: 'none', 
-          color: '#ffffff',
+          color: 'var(--text-main)',
           cursor: 'pointer',
           textTransform: 'uppercase'
         }}>
-          KUŹNIA TREŚCI
+          KUŹNIA<span style={{ color: 'var(--color-primary)' }}>TREŚCI</span>
         </a>
+        
         <div className="nav-links" style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
           <a 
             href="#how-it-works" 
@@ -115,37 +174,61 @@ const LandingPage = () => {
           >
             Możliwości
           </a>
-          <button 
-            onClick={() => setIsDarkMode(!isDarkMode)}
-            style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer', fontSize: '1.2rem', display: 'flex', alignItems: 'center' }}
-            title="Przełącz tryb"
-          >
-            {isDarkMode ? '☀️' : '🌙'}
-          </button>
-          <button 
-             onClick={() => setShowHelp(true)}
-             style={{ 
-               background: 'rgba(56, 189, 248, 0.1)', 
-               border: '1px solid rgba(56, 189, 248, 0.3)', 
-               color: '#38bdf8', 
-               cursor: 'pointer', 
-               width: '40px', 
-               height: '40px', 
-               borderRadius: '50%', 
-               display: 'flex', 
-               alignItems: 'center', 
-               justifyContent: 'center',
-               transition: 'all 0.3s ease'
-             }}
-             onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(56, 189, 248, 0.2)'}
-             onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(56, 189, 248, 0.1)'}
-             title="Jak to działa?"
-           >
-             <span className="material-icons" style={{ fontSize: '1.4rem' }}>info</span>
-           </button>
-          <Link to="/login" className="btn-primary" style={{ boxShadow: '0 0 15px var(--primary-glow)' }}>
-            Rozpocznij
-          </Link>
+
+          {!user ? (
+            <>
+              <button 
+                onClick={() => setIsDarkMode(!isDarkMode)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer', fontSize: '1.2rem', display: 'flex', alignItems: 'center' }}
+                title="Przełącz tryb"
+              >
+                {isDarkMode ? '☀️' : '🌙'}
+              </button>
+              <button 
+                onClick={() => setShowHelp(true)}
+                style={{ 
+                  background: 'rgba(56, 189, 248, 0.1)', 
+                  border: '1px solid rgba(56, 189, 248, 0.3)', 
+                  color: '#38bdf8', 
+                  cursor: 'pointer', 
+                  width: '40px', 
+                  height: '40px', 
+                  borderRadius: '50%', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  transition: 'all 0.3s ease'
+                }}
+                title="Jak to działa?"
+              >
+                <span className="material-icons" style={{ fontSize: '1.4rem' }}>info</span>
+              </button>
+              <Link to="/login" className="btn-primary" style={{ padding: '1rem 2.5rem', fontSize: '1.1rem', boxShadow: '0 0 15px var(--primary-glow)' }}>
+                Rozpocznij
+              </Link>
+            </>
+          ) : (
+            <>
+              <div style={{ width: '1px', height: '25px', background: 'var(--border-color)', margin: '0 1rem' }}></div>
+              <StatusPill 
+                perc={perc}
+                activeWorkspace={activeWorkspace}
+                setActiveTab={(tab) => navigate('/dashboard', { state: { activeTab: tab } })}
+                setForcePaymentView={() => navigate('/dashboard')}
+                showTooltip={showTooltip}
+                setShowTooltip={setShowTooltip}
+              />
+              <ProfileDropdown 
+                user={user}
+                isDark={isDarkMode}
+                setIsDark={setIsDarkMode}
+                onShowHelp={() => setShowHelp(true)}
+                handleLogout={handleLogout}
+                deferredPrompt={deferredPrompt}
+                setDeferredPrompt={setDeferredPrompt}
+              />
+            </>
+          )}
         </div>
       </nav>
 
@@ -183,8 +266,12 @@ const LandingPage = () => {
             Kompleksowa platforma AI do projektowania, planowania i analizowania Twoich treści w mediach społecznościowych z zachwycającą estetyką i maksymalnym zasięgiem.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-            <Link to="/login" className="btn-primary" style={{ padding: '1rem 2.5rem', fontSize: '1.1rem', boxShadow: '0 0 20px var(--primary-glow)' }}>
-              Zaczynamy
+            <Link 
+              to={user ? "/dashboard" : "/login"} 
+              className="btn-primary" 
+              style={{ padding: '1rem 2.5rem', fontSize: '1.1rem', boxShadow: '0 0 20px var(--primary-glow)' }}
+            >
+              {user ? "Przejdź do panelu" : "Zaczynamy"}
             </Link>
           </div>
         </div>
@@ -344,14 +431,18 @@ const LandingPage = () => {
       {/* Footer CTA */}
       <section style={{ padding: '6rem 2rem', background: 'var(--bg-card)', textAlign: 'center' }}>
         <h2 style={{ fontSize: '2.5rem', marginBottom: '2rem' }}>Gotów zrewolucjonizować swoje media społecznościowe?</h2>
-        <Link to="/login" className="btn-primary" style={{ padding: '1rem 3rem', fontSize: '1.2rem', boxShadow: '0 0 25px var(--primary-glow)' }}>
-          Zacznij tworzyć
+        <Link 
+          to={user ? "/dashboard" : "/login"} 
+          className="btn-primary" 
+          style={{ padding: '1rem 3rem', fontSize: '1.2rem', boxShadow: '0 0 25px var(--primary-glow)' }}
+        >
+          {user ? "Przejdź do panelu" : "Zacznij tworzyć"}
         </Link>
       </section>
 
       {showHelp && <HelpModal isOpen={true} onClose={() => setShowHelp(false)} />}
     </div>
-  )
-}
+  );
+};
 
-export default LandingPage
+export default LandingPage;

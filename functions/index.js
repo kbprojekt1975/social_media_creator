@@ -102,13 +102,13 @@ app.post("/generate", async (req, res) => {
 
   try {
     const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const { platform, topic, style, plannedPrompt, workspaceContext } = req.body;
+    const { platform, topic, style, plannedPrompt, workspaceContext, customStyleGuidelines } = req.body;
 
     if (!platform || !topic) {
       return res.status(400).json({ error: "Platform and topic are required." });
     }
 
-    const { content, tokens } = await generatePost({ platform, topic, style, plannedPrompt, workspaceContext });
+    const { content, tokens } = await generatePost({ platform, topic, style, plannedPrompt, workspaceContext, customStyleGuidelines });
     
     // Check balance and deduct cost
     const userRef = db.collection("users").doc(decodedToken.uid);
@@ -202,12 +202,12 @@ app.post("/generate-plan", async (req, res) => {
   if (!idToken) return res.status(401).send("Unauthorized");
 
   try {
-    const { platform, topic, style, workspaceContext } = req.body;
+    const { platform, topic, style, workspaceContext, customStyleGuidelines } = req.body;
     if (!platform || !topic) {
       return res.status(400).json({ error: "Platform and topic are required." });
     }
 
-    const plan = await generatePostPlan({ platform, topic, style, workspaceContext });
+    const plan = await generatePostPlan({ platform, topic, style, workspaceContext, customStyleGuidelines });
     res.json({ plan });
 
   } catch (error) {
@@ -223,10 +223,10 @@ app.post("/sync-prompt", async (req, res) => {
   if (!idToken) return res.status(401).send("Unauthorized");
 
   try {
-    const { polishPlan, platform, topic, style, workspaceContext } = req.body;
+    const { polishPlan, platform, topic, style, workspaceContext, customStyleGuidelines } = req.body;
     if (!polishPlan) return res.status(400).send("Polish plan is required.");
 
-    const englishPrompt = await syncEnglishPrompt({ polishPlan, platform, topic, style, workspaceContext });
+    const englishPrompt = await syncEnglishPrompt({ polishPlan, platform, topic, style, workspaceContext, customStyleGuidelines });
     res.json({ englishPrompt });
 
   } catch (error) {
@@ -479,11 +479,17 @@ app.post("/generate-video", async (req, res) => {
 
   try {
     const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const { prompt, aspectRatio, imageUrl } = req.body;
+    const { prompt, aspectRatio, imageUrl, isAlreadyTechnical } = req.body;
     if (!prompt) return res.status(400).send("Prompt is required.");
 
-    // Translate Polish description to technical English
-    const technicalPrompt = await translateToTechnicalPrompt(prompt, 'video', aspectRatio || '1:1');
+    // OPTIMIZATION: Skip Gemini Translator if the prompt is already technical
+    let technicalPrompt = prompt;
+    if (!isAlreadyTechnical) {
+      console.log("[API] Translating video prompt to technical English...");
+      technicalPrompt = await translateToTechnicalPrompt(prompt, 'video', aspectRatio || '1:1');
+    } else {
+      console.log("[API] Skipping video translation. Using technical prompt directly.");
+    }
     console.log("Starting Video LRO for:", technicalPrompt);
 
     let base64Context = null;
