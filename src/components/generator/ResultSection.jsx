@@ -79,7 +79,30 @@ const ResultSection = ({
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', alignItems: 'center' }}>
           <h3 style={{ color: 'var(--color-primary)', fontWeight: '700', margin: 0 }}>Wygenerowana Treść</h3>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            <button onClick={() => copyToClipboard(result)} style={{ background: 'none', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', fontWeight: '600' }}>
+            <button 
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              style={{
+                background: showAdvanced ? 'rgba(var(--color-primary-rgb), 0.1)' : 'none',
+                border: '1px solid var(--border-color)',
+                color: 'var(--text-muted)',
+                padding: '0.8rem 1.2rem',
+                borderRadius: '20px',
+                cursor: 'pointer',
+                fontSize: '0.85rem',
+                fontWeight: '700',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                marginLeft: 'auto',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              <span className="material-icons" style={{ fontSize: '1.2rem' }}>
+                {showAdvanced ? 'expand_less' : 'more_horiz'}
+              </span>
+              {showAdvanced ? 'Zwiń' : 'Opcje zaawansowane'}
+            </button>
+            <button onClick={() => copyToClipboard(result)} style={{ background: 'none', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', fontWeight: '600', fontSize: '0.9rem' }}>
               Kopiuj teraz
             </button>
             <button 
@@ -93,29 +116,31 @@ const ResultSection = ({
         </div>
         <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.7', color: 'var(--text-main)', fontSize: '1.05rem', marginBottom: '1.5rem' }}>{result}</p>
         
-        {/* Text Refinement Field */}
-        <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'flex-start', background: 'var(--bg-app)', padding: '1rem', borderRadius: '15px', border: '1px solid var(--border-color)' }}>
-          <textarea 
-            value={textFeedback}
-            onChange={(e) => setTextFeedback(e.target.value)}
-            placeholder="Co chcesz poprawić w tym poście? (np. skróć do 3 zdań, dodaj więcej dynamiki...)"
-            style={{ flex: 1, minHeight: '60px', padding: '0.8rem', fontSize: '0.9rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-white)', color: 'var(--text-main)', resize: 'vertical' }}
-            disabled={isTextRefining}
-          />
-          <button 
-            onClick={handleRefineText}
-            disabled={!textFeedback.trim() || isTextRefining}
-            className="btn-primary"
-            style={{ padding: '0.8rem 1.5rem', borderRadius: '12px', alignSelf: 'stretch', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-          >
-            {isTextRefining ? <span className="spinner"></span> : (
-              <>
-                <span className="material-icons" style={{ fontSize: '1.1rem' }}>auto_fix_high</span>
-                Rozkaż AI
-              </>
-            )}
-          </button>
-        </div>
+        {/* Text Refinement Field (Hidden under Advanced) */}
+        {showAdvanced && (
+          <div className="premium-border" style={{ display: 'flex', gap: '0.8rem', alignItems: 'flex-start', padding: '1rem', animation: 'fadeIn 0.3s ease-out' }}>
+            <textarea 
+              value={textFeedback}
+              onChange={(e) => setTextFeedback(e.target.value)}
+              placeholder="Co chcesz poprawić w tym poście? (np. skróć do 3 zdań, dodaj więcej dynamiki...)"
+              style={{ flex: 1, minHeight: '60px', padding: '0.8rem', fontSize: '0.9rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-white)', color: 'var(--text-main)', resize: 'vertical' }}
+              disabled={isTextRefining}
+            />
+            <button 
+              onClick={handleRefineText}
+              disabled={!textFeedback.trim() || isTextRefining}
+              className="btn-primary"
+              style={{ padding: '0.8rem 1.5rem', borderRadius: '12px', alignSelf: 'stretch', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            >
+              {isTextRefining ? <span className="spinner"></span> : (
+                <>
+                  <span className="material-icons" style={{ fontSize: '1.1rem' }}>auto_fix_high</span>
+                  Rozkaż AI
+                </>
+              )}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Visualization Section */}
@@ -151,10 +176,25 @@ const ResultSection = ({
                 color: mediaTab === 'video' ? 'var(--color-primary)' : 'var(--text-main)',
                 cursor: 'pointer',
                 fontWeight: mediaTab === 'video' ? '600' : '400',
-                transition: 'all 0.2s'
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem'
               }}
             >
               Wideo
+              <span style={{ 
+                fontSize: '0.55rem', 
+                background: '#f4af45', 
+                color: '#000', 
+                padding: '0.1rem 0.4rem', 
+                borderRadius: '6px', 
+                fontWeight: '900',
+                letterSpacing: '0.5px'
+              }}>
+                EKSPERYMENTALNA
+              </span>
             </button>
           </div>
           {/* Graphic Options */}
@@ -246,6 +286,22 @@ const ResultSection = ({
 
             {/* Video Generation Block */}
             {mediaTab === 'video' && ( <div>
+              <div style={{ 
+                padding: '0.8rem 1rem', 
+                background: 'rgba(244, 175, 69, 0.05)', 
+                border: '1px solid rgba(244, 175, 69, 0.3)', 
+                borderRadius: '15px', 
+                marginBottom: '1.5rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.8rem',
+                fontSize: '0.85rem',
+                color: '#f4af45',
+                fontWeight: '600'
+              }}>
+                <span className="material-icons" style={{ fontSize: '1.2rem' }}>science</span>
+                <span>Wersja eksperymentalna. Funkcjonalność ograniczona.</span>
+              </div>
               <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 2. Wybierz format wideo (Reels/TikTok)
               </label>
@@ -336,59 +392,61 @@ const ResultSection = ({
               Nano Banana przygotował opis {visualizationType === 'video' ? 'klipu wideo' : 'grafiki'}:
             </p>
             
-            {/* Polish Description (Editable) */}
-            <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem', fontWeight: '700' }}>OPIS (PL) - Możesz edytować:</label>
-              <textarea 
-                value={currentPromptData.polishDescription || ''}
-                onChange={(e) => {
-                  setCurrentPromptData(prev => ({ ...prev, polishDescription: e.target.value }));
-                  setIsModified(true);
-                  setIsSyncSuccess(false);
-                }}
-                style={{ 
-                  width: '100%',
-                  minHeight: '100px', 
-                  fontSize: '0.9rem', 
-                  background: 'var(--bg-white)',
-                  color: 'var(--text-main)',
-                  padding: '1rem',
-                  border: isSyncSuccess ? '1px solid #10b981' : '1px solid var(--border-color)',
-                  borderRadius: '15px',
-                  transition: 'border 0.3s ease'
-                }}
-              />
-              <button 
-                onClick={onSyncClick}
-                disabled={isVisualSyncing || isReadOnly || !isModified}
-                className="btn-secondary"
-                style={{ 
-                  width: '100%', 
-                  marginTop: '0.8rem', 
-                  padding: '0.7rem', 
-                  borderRadius: '12px', 
-                  fontSize: '0.85rem', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  gap: '0.5rem',
-                  border: isSyncSuccess ? '1px solid #10b981' : (isModified ? '1px solid var(--color-primary)' : '1px solid var(--border-color)'),
-                  color: isSyncSuccess ? '#10b981' : (isModified ? 'var(--color-primary)' : 'var(--text-muted)'),
-                  background: isSyncSuccess ? 'rgba(16, 185, 129, 0.05)' : 'none',
-                  cursor: isModified ? 'pointer' : 'default',
-                  transition: 'all 0.3s ease'
-                }}
-              >
-                {isVisualSyncing ? <span className="spinner"></span> : (
-                  <>
-                    <span className="material-icons" style={{ fontSize: '1.1rem' }}>
-                      {isSyncSuccess ? 'check_circle' : 'auto_fix_high'}
-                    </span>
-                    {isSyncSuccess ? 'Zmiany zapisane' : 'Zastosuj zmiany w opisie'}
-                  </>
-                )}
-              </button>
-            </div>
+            {/* Polish Description (Hidden under Advanced) */}
+            {showAdvanced && (
+              <div className="premium-border" style={{ marginBottom: '1.5rem', padding: '1.5rem', animation: 'fadeIn 0.3s ease-out' }}>
+                <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem', fontWeight: '700' }}>OPIS (PL) - Możesz edytować:</label>
+                <textarea 
+                  value={currentPromptData.polishDescription || ''}
+                  onChange={(e) => {
+                    setCurrentPromptData(prev => ({ ...prev, polishDescription: e.target.value }));
+                    setIsModified(true);
+                    setIsSyncSuccess(false);
+                  }}
+                  style={{ 
+                    width: '100%',
+                    minHeight: '100px', 
+                    fontSize: '0.9rem', 
+                    background: 'var(--bg-white)',
+                    color: 'var(--text-main)',
+                    padding: '1rem',
+                    border: isSyncSuccess ? '1px solid #10b981' : '1px solid var(--border-color)',
+                    borderRadius: '15px',
+                    transition: 'border 0.3s ease'
+                  }}
+                />
+                <button 
+                  onClick={onSyncClick}
+                  disabled={isVisualSyncing || isReadOnly || !isModified}
+                  className="btn-secondary"
+                  style={{ 
+                    width: '100%', 
+                    marginTop: '0.8rem', 
+                    padding: '0.7rem', 
+                    borderRadius: '12px', 
+                    fontSize: '0.85rem', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    gap: '0.5rem',
+                    border: isSyncSuccess ? '1px solid #10b981' : (isModified ? '1px solid var(--color-primary)' : '1px solid var(--border-color)'),
+                    color: isSyncSuccess ? '#10b981' : (isModified ? 'var(--color-primary)' : 'var(--text-muted)'),
+                    background: isSyncSuccess ? 'rgba(16, 185, 129, 0.05)' : 'none',
+                    cursor: isModified ? 'pointer' : 'default',
+                    transition: 'all 0.3s ease'
+                  }}
+                >
+                  {isVisualSyncing ? <span className="spinner"></span> : (
+                    <>
+                      <span className="material-icons" style={{ fontSize: '1.1rem' }}>
+                        {isSyncSuccess ? 'check_circle' : 'auto_fix_high'}
+                      </span>
+                      {isSyncSuccess ? 'Zmiany zapisane' : 'Zastosuj zmiany w opisie'}
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1.5rem' }}>
               <button onClick={() => setCurrentPromptData(null)} className="btn-secondary" style={{ padding: '0.8rem', borderRadius: '15px' }}>
@@ -489,8 +547,9 @@ const ResultSection = ({
                   </button>
                 </div>
 
-                {/* Integrated Refinement Panel (Only for the latest version) */}
-                {idx === mediaHistory.filter(m => m.type === mediaTab).length - 1 && visualizationType === mediaTab && currentPromptData && (
+
+                {/* Integrated Refinement Panel (Only for the latest version & when advanced is shown) */}
+                {showAdvanced && idx === mediaHistory.filter(m => m.type === mediaTab).length - 1 && visualizationType === mediaTab && currentPromptData && (
                   <div style={{ 
                     marginTop: '1.5rem', 
                     paddingTop: '1.5rem', 
@@ -550,9 +609,29 @@ const ResultSection = ({
               </div>
             ))}
 
-            <button onClick={handleReset} className="btn-secondary" style={{ width: '100%', padding: '0.8rem', borderRadius: '15px', marginTop: '1rem' }}>
-              Zapisz projekt
-            </button>
+            {showAdvanced && mediaHistory.length > 0 && (
+              <button 
+                onClick={handleReset} 
+                className="btn-secondary" 
+                style={{ 
+                  width: '100%', 
+                  padding: '0.8rem', 
+                  borderRadius: '15px', 
+                  marginTop: '1.5rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                  background: 'rgba(var(--color-primary-rgb), 0.05)',
+                  border: '1px solid var(--color-primary)',
+                  color: 'var(--color-primary)',
+                  fontWeight: '700'
+                }}
+              >
+                <span className="material-icons" style={{ fontSize: '1.1rem' }}>save</span>
+                Zakończ i zapisz projekt
+              </button>
+            )}
 
             {/* Loading Placeholder for new media refinement/generation */}
             {visualizationType === mediaTab && (isMediaRefining || imageLoading) && (

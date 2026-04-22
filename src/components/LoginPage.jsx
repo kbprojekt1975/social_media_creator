@@ -10,6 +10,14 @@ const LoginPage = () => {
   const [error, setError] = useState('')
   const navigate = useNavigate()
 
+  // Theme State - Default to dark
+  const [isDark] = useState(localStorage.getItem('theme') !== 'light');
+
+  React.useEffect(() => {
+    const theme = isDark ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [isDark]);
+
   const handleAuth = async (e) => {
     e.preventDefault()
     setError('')
@@ -41,32 +49,32 @@ const LoginPage = () => {
       display: 'flex',
       justifyContent: 'center',
       alignItems: 'center',
-      background: 'var(--bg-dark)',
+      background: 'var(--bg-app)',
       padding: '1rem'
     }}>
-      <div className="glass" style={{
+      <div className="premium-border" style={{
         width: '100%',
         maxWidth: '450px',
-        padding: '3rem',
-        borderRadius: '30px',
+        padding: '3.5rem 3rem',
         textAlign: 'center'
       }}>
-        <h2 style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>
-          {isRegistering ? 'Create Account' : 'Welcome Back'}
+        <h2 style={{ fontSize: '2.5rem', marginBottom: '1rem', fontWeight: '700' }}>
+          {isRegistering ? 'Stwórz konto' : 'Witaj ponownie'}
         </h2>
         <p style={{ color: 'var(--text-muted)', marginBottom: '2.5rem' }}>
-          {isRegistering ? 'Start your journey today' : 'Log in to manage your content'}
+          {isRegistering ? 'Rozpocznij swoją przygodę już dziś' : 'Zaloguj się, aby zarządzać swoimi treściami'}
         </p>
 
-        {error && <div style={{ color: 'var(--accent)', marginBottom: '1rem', fontSize: '0.9rem' }}>{error}</div>}
+        {error && <div style={{ color: '#ef4444', marginBottom: '1.2rem', fontSize: '0.9rem', background: 'rgba(239, 68, 68, 0.1)', padding: '0.8rem', borderRadius: '10px' }}>{error}</div>}
 
         <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
           <div style={{ textAlign: 'left' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Email Address</label>
+            <label style={{ display: 'block', marginBottom: '0.6rem', fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-muted)' }}>Adres E-mail</label>
             <input 
               type="email" 
               required 
               value={email}
+              placeholder="twoj@email.com"
               onChange={(e) => setEmail(e.target.value)}
               style={{
                 width: '100%',
@@ -81,11 +89,12 @@ const LoginPage = () => {
             />
           </div>
           <div style={{ textAlign: 'left' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Password</label>
+            <label style={{ display: 'block', marginBottom: '0.6rem', fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-muted)' }}>Hasło</label>
             <input 
               type="password" 
               required 
               value={password}
+              placeholder="••••••••"
               onChange={(e) => setPassword(e.target.value)}
               style={{
                 width: '100%',
@@ -99,20 +108,20 @@ const LoginPage = () => {
               }}
             />
           </div>
-          <button type="submit" className="btn-primary" style={{ marginTop: '1rem', padding: '1.1rem' }}>
-            {isRegistering ? 'Sign Up' : 'Sign In'}
+          <button type="submit" className="btn-primary" style={{ marginTop: '1rem', padding: '1.1rem', borderRadius: '15px', fontSize: '1rem', fontWeight: '700' }}>
+            {isRegistering ? 'Zarejestruj się' : 'Zaloguj się'}
           </button>
         </form>
 
         <div style={{ margin: '2rem 0', display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div style={{ flex: 1, height: '1px', background: 'var(--border-color)' }}></div>
-          <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>OR</span>
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: '700' }}>LUB</span>
           <div style={{ flex: 1, height: '1px', background: 'var(--border-color)' }}></div>
         </div>
 
         <button 
           onClick={handleGoogleAuth}
-          className="glass" 
+          className="btn-secondary" 
           style={{ 
             width: '100%', 
             padding: '1rem', 
@@ -124,32 +133,34 @@ const LoginPage = () => {
             justifyContent: 'center',
             gap: '0.8rem',
             cursor: 'pointer',
-            border: '1px solid var(--border-color)'
+            border: '1px solid var(--border-color)',
+            background: 'var(--bg-white)'
           }}
         >
           <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" style={{ width: '18px' }} />
-          Continue with Google
+          Kontynuuj przez Google
         </button>
 
-        <p style={{ marginTop: '2rem', color: 'var(--text-muted)', fontSize: '0.95rem' }}>
-          {isRegistering ? 'Already have an account?' : "Don't have an account?"}
+        <p style={{ marginTop: '2.5rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+          {isRegistering ? 'Masz już konto?' : "Nie masz jeszcze konta?"}
           <button 
             onClick={() => setIsRegistering(!isRegistering)}
             style={{ 
               background: 'none', 
               border: 'none', 
-              color: 'var(--secondary)', 
+              color: 'var(--color-primary)', 
               marginLeft: '0.5rem', 
               cursor: 'pointer',
-              fontWeight: '600'
+              fontWeight: '700'
             }}
           >
-            {isRegistering ? 'Sign In' : 'Sign Up'}
+            {isRegistering ? 'Zaloguj się' : 'Zarejestruj się'}
           </button>
         </p>
         
-        <Link to="/" style={{ display: 'block', marginTop: '1.5rem', color: 'var(--text-muted)', textDecoration: 'none', fontSize: '0.85rem' }}>
-          ← Back to home
+        <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', marginTop: '1.5rem', color: 'var(--text-muted)', textDecoration: 'none', fontSize: '0.85rem', opacity: 0.8 }}>
+          <span className="material-icons" style={{ fontSize: '1rem' }}>arrow_back</span>
+          Powrót do strony głównej
         </Link>
       </div>
     </div>

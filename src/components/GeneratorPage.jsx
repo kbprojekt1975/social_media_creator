@@ -67,8 +67,8 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [planActive, setPlanActive] = useState(false);
 
-  // Theme State
-  const [isDark, setIsDark] = useState(localStorage.getItem('theme') === 'dark');
+  // Theme State - Default to dark
+  const [isDark, setIsDark] = useState(localStorage.getItem('theme') !== 'light');
 
   useEffect(() => {
     const theme = isDark ? 'dark' : 'light';
@@ -109,6 +109,7 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
   const [workspaces, setWorkspaces] = useState([]);
   const [activeWorkspace, setActiveWorkspace] = useState(null);
   const [showWorkspaceForm, setShowWorkspaceForm] = useState(false);
+  const [showAdvancedMenu, setShowAdvancedMenu] = useState(false);
   const [newWorkspace, setNewWorkspace] = useState({ name: '', contentDirectives: '', visualStyle: '' });
 
   const { showError, showSuccess, showWarning, showInfo } = useNotification();
@@ -985,6 +986,8 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         activeWorkspace={activeWorkspace}
+        showAdvanced={showAdvancedMenu}
+        setShowAdvanced={setShowAdvancedMenu}
       />
 
       <HistoryDrawer 
