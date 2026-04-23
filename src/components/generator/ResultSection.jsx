@@ -261,7 +261,7 @@ const ResultSection = ({
                 return (
                   <div key={`${format.id}-${idx}`} style={{ position: 'relative' }} className="format-card-container">
                     <button 
-                      className={isActive ? 'format-card-active' : ''}
+                      className={`format-card ${isActive ? 'format-card-active' : ''}`}
                       onClick={() => {
                         if (visualizationType === 'image') {
                           setImageAspectRatio(format.id);

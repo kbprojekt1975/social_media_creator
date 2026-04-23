@@ -236,6 +236,13 @@ body {
   font-size: 0.9rem;
 }
 
+.chip:hover {
+  border-color: var(--color-primary);
+  background: var(--bg-white);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
 .chip.active {
   background: var(--bg-white);
   border-color: var(--color-primary);
@@ -310,6 +317,17 @@ body {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(66, 133, 244, 0.2);
   filter: brightness(1.1);
+}
+
+.format-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.format-card:hover:not(.format-card-active) {
+  background: var(--bg-card) !important;
+  transform: translateY(-5px);
+  border-color: var(--color-primary) !important;
+  box-shadow: var(--shadow-md), 0 0 15px var(--primary-glow) !important;
 }
 
 @keyframes border-pop {
