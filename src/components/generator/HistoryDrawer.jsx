@@ -112,6 +112,30 @@ const HistoryDrawer = ({
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase' }}>
                           {item.platform}
                         </span>
+                        {item.historyType === 'campaign' && (
+                          <span style={{ 
+                            fontSize: '0.65rem', 
+                            background: 'var(--color-primary)', 
+                            color: 'white', 
+                            padding: '0.1rem 0.4rem', 
+                            borderRadius: '4px', 
+                            fontWeight: '900' 
+                          }}>
+                            KAMPANIA
+                          </span>
+                        )}
+                        {item.historyType === 'editor' && (
+                          <span style={{ 
+                            fontSize: '0.65rem', 
+                            background: '#8b5cf6', 
+                            color: 'white', 
+                            padding: '0.1rem 0.4rem', 
+                            borderRadius: '4px', 
+                            fontWeight: '900' 
+                          }}>
+                            EDYTOR
+                          </span>
+                        )}
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                           {item.createdAt?.toDate ? new Date(item.createdAt.toDate()).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' }) : ''}
                         </span>
@@ -142,8 +166,12 @@ const HistoryDrawer = ({
                           </p>
                         </div>
                         
-                        {item.imageUrl && (
-                          <img src={item.imageUrl} alt="History" style={{ width: '100%', borderRadius: '15px', marginBottom: '1rem', border: '1px solid var(--border-color)' }} />
+                        {(item.imageUrl || (item.historyType === 'editor' && item.mediaHistory?.length > 0)) && (
+                          <img 
+                            src={item.imageUrl || item.mediaHistory[item.mediaHistory.length - 1].url} 
+                            alt="History" 
+                            style={{ width: '100%', borderRadius: '15px', marginBottom: '1rem', border: '1px solid var(--border-color)' }} 
+                          />
                         )}
                         {item.videoUrl && (
                           <video src={item.videoUrl} controls style={{ width: '100%', borderRadius: '15px', marginBottom: '1rem', background: '#000' }} />
@@ -151,24 +179,28 @@ const HistoryDrawer = ({
 
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
                           <div style={{ display: 'flex', gap: '0.8rem' }}>
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); copyToClipboard(item.content); }}
-                              className="btn-secondary"
-                              style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', borderRadius: '12px' }}
-                            >
-                              Kopiuj
-                            </button>
+                            {item.historyType === 'post' && (
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); copyToClipboard(item.content); }}
+                                className="btn-secondary"
+                                style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', borderRadius: '12px' }}
+                              >
+                                Kopiuj
+                              </button>
+                            )}
                             <button 
                               onClick={(e) => { e.stopPropagation(); handleEditHistoryItem(item); }}
                               className="btn-secondary"
                               style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
                             >
-                              <span className="material-icons" style={{ fontSize: '1rem' }}>edit</span>
-                              Edytuj
+                              <span className="material-icons" style={{ fontSize: '1rem' }}>
+                                {item.historyType === 'campaign' ? 'visibility' : (item.historyType === 'editor' ? 'brush' : 'edit')}
+                              </span>
+                              {item.historyType === 'campaign' ? 'Zobacz kampanię' : (item.historyType === 'editor' ? 'Kontynuuj edycję' : 'Edytuj')}
                             </button>
                           </div>
                           <button 
-                            onClick={(e) => { e.stopPropagation(); handleDeleteHistory(item.id); }}
+                            onClick={(e) => { e.stopPropagation(); handleDeleteHistory(item.id, item.historyType); }}
                             style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }}
                           >
                             <span className="material-icons" style={{ fontSize: '1.1rem' }}>delete_outline</span>

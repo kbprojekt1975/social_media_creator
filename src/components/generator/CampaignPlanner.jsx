@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const CampaignPlanner = ({ 
   handleGenerateCampaign, 
@@ -10,7 +10,9 @@ const CampaignPlanner = ({
   campaigns, 
   handleSelectCampaignItem,
   balance,
-  isReadOnly 
+  isReadOnly,
+  initialSession,
+  onClearSession
 }) => {
   const [name, setName] = useState('');
   const [editingId, setEditingId] = useState(null);
@@ -25,6 +27,24 @@ const CampaignPlanner = ({
   const [isRefiningUSP, setIsRefiningUSP] = useState(false);
   const [isRefiningAudience, setIsRefiningAudience] = useState(false);
   const [showCustomForm, setShowCustomForm] = useState(false);
+  const [hideHistory, setHideHistory] = useState(false);
+
+  useEffect(() => {
+    if (initialSession) {
+      setName(initialSession.name || '');
+      setSelectedGoals(initialSession.goal ? initialSession.goal.split(', ') : ['Budowanie świadomości marki']);
+      setProductDescription(initialSession.productDescription || '');
+      setUsp(initialSession.usp || '');
+      setDuration(initialSession.duration || 7);
+      setSelectedPlatforms(initialSession.platforms || ['LinkedIn']);
+      setIntensity(initialSession.intensity || 'Steady');
+      setToneOfVoice(initialSession.toneOfVoice || 'Profesjonalny');
+      setMainCTA(initialSession.mainCTA || '');
+      setTargetAudience(initialSession.targetAudience || '');
+      setProblemSolved(initialSession.problemSolved || '');
+      setHideHistory(false);
+    }
+  }, [initialSession]);
 
   // New Strategy States
   const [intensity, setIntensity] = useState('Steady'); // Steady, Teaser-Launch, Sprint
@@ -121,6 +141,7 @@ const CampaignPlanner = ({
 
   const onSubmit = (e) => {
     e.preventDefault();
+    setHideHistory(false);
     const finalGoalsString = selectedGoals.join(', ');
 
     handleGenerateCampaign({
@@ -143,7 +164,34 @@ const CampaignPlanner = ({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       <div className="glass" style={{ padding: '2.5rem', borderRadius: '30px', background: 'var(--bg-white)', border: 'none' }}>
-        <h2 style={{ margin: '0 0 2rem 0', fontSize: '1.8rem', fontWeight: '700' }}>Planer Kampanii</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+          <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: '700' }}>Planer Kampanii</h2>
+          {(name || productDescription || initialSession) && (
+            <button 
+              onClick={() => {
+                setName('');
+                setProductDescription('');
+                setUsp('');
+                setProblemSolved('');
+                setTargetAudience('');
+                setCustomGoals([]);
+                setSelectedGoals(['Budowanie świadomości marki']);
+                setDuration(7);
+                setSelectedPlatforms(['LinkedIn']);
+                setIntensity('Steady');
+                setToneOfVoice('Profesjonalny');
+                setMainCTA('');
+                setHideHistory(false);
+                if (onClearSession) onClearSession();
+              }}
+              className="btn-secondary"
+              style={{ padding: '0.5rem 1rem', borderRadius: '12px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+            >
+              <span className="material-icons" style={{ fontSize: '1.1rem' }}>add_circle_outline</span>
+              Nowa kampania
+            </button>
+          )}
+        </div>
         
         <form onSubmit={onSubmit}>
           {/* Section A: Fundamenty */}
@@ -451,7 +499,7 @@ const CampaignPlanner = ({
       </div>
 
       {/* Campaigns History / Results */}
-      {campaigns && campaigns.length > 0 && (
+      {campaigns && campaigns.length > 0 && !hideHistory && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <h3 style={{ margin: '1rem 0 0.5rem 0', fontWeight: '700' }}>Twoje Strategie</h3>
           {campaigns.map(campaign => (
@@ -519,6 +567,32 @@ const CampaignPlanner = ({
                     </button>
                   </div>
                 ))}
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+                  <button 
+                    onClick={() => {
+                      alert('Twoja kampania została zapisana i jest dostępna w panelu historii.');
+                      setName('');
+                      setProductDescription('');
+                      setUsp('');
+                      setProblemSolved('');
+                      setTargetAudience('');
+                      setCustomGoals([]);
+                      setSelectedGoals(['Budowanie świadomości marki']);
+                      setDuration(7);
+                      setSelectedPlatforms(['LinkedIn']);
+                      setIntensity('Steady');
+                      setToneOfVoice('Profesjonalny');
+                      setMainCTA('');
+                      setHideHistory(true);
+                    }}
+                    className="btn-primary"
+                    style={{ padding: '0.8rem 2rem', borderRadius: '15px', display: 'flex', alignItems: 'center', gap: '0.6rem', background: 'var(--color-primary)', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600' }}
+                  >
+                    <span className="material-icons">save</span>
+                    Zapisz kampanię
+                  </button>
+                </div>
               </div>
             </div>
           ))}

@@ -590,7 +590,7 @@ const ResultSection = ({
                     bottom: '20px', 
                     right: '20px', 
                     display: 'flex', 
-                    gap: '1.6rem', 
+                    gap: '1rem', 
                     zIndex: 20,
                     animation: 'fadeIn 0.3s ease-out',
                     background: 'linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)) padding-box, linear-gradient(135deg, #4285f4, #9b72cb, #d96570, #f4af45) border-box',
@@ -604,6 +604,7 @@ const ResultSection = ({
                       <button 
                         onClick={() => {
                           setAnimatingMediaIdx(animatingMediaIdx === idx ? null : idx);
+                          setEditingMediaIdx(null);
                           setAnimationFeedback('');
                         }}
                         style={{
@@ -625,8 +626,16 @@ const ResultSection = ({
                         {animatingMediaIdx === idx ? 'Anuluj' : 'Ożyw to zdjęcie'}
                       </button>
                     )}
+                    
+                    {media.type === 'image' && (
+                      <span style={{ color: 'rgba(255,255,255,0.3)', fontWeight: '300', fontSize: '1.2rem', alignSelf: 'center' }}>/</span>
+                    )}
+
                     <button 
-                      onClick={() => setEditingMediaIdx(editingMediaIdx === idx ? null : idx)}
+                      onClick={() => {
+                        setEditingMediaIdx(editingMediaIdx === idx ? null : idx);
+                        setAnimatingMediaIdx(null);
+                      }}
                       style={{
                         background: 'none',
                         border: 'none',

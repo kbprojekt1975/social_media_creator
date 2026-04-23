@@ -64,6 +64,8 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
   const [isAtTop, setIsAtTop] = useState(true);
   const [isAutoGenerating, setIsAutoGenerating] = useState(false);
   const [customStyles, setCustomStyles] = useState([]);
+  const [activeEditorSession, setActiveEditorSession] = useState(null);
+  const [activeCampaignSession, setActiveCampaignSession] = useState(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -878,6 +880,22 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
   };
 
   const handleEditHistoryItem = (item) => {
+    if (item.historyType === 'campaign') {
+      setActiveCampaignSession(item);
+      setActiveTab('campaigns');
+      setIsHistoryDrawerOpen(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if (item.historyType === 'editor') {
+      setActiveEditorSession(item);
+      setActiveTab('visual_editor');
+      setIsHistoryDrawerOpen(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
     setCurrentRecordId(item.id);
     setTopic(item.topic || '');
     setPlatform(item.platform || 'LinkedIn');
@@ -1049,6 +1067,17 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
     }
   };
 
+  const handleDeleteCampaign = async (campaignId) => {
+    if (!window.confirm('Czy na pewno chcesz usunąć tę kampanię?')) return;
+    try {
+      await deleteDoc(doc(db, 'users', user.uid, 'campaigns', campaignId));
+      showSuccess('Kampania została usunięta.');
+    } catch (error) {
+      console.error('Delete campaign failed:', error);
+      showError('Nie udało się usunąć kampanii.');
+    }
+  };
+
 
   // Jeśli trwa sprawdzanie subskrypcji
   if (subscriptionStatus === 'loading') {
@@ -1116,13 +1145,41 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
       <HistoryDrawer 
         isHistoryDrawerOpen={isHistoryDrawerOpen}
         toggleHistoryDrawer={toggleHistoryDrawer}
-        history={history}
+        history={[
+          ...history.map(h => ({ ...h, historyType: 'post' })),
+          ...campaigns.map(c => ({ 
+            ...c, 
+            historyType: 'campaign', 
+            topic: c.name, 
+            platform: 'Kampania',
+            content: `Strategia kampanii marketingowej: ${c.goal}. Kliknij edytuj, aby zobaczyć szczegóły w zakładce Kampanie.`
+          }))
+        ].sort((a, b) => {
+          const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt instanceof Date ? a.createdAt.getTime() : 0);
+          const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt instanceof Date ? b.createdAt.getTime() : 0);
+          return timeB - timeA;
+        })}
         expandedHistoryItems={expandedHistoryItems}
-        toggleAllHistory={toggleAllHistory}
+        toggleAllHistory={(expand) => {
+          if (expand) {
+            const allIds = {};
+            history.forEach(h => allIds[h.id] = true);
+            campaigns.forEach(c => allIds[c.id] = true);
+            setExpandedHistoryItems(allIds);
+          } else {
+            setExpandedHistoryItems({});
+          }
+        }}
         toggleHistoryItem={toggleHistoryItem}
         copyToClipboard={copyToClipboard}
         handleEditHistoryItem={handleEditHistoryItem}
-        handleDeleteHistory={handleDeleteHistory}
+        handleDeleteHistory={(id, type) => {
+          if (type === 'campaign') {
+            handleDeleteCampaign(id);
+          } else {
+            handleDeleteHistory(id);
+          }
+        }}
       />
 
       {/* Dashboard Grid (now Centered Layout) */}
@@ -1273,6 +1330,8 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
             handleSelectCampaignItem={handleSelectCampaignItem}
             balance={balance}
             isReadOnly={isReadOnly}
+            initialSession={activeCampaignSession}
+            onClearSession={() => setActiveCampaignSession(null)}
           />
         )}
 
@@ -1283,6 +1342,8 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
             activeWorkspace={activeWorkspace}
             handleApiError={handleApiError}
             API_BASE_URL={API_BASE_URL}
+            initialSession={activeEditorSession}
+            onClearSession={() => setActiveEditorSession(null)}
           />
         )}
       </div>

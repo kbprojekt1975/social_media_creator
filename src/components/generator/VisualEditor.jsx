@@ -1,6 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { storage, auth, db } from '../../firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
 import axios from 'axios';
 import { useNotification } from '../common/NotificationContext';
 
@@ -9,7 +10,9 @@ const VisualEditor = ({
   isReadOnly, 
   activeWorkspace, 
   handleApiError, 
-  API_BASE_URL 
+  API_BASE_URL,
+  initialSession,
+  onClearSession
 }) => {
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -22,6 +25,53 @@ const VisualEditor = ({
   const [mediaHistory, setMediaHistory] = useState([]);
   const [modificationText, setModificationText] = useState('');
   const [aspectRatio, setAspectRatio] = useState('1:1');
+  const [currentSessionId, setCurrentSessionId] = useState(null);
+
+  useEffect(() => {
+    if (initialSession) {
+      setCurrentSessionId(initialSession.id);
+      setInstruction(initialSession.instruction || '');
+      setMediaHistory(initialSession.mediaHistory || []);
+      setV1PromptData(initialSession.v1PromptData || null);
+      setLastPromptData(initialSession.lastPromptData || null);
+      setAspectRatio(initialSession.aspectRatio || '1:1');
+      if (initialSession.mediaHistory?.length > 0) {
+        setGeneratedMedia(initialSession.mediaHistory[initialSession.mediaHistory.length - 1]);
+      }
+      if (initialSession.originalFileUrl) {
+         setPreview(initialSession.originalFileUrl);
+      }
+    }
+  }, [initialSession]);
+
+  const saveSession = async (updatedHistory, lastPrompt, v1Prompt, originalUrl) => {
+    if (!auth.currentUser || isReadOnly) return;
+    try {
+      const sessionData = {
+        historyType: 'editor',
+        topic: `Edycja: ${instruction.slice(0, 30)}${instruction.length > 30 ? '...' : ''}`,
+        platform: 'Edytor',
+        content: `Sesja edycji obrazu/wideo. Kroki: ${updatedHistory.length}`,
+        instruction: instruction,
+        mediaHistory: updatedHistory,
+        lastPromptData: lastPrompt,
+        v1PromptData: v1Prompt,
+        originalFileUrl: originalUrl || preview,
+        aspectRatio: aspectRatio,
+        updatedAt: serverTimestamp(),
+      };
+
+      if (!currentSessionId) {
+        sessionData.createdAt = serverTimestamp();
+        const docRef = await addDoc(collection(db, 'users', auth.currentUser.uid, 'history'), sessionData);
+        setCurrentSessionId(docRef.id);
+      } else {
+        await updateDoc(doc(db, 'users', auth.currentUser.uid, 'history', currentSessionId), sessionData);
+      }
+    } catch (error) {
+      console.error("Failed to save session:", error);
+    }
+  };
   
   const fileInputRef = useRef(null);
   const { showSuccess, showError, showInfo } = useNotification();
@@ -64,17 +114,24 @@ const VisualEditor = ({
   };
 
   const handleInitialGenerate = async (type = 'image') => {
-    if (!file || !instruction.trim()) {
+    if (!file && !preview) {
       showError("Wybierz obraz i wpisz instrukcję.");
+      return;
+    }
+    if (!instruction.trim()) {
+      showError("Wpisz instrukcję.");
       return;
     }
     setLoadingType(type);
     try {
       const token = await auth.currentUser.getIdToken();
-      const uploadedUrl = await uploadImage(file);
+      
+      let uploadedUrl = preview;
+      if (file) {
+        uploadedUrl = await uploadImage(file);
+      }
       
       // Step 1: Create a technical prompt based on the image and instruction
-      // We'll use the refine-image-prompt endpoint with a "dummy" v1 to bootstrap the context
       const response = await axios.post(`${API_BASE_URL}/refine-image-prompt`, {
         v1PromptObject: { englishPrompt: "Initial uploaded image", polishDescription: "Oryginalny obraz" },
         lastPromptObject: { englishPrompt: "Initial uploaded image", polishDescription: "Oryginalny obraz" },
@@ -92,7 +149,6 @@ const VisualEditor = ({
       // Step 2: Generate the media
       if (type === 'video') {
         await generateVideo(vPlan, uploadedUrl);
-        // Success notification for video is handled inside pollVideoStatus
       } else {
         await generateImage(vPlan, uploadedUrl);
         showSuccess("Pierwsza wersja wygenerowana!");
@@ -102,32 +158,30 @@ const VisualEditor = ({
       if (handleApiError) {
         handleApiError(error, "Nie udało się przetworzyć obrazu. Spróbuj ponownie za chwilę.");
       } else {
-        const msg = error.response?.status === 429 
-          ? "Zbyt wiele zapytań. Odczekaj chwilę." 
-          : "Wystąpił błąd podczas generowania.";
-        showError(msg);
+        showError("Wystąpił błąd podczas generowania.");
       }
-      setLoadingType(null); // Clear on error
+      setLoadingType(null);
     }
   };
 
   const generateImage = async (promptData, contextUrl) => {
-  const token = await auth.currentUser.getIdToken();
-  const response = await axios.post(`${API_BASE_URL}/generate-image`, {
-    prompt: promptData.englishPrompt,
-    aspectRatio: aspectRatio,
-    originalImageUrl: contextUrl,
-    isAlreadyTechnical: true
-  }, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
+    const token = await auth.currentUser.getIdToken();
+    const response = await axios.post(`${API_BASE_URL}/generate-image`, {
+      prompt: promptData.englishPrompt,
+      aspectRatio: aspectRatio,
+      originalImageUrl: contextUrl,
+      isAlreadyTechnical: true
+    }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
 
-  // Construct media object from API response
-  const newMedia = { type: 'image', url: response.data.imageUrl };
-  setGeneratedMedia(newMedia);
-  setMediaHistory(prev => [...prev, { ...newMedia, prompt: promptData }]);
-  setLoadingType(null); // Success for image
-};;
+    const newMedia = { type: 'image', url: response.data.imageUrl };
+    setGeneratedMedia(newMedia);
+    const updatedHistory = [...mediaHistory, { ...newMedia, prompt: promptData }];
+    setMediaHistory(updatedHistory);
+    saveSession(updatedHistory, promptData, v1PromptData || promptData, contextUrl);
+    setLoadingType(null);
+  };
 
   const generateVideo = async (promptData, contextUrl) => {
     const token = await auth.currentUser.getIdToken();
@@ -141,15 +195,17 @@ const VisualEditor = ({
 
     if (response.data.status === 'started') {
       showInfo("Rozpoczęto generowanie wideo. To może potrwać do 2 minut.");
-      pollVideoStatus(response.data.operationName, promptData);
+      pollVideoStatus(response.data.operationName, promptData, contextUrl);
     } else if (response.data.status === 'done') {
       const newMedia = { type: 'video', url: response.data.videoUrl };
       setGeneratedMedia(newMedia);
-      setMediaHistory(prev => [...prev, { ...newMedia, prompt: promptData }]);
+      const updatedHistory = [...mediaHistory, { ...newMedia, prompt: promptData }];
+      setMediaHistory(updatedHistory);
+      saveSession(updatedHistory, promptData, v1PromptData || promptData, contextUrl);
     }
   };
 
-  const pollVideoStatus = async (operationName, promptData) => {
+  const pollVideoStatus = async (operationName, promptData, contextUrl) => {
     const token = await auth.currentUser.getIdToken();
     let isDone = false;
     let attempts = 0;
@@ -164,7 +220,9 @@ const VisualEditor = ({
           isDone = true;
           const newMedia = { type: 'video', url: res.data.videoUrl };
           setGeneratedMedia(newMedia);
-          setMediaHistory(prev => [...prev, { ...newMedia, prompt: promptData }]);
+          const updatedHistory = [...mediaHistory, { ...newMedia, prompt: promptData }];
+          setMediaHistory(updatedHistory);
+          saveSession(updatedHistory, promptData, v1PromptData || promptData, contextUrl);
           showSuccess("Wideo jest gotowe!");
         } else if (res.data.status === 'failed') {
           showError("Generowanie wideo nie powiodło się.");
@@ -182,8 +240,6 @@ const VisualEditor = ({
     setLoadingType('refine');
     try {
       const token = await auth.currentUser.getIdToken();
-      
-      // Use the last generated media as context for the next change
       const currentMediaUrl = generatedMedia.url;
 
       const response = await axios.post(`${API_BASE_URL}/refine-image-prompt`, {
@@ -199,7 +255,6 @@ const VisualEditor = ({
       const vPlan = response.data.visualPlannedPrompt;
       setLastPromptData(vPlan);
       
-      // Always generate an image for iterative refinement for now (simpler flow)
       await generateImage(vPlan, currentMediaUrl);
       setModificationText('');
       showSuccess("Zmiana naniesiona!");
@@ -218,7 +273,30 @@ const VisualEditor = ({
   return (
     <div className="visual-editor-container" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       <div className="glass" style={{ padding: '2.5rem', borderRadius: '30px', background: 'var(--bg-white)', border: 'none' }}>
-        <h2 style={{ marginBottom: '2rem', fontSize: '1.8rem', fontWeight: '700' }}>Edytor Wizualny</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+          <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: '700' }}>Edytor Wizualny</h2>
+          {(currentSessionId || mediaHistory.length > 0) && (
+            <button 
+              onClick={() => {
+                setCurrentSessionId(null);
+                setFile(null);
+                setPreview(null);
+                setInstruction('');
+                setMediaHistory([]);
+                setGeneratedMedia(null);
+                setLastPromptData(null);
+                setV1PromptData(null);
+                if (onClearSession) onClearSession();
+                showInfo("Rozpoczęto nową sesję.");
+              }}
+              className="btn-secondary"
+              style={{ padding: '0.5rem 1rem', borderRadius: '12px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+            >
+              <span className="material-icons" style={{ fontSize: '1.1rem' }}>add_circle_outline</span>
+              Nowa sesja
+            </button>
+          )}
+        </div>
         
         <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
           {/* Left Side: Upload & Initial Instruction */}
