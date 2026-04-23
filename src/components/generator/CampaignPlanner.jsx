@@ -31,6 +31,14 @@ const CampaignPlanner = ({
   const [isRefiningAudience, setIsRefiningAudience] = useState(false);
   const [showCustomForm, setShowCustomForm] = useState(false);
   const [hideHistory, setHideHistory] = useState(false);
+  const [collapsedCampaigns, setCollapsedCampaigns] = useState({});
+
+  const toggleCampaign = (id) => {
+    setCollapsedCampaigns(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
 
   useEffect(() => {
     if (initialSession) {
@@ -499,6 +507,32 @@ const CampaignPlanner = ({
             {loading && <span className="spinner"></span>}
           </button>
         </form>
+        
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+          <button 
+            onClick={() => {
+              alert('Twoja kampania została zapisana i jest dostępna w panelu historii.');
+              setName('');
+              setProductDescription('');
+              setUsp('');
+              setProblemSolved('');
+              setTargetAudience('');
+              setCustomGoals([]);
+              setSelectedGoals(['Budowanie świadomości marki']);
+              setDuration(7);
+              setSelectedPlatforms(['LinkedIn']);
+              setIntensity('Steady');
+              setToneOfVoice('Profesjonalny');
+              setMainCTA('');
+              setHideHistory(true);
+            }}
+            className="btn-primary"
+            style={{ padding: '0.8rem 2rem', borderRadius: '15px', display: 'flex', alignItems: 'center', gap: '0.6rem', background: 'var(--color-primary)', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600' }}
+          >
+            <span className="material-icons">save</span>
+            Zapisz kampanię
+          </button>
+        </div>
       </div>
 
       {/* Campaigns History / Results */}
@@ -546,10 +580,31 @@ const CampaignPlanner = ({
                   )}
                   <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Cel: {campaign.goal} | {campaign.duration} dni</p>
                 </div>
-                <span className="material-icons" style={{ color: 'var(--color-primary)' }}>verified</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <span className="material-icons" style={{ color: 'var(--color-primary)' }}>verified</span>
+                  <button 
+                    onClick={() => toggleCampaign(campaign.id)}
+                    style={{ 
+                      background: 'rgba(var(--color-primary-rgb), 0.1)', 
+                      border: 'none', 
+                      color: 'var(--color-primary)', 
+                      borderRadius: '10px', 
+                      padding: '0.4rem', 
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}
+                    title={collapsedCampaigns[campaign.id] ? "Rozwiń strategię" : "Zwiń strategię"}
+                  >
+                    <span className="material-icons" style={{ transition: 'transform 0.3s' }}>
+                      {collapsedCampaigns[campaign.id] ? 'expand_more' : 'expand_less'}
+                    </span>
+                  </button>
+                </div>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {!collapsedCampaigns[campaign.id] && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {campaign.strategy.map((item, idx) => (
                   <div key={idx} style={{ padding: '1.2rem', background: 'var(--bg-app)', borderRadius: '18px', border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
                     <div style={{ flex: 1 }}>
@@ -617,34 +672,9 @@ const CampaignPlanner = ({
                       </button>
                     </div>
                   </div>
-                ))}
-
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
-                  <button 
-                    onClick={() => {
-                      alert('Twoja kampania została zapisana i jest dostępna w panelu historii.');
-                      setName('');
-                      setProductDescription('');
-                      setUsp('');
-                      setProblemSolved('');
-                      setTargetAudience('');
-                      setCustomGoals([]);
-                      setSelectedGoals(['Budowanie świadomości marki']);
-                      setDuration(7);
-                      setSelectedPlatforms(['LinkedIn']);
-                      setIntensity('Steady');
-                      setToneOfVoice('Profesjonalny');
-                      setMainCTA('');
-                      setHideHistory(true);
-                    }}
-                    className="btn-primary"
-                    style={{ padding: '0.8rem 2rem', borderRadius: '15px', display: 'flex', alignItems: 'center', gap: '0.6rem', background: 'var(--color-primary)', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600' }}
-                  >
-                    <span className="material-icons">save</span>
-                    Zapisz kampanię
-                  </button>
+                  ))}
                 </div>
-              </div>
+              )}
             </div>
           ))}
         </div>

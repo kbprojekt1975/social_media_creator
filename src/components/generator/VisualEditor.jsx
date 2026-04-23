@@ -74,7 +74,7 @@ const VisualEditor = ({
   };
   
   const fileInputRef = useRef(null);
-  const { showSuccess, showError, showInfo } = useNotification();
+  const { showSuccess, showError, showInfo, showWarning } = useNotification();
 
   const handleDownload = (url, type) => {
     // Use backend proxy to bypass CORS and force download
@@ -86,6 +86,33 @@ const VisualEditor = ({
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleFinalSave = async () => {
+    if (mediaHistory.length === 0 && !preview) {
+      showWarning("Nie ma nic do zapisania.");
+      return;
+    }
+
+    try {
+      // Final explicit save
+      await saveSession(mediaHistory, lastPromptData, v1PromptData, preview);
+      showSuccess("Sesja została zapisana i jest dostępna w panelu historii! 💾");
+      
+      // Reset everything
+      setCurrentSessionId(null);
+      setFile(null);
+      setPreview(null);
+      setInstruction('');
+      setMediaHistory([]);
+      setGeneratedMedia(null);
+      setLastPromptData(null);
+      setV1PromptData(null);
+      if (onClearSession) onClearSession();
+    } catch (err) {
+      console.error("Save error:", err);
+      showError("Błąd podczas zapisywania sesji.");
+    }
   };
 
   const handleFileChange = (e) => {
@@ -275,27 +302,38 @@ const VisualEditor = ({
       <div className="glass" style={{ padding: '2.5rem', borderRadius: '30px', background: 'var(--bg-white)', border: 'none' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
           <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: '700' }}>Edytor Wizualny</h2>
-          {(currentSessionId || mediaHistory.length > 0) && (
+          <div style={{ display: 'flex', gap: '0.8rem' }}>
             <button 
-              onClick={() => {
-                setCurrentSessionId(null);
-                setFile(null);
-                setPreview(null);
-                setInstruction('');
-                setMediaHistory([]);
-                setGeneratedMedia(null);
-                setLastPromptData(null);
-                setV1PromptData(null);
-                if (onClearSession) onClearSession();
-                showInfo("Rozpoczęto nową sesję.");
-              }}
-              className="btn-secondary"
-              style={{ padding: '0.5rem 1rem', borderRadius: '12px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+              onClick={handleFinalSave}
+              className="btn-primary"
+              style={{ padding: '0.5rem 1.5rem', borderRadius: '12px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'var(--color-primary)', border: 'none', color: 'white' }}
             >
-              <span className="material-icons" style={{ fontSize: '1.1rem' }}>add_circle_outline</span>
-              Nowa sesja
+              <span className="material-icons" style={{ fontSize: '1.1rem' }}>save</span>
+              Zapisz
             </button>
-          )}
+
+            {(currentSessionId || mediaHistory.length > 0) && (
+              <button 
+                onClick={() => {
+                  setCurrentSessionId(null);
+                  setFile(null);
+                  setPreview(null);
+                  setInstruction('');
+                  setMediaHistory([]);
+                  setGeneratedMedia(null);
+                  setLastPromptData(null);
+                  setV1PromptData(null);
+                  if (onClearSession) onClearSession();
+                  showInfo("Rozpoczęto nową sesję.");
+                }}
+                className="btn-secondary"
+                style={{ padding: '0.5rem 1rem', borderRadius: '12px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+              >
+                <span className="material-icons" style={{ fontSize: '1.1rem' }}>add_circle_outline</span>
+                Nowa sesja
+              </button>
+            )}
+          </div>
         </div>
         
         <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
@@ -462,10 +500,11 @@ const VisualEditor = ({
                     style={{
                       flex: 1,
                       padding: '0.8rem 1.2rem',
-                      background: 'var(--bg-white)',
+                      background: 'var(--bg-app)',
                       border: '1px solid var(--border-color)',
                       borderRadius: '12px',
-                      color: 'var(--text-main)'
+                      color: 'var(--text-main)',
+                      outline: 'none'
                     }}
                   />
                   <button 

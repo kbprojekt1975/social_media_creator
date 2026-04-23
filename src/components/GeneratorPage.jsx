@@ -1205,7 +1205,7 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
         isHistoryDrawerOpen={isHistoryDrawerOpen}
         toggleHistoryDrawer={toggleHistoryDrawer}
         history={[
-          ...history.map(h => ({ ...h, historyType: 'post' })),
+          ...history.map(h => ({ historyType: 'post', ...h })),
           ...campaigns.map(c => ({ 
             ...c, 
             historyType: 'campaign', 
