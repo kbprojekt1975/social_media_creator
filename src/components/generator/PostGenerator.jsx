@@ -46,7 +46,9 @@ const PostGenerator = ({
       <div className="premium-border" style={{ padding: '2.5rem', animation: 'fadeIn 0.5s ease-out 0.2s both' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-            <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: '700' }}>Nowy Projekt</h2>
+            <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: '700' }}>
+              {topic ? (topic.length > 40 ? topic.slice(0, 40) + '...' : topic) : 'Nowy Projekt'}
+            </h2>
             <button 
               type="button"
               onClick={onShowHelp}

@@ -66,6 +66,7 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
   const [customStyles, setCustomStyles] = useState([]);
   const [activeEditorSession, setActiveEditorSession] = useState(null);
   const [activeCampaignSession, setActiveCampaignSession] = useState(null);
+  const [activeCampaignContext, setActiveCampaignContext] = useState(null); // { campaignId, itemIndex }
 
   useEffect(() => {
     const handleScroll = () => {
@@ -383,6 +384,7 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
           style, 
           customStyleGuidelines: customStyles.find(s => s.name === style)?.description || null,
           plannedPrompt: planActive && plannedPrompt ? plannedPrompt.englishPrompt : null,
+          campaignId: activeCampaignContext?.campaignId || null,
           workspaceContext: activeWorkspace ? {
             contentDirectives: activeWorkspace.contentDirectives,
             visualStyle: activeWorkspace.visualStyle
@@ -392,7 +394,21 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
       );
 
       setResult(response.data.content);
-      setCurrentRecordId(response.data.historyId);
+      const historyId = response.data.historyId;
+      setCurrentRecordId(historyId);
+
+      // Force update with campaignId to ensure grouping works even if backend lags
+      if (activeCampaignContext?.campaignId) {
+        try {
+          await updateDoc(doc(db, 'users', user.uid, 'history', historyId), {
+            campaignId: activeCampaignContext.campaignId,
+            campaignItemIndex: activeCampaignContext.itemIndex
+          });
+        } catch (updateErr) {
+          console.error("Error linking post to campaign:", updateErr);
+        }
+      }
+
       showSuccess('Treść została wygenerowana pomyślnie!');
       
       // Auto-scroll to result
@@ -863,7 +879,28 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
     setIsHistoryDrawerOpen(!isHistoryDrawerOpen);
   };
 
+  const markCampaignItemCompleted = async (campaignId, itemIndex) => {
+    try {
+      const campaignRef = doc(db, 'users', user.uid, 'campaigns', campaignId);
+      const camp = campaigns.find(c => c.id === campaignId);
+      if (!camp) return;
+
+      const newStrategy = [...camp.strategy];
+      newStrategy[itemIndex] = { ...newStrategy[itemIndex], isCompleted: true };
+
+      await updateDoc(campaignRef, {
+        strategy: newStrategy
+      });
+      showSuccess('Zadanie kampanii oznaczone jako wykonane! ✅');
+    } catch (error) {
+      console.error('Error marking item completed:', error);
+    }
+  };
+
   const handleReset = () => {
+    if (activeCampaignContext) {
+      markCampaignItemCompleted(activeCampaignContext.campaignId, activeCampaignContext.itemIndex);
+    }
     setTopic('');
     setResult('');
     setPlannedPrompt(null);
@@ -877,6 +914,7 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
     setV1VisualPrompt(null);
     setAiDetectionLog("");
     setCurrentRecordId(null);
+    setActiveCampaignContext(null);
   };
 
   const handleEditHistoryItem = (item) => {
@@ -956,6 +994,7 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
     }
 
     setIsHistoryDrawerOpen(false); 
+    setActiveTab('generator');
     window.scrollTo({ top: 0, behavior: 'smooth' }); 
   };
 
@@ -983,9 +1022,10 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
     }
   };
 
-  const handleSelectCampaignItem = (item) => {
+  const handleSelectCampaignItem = (item, campaignId, itemIndex) => {
     setTopic(item.topic);
     setPlatform(item.platform || 'LinkedIn');
+    setActiveCampaignContext({ campaignId, itemIndex });
     // Pre-fill result with visualization idea so user knows what the context was
     setResult(`💡 Pomysł z kampanii:\n${item.topic}\n\nWizualizacja: ${item.visualIdea}\n\nUzasadnienie: ${item.rationale}\n\n--- Kliknij "Generuj Treść" aby stworzyć gotowy post. ---`);
     setActiveTab('generator');
@@ -1064,6 +1104,25 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
     } catch (error) {
       console.error('Delete failed:', error);
       showError('Nie udało się usunąć wpisu.');
+    }
+  };
+
+  const handleResetCampaignItem = async (campaignId, itemIndex) => {
+    if (!window.confirm('Czy na pewno chcesz usunąć status wykonania dla tego posta?')) return;
+    try {
+      const campaignRef = doc(db, 'users', user.uid, 'campaigns', campaignId);
+      const camp = campaigns.find(c => c.id === campaignId);
+      if (!camp) return;
+
+      const newStrategy = [...camp.strategy];
+      newStrategy[itemIndex] = { ...newStrategy[itemIndex], isCompleted: false };
+
+      await updateDoc(campaignRef, {
+        strategy: newStrategy
+      });
+      showInfo('Status posta został zresetowany.');
+    } catch (error) {
+      console.error('Error resetting item status:', error);
     }
   };
 
@@ -1328,6 +1387,9 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
             loading={campaignLoading}
             campaigns={campaigns}
             handleSelectCampaignItem={handleSelectCampaignItem}
+            handleResetCampaignItem={handleResetCampaignItem}
+            handleEditHistoryItem={handleEditHistoryItem}
+            history={history}
             balance={balance}
             isReadOnly={isReadOnly}
             initialSession={activeCampaignSession}

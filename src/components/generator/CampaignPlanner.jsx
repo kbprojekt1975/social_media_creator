@@ -9,6 +9,9 @@ const CampaignPlanner = ({
   loading, 
   campaigns, 
   handleSelectCampaignItem,
+  handleResetCampaignItem,
+  handleEditHistoryItem,
+  history,
   balance,
   isReadOnly,
   initialSession,
@@ -557,14 +560,62 @@ const CampaignPlanner = ({
                       <h5 style={{ margin: '0 0 0.4rem 0', fontSize: '1rem' }}>{item.topic}</h5>
                       <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Wizualizacja: {item.visualIdea}</p>
                     </div>
-                    <button 
-                      onClick={() => handleSelectCampaignItem(item)}
-                      className="btn-secondary"
-                      style={{ padding: '0.6rem 1.2rem', borderRadius: '12px', fontSize: '0.85rem', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-                    >
-                      <span className="material-icons" style={{ fontSize: '1rem' }}>bolt</span>
-                      Generuj Post
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                      {item.isCompleted && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginRight: '0.5rem' }}>
+                          <span className="material-icons" style={{ color: '#10b981', fontSize: '1.5rem' }} title="Ten post został już wygenerowany">check_circle</span>
+                          
+                          {/* Button to open the generated post from history */}
+                          <button 
+                            onClick={() => {
+                              // Try robust matching: first by campaignId AND index, then fallback to campaignId AND topic/platform
+                              let historyItem = history.find(h => 
+                                h.campaignId === campaign.id && 
+                                (h.campaignItemIndex !== undefined && Number(h.campaignItemIndex) === Number(idx))
+                              );
+
+                              // Fallback if index matching fails (e.g. for older posts)
+                              if (!historyItem) {
+                                historyItem = history.find(h => 
+                                  h.campaignId === campaign.id && 
+                                  h.topic === item.topic &&
+                                  h.platform === item.platform
+                                );
+                              }
+
+                              if (historyItem) {
+                                handleEditHistoryItem(historyItem);
+                              } else {
+                                alert('Nie znaleziono zapisu tego posta w historii.');
+                              }
+                            }}
+                            className="btn-secondary"
+                            style={{ padding: '0.4rem', minWidth: 'auto', borderRadius: '10px', color: 'var(--color-primary)' }}
+                            title="Otwórz wygenerowany post"
+                          >
+                            <span className="material-icons" style={{ fontSize: '1.2rem' }}>visibility</span>
+                          </button>
+
+                          {/* Button to reset completion status */}
+                          <button 
+                            onClick={() => handleResetCampaignItem(campaign.id, idx)}
+                            className="btn-secondary"
+                            style={{ padding: '0.4rem', minWidth: 'auto', borderRadius: '10px', color: '#ef4444' }}
+                            title="Usuń status wykonania"
+                          >
+                            <span className="material-icons" style={{ fontSize: '1.2rem' }}>delete_outline</span>
+                          </button>
+                        </div>
+                      )}
+                      <button 
+                        onClick={() => handleSelectCampaignItem(item, campaign.id, idx)}
+                        className="btn-secondary"
+                        style={{ padding: '0.6rem 1.2rem', borderRadius: '12px', fontSize: '0.85rem', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.4rem', borderColor: item.isCompleted ? '#10b981' : 'var(--border-color)' }}
+                      >
+                        <span className="material-icons" style={{ fontSize: '1rem' }}>{item.isCompleted ? 'refresh' : 'bolt'}</span>
+                        {item.isCompleted ? 'Generuj ponownie' : 'Generuj Post'}
+                      </button>
+                    </div>
                   </div>
                 ))}
 

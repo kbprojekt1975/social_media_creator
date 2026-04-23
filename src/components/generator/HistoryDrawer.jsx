@@ -11,6 +11,32 @@ const HistoryDrawer = ({
   handleEditHistoryItem, 
   handleDeleteHistory 
 }) => {
+  // Logic to nest posts under their respective campaigns
+  const groupedHistory = [];
+  const campaignPostsMap = {};
+
+  // First, find all posts that belong to a campaign
+  history.forEach(item => {
+    if (item.historyType === 'post' && item.campaignId) {
+      if (!campaignPostsMap[item.campaignId]) {
+        campaignPostsMap[item.campaignId] = [];
+      }
+      campaignPostsMap[item.campaignId].push(item);
+    }
+  });
+
+  // Then, build the final list, excluding those nested posts but adding them to campaigns
+  history.forEach(item => {
+    if (item.historyType === 'campaign') {
+      groupedHistory.push({
+        ...item,
+        children: campaignPostsMap[item.id] || []
+      });
+    } else if (item.historyType === 'editor' || (item.historyType === 'post' && !item.campaignId)) {
+      groupedHistory.push(item);
+    }
+  });
+
   return (
     <>
       <div 
@@ -78,10 +104,10 @@ const HistoryDrawer = ({
           paddingRight: '0.5rem',
           scrollbarGutter: 'stable'
         }}>
-          {history.length === 0 ? (
+          {groupedHistory.length === 0 ? (
             <p style={{ color: 'var(--text-muted)' }}>Brak wygenerowanych treści.</p>
           ) : (
-            history.map(item => {
+            groupedHistory.map(item => {
               const isExpanded = !!expandedHistoryItems[item.id];
               return (
                 <div key={item.id} style={{
@@ -137,7 +163,7 @@ const HistoryDrawer = ({
                           </span>
                         )}
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                          {item.createdAt?.toDate ? new Date(item.createdAt.toDate()).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' }) : ''}
+                          {item.createdAt?.toDate ? new Date(item.createdAt.toDate()).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' }) : (item.createdAt instanceof Date ? item.createdAt.toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' }) : '')}
                         </span>
                       </div>
                     </div>
@@ -152,61 +178,88 @@ const HistoryDrawer = ({
                   </div>
 
                   {isExpanded && (
-                    <div style={{ padding: '0 1.8rem 1.8rem 1.8rem', animation: 'fadeIn 0.3s ease-out' }}>
-                      <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1.2rem', marginBottom: '1.2rem' }}>
-                        <div style={{ maxHeight: '500px', overflowY: 'auto', paddingRight: '0.8rem', marginBottom: '1.5rem' }}>
-                          <p style={{ 
-                            fontSize: '1rem', 
-                            color: 'var(--text-main)', 
-                            lineHeight: '1.7', 
-                            whiteSpace: 'pre-wrap', 
-                            letterSpacing: '0.2px'
-                          }}>
-                            {item.content}
-                          </p>
-                        </div>
-                        
-                        {(item.imageUrl || (item.historyType === 'editor' && item.mediaHistory?.length > 0)) && (
-                          <img 
-                            src={item.imageUrl || item.mediaHistory[item.mediaHistory.length - 1].url} 
-                            alt="History" 
-                            style={{ width: '100%', borderRadius: '15px', marginBottom: '1rem', border: '1px solid var(--border-color)' }} 
-                          />
-                        )}
-                        {item.videoUrl && (
-                          <video src={item.videoUrl} controls style={{ width: '100%', borderRadius: '15px', marginBottom: '1rem', background: '#000' }} />
-                        )}
-
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
-                          <div style={{ display: 'flex', gap: '0.8rem' }}>
-                            {item.historyType === 'post' && (
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); copyToClipboard(item.content); }}
-                                className="btn-secondary"
-                                style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', borderRadius: '12px' }}
-                              >
-                                Kopiuj
-                              </button>
-                            )}
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); handleEditHistoryItem(item); }}
-                              className="btn-secondary"
-                              style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
-                            >
-                              <span className="material-icons" style={{ fontSize: '1rem' }}>
-                                {item.historyType === 'campaign' ? 'visibility' : (item.historyType === 'editor' ? 'brush' : 'edit')}
-                              </span>
-                              {item.historyType === 'campaign' ? 'Zobacz kampanię' : (item.historyType === 'editor' ? 'Kontynuuj edycję' : 'Edytuj')}
-                            </button>
+                    <div style={{ 
+                      padding: '1.5rem 1.8rem', 
+                      borderTop: '1px solid var(--border-color)',
+                      background: 'var(--bg-card)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '1.5rem'
+                    }}>
+                      {/* Children list for campaigns */}
+                      {item.historyType === 'campaign' && item.children && item.children.length > 0 && (
+                        <div style={{ marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
+                          <h6 style={{ margin: '0 0 0.8rem 0', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Posty w tej kampanii:</h6>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                            {item.children.map(child => (
+                              <div key={child.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '0.6rem 0.8rem', borderRadius: '10px' }}>
+                                <div style={{ overflow: 'hidden', flex: 1 }}>
+                                  <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: '600', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{child.topic}</p>
+                                  <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--text-muted)' }}>{child.platform} • {new Date(child.createdAt).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
+                                </div>
+                                <button 
+                                  onClick={(e) => { e.stopPropagation(); handleEditHistoryItem(child); }}
+                                  style={{ background: 'transparent', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', display: 'flex' }}
+                                  title="Edytuj post"
+                                >
+                                  <span className="material-icons" style={{ fontSize: '1.2rem' }}>edit</span>
+                                </button>
+                              </div>
+                            ))}
                           </div>
+                        </div>
+                      )}
+
+                      <p style={{ 
+                        margin: 0, 
+                        fontSize: '0.9rem', 
+                        lineHeight: '1.6', 
+                        color: 'var(--text-main)',
+                        whiteSpace: 'pre-wrap'
+                      }}>
+                        {item.content}
+                      </p>
+                        
+                      {(item.imageUrl || (item.historyType === 'editor' && item.mediaHistory?.length > 0)) && (
+                        <img 
+                          src={item.imageUrl || item.mediaHistory[item.mediaHistory.length - 1].url} 
+                          alt="History" 
+                          style={{ width: '100%', borderRadius: '15px', marginTop: '1rem', border: '1px solid var(--border-color)' }} 
+                        />
+                      )}
+                      {item.videoUrl && (
+                        <video src={item.videoUrl} controls style={{ width: '100%', borderRadius: '15px', marginTop: '1rem', background: '#000' }} />
+                      )}
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
+                        <div style={{ display: 'flex', gap: '0.8rem' }}>
+                          {item.historyType === 'post' && (
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); copyToClipboard(item.content); }}
+                              className="btn-secondary"
+                              style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', borderRadius: '12px' }}
+                            >
+                              Kopiuj
+                            </button>
+                          )}
                           <button 
-                            onClick={(e) => { e.stopPropagation(); handleDeleteHistory(item.id, item.historyType); }}
-                            style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }}
+                            onClick={(e) => { e.stopPropagation(); handleEditHistoryItem(item); }}
+                            className="btn-secondary"
+                            style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
                           >
-                            <span className="material-icons" style={{ fontSize: '1.1rem' }}>delete_outline</span>
-                            Usuń
+                            <span className="material-icons" style={{ fontSize: '1rem' }}>
+                              {item.historyType === 'campaign' ? 'visibility' : (item.historyType === 'editor' ? 'brush' : 'edit')}
+                            </span>
+                            {item.historyType === 'campaign' ? 'Zobacz kampanię' : (item.historyType === 'editor' ? 'Kontynuuj edycję' : 'Edytuj')}
                           </button>
                         </div>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); handleDeleteHistory(item.id, item.historyType); }}
+                          style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }}
+                        >
+                          <span className="material-icons" style={{ fontSize: '1.1rem' }}>delete_outline</span>
+                          Usuń
+                        </button>
                       </div>
                     </div>
                   )}
