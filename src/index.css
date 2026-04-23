@@ -108,6 +108,25 @@ body {
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--bg-glass-bright);
   box-shadow: var(--shadow-md);
+  position: relative;
+  overflow: hidden;
+  transition: var(--transition-smooth);
+}
+
+/* Kolorowa, rozmyta ramka w prawym dolnym rogu (ok. 1/3 wielkości) */
+.glass::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 2px;
+  background: radial-gradient(circle at 100% 100%, #10b981 0%, #38bdf8 20%, transparent 33%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  filter: blur(2px);
+  pointer-events: none;
+  z-index: 2;
 }
 
 .btn-primary {
@@ -338,4 +357,15 @@ body {
 
 .format-card-active {
   animation: border-pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.btn-animate:hover {
+  background: var(--color-primary) !important;
+  color: white !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(6, 182, 212, 0.4);
+}
+
+.btn-animate:active {
+  transform: translateY(0);
 }

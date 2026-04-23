@@ -75,6 +75,7 @@ const PostGenerator = ({
               onChange={(e) => setTopic(e.target.value)}
               placeholder={isReadOnly ? "Tryb tylko do odczytu - brak środków" : "Np. Zalety pracy zdalnej w 2024 roku..."}
               readOnly={isReadOnly}
+              maxLength={2000}
               style={{
                 width: '100%',
                 minHeight: '120px',
@@ -88,6 +89,15 @@ const PostGenerator = ({
                 boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)'
               }}
             />
+            <div style={{ 
+              textAlign: 'right', 
+              fontSize: '0.75rem', 
+              color: topic.length >= 2000 ? 'var(--color-primary)' : 'var(--text-muted)', 
+              marginTop: '0.5rem',
+              fontWeight: '500' 
+            }}>
+              {topic.length} / 2000 znaków
+            </div>
           </div>
 
           <div style={{ marginBottom: '2rem' }}>

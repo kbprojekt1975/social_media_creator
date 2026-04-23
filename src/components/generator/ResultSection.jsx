@@ -519,61 +519,143 @@ const ResultSection = ({
                   </span>
                 </div>
 
-                {media.type === 'image' ? (
-                  <div style={{ position: 'relative' }}>
-                    <img src={media.url} alt={`Generated version ${idx + 1}`} style={{ width: '100%', borderRadius: '20px', boxShadow: 'var(--shadow-md)' }} />
+                <div style={{ position: 'relative', width: '100%' }}>
+                  {/* Top Right Action Icons */}
+                  <div style={{ 
+                    position: 'absolute', 
+                    top: '15px', 
+                    right: '15px', 
+                    display: 'flex', 
+                    gap: '0.6rem', 
+                    zIndex: 20,
+                    animation: 'fadeIn 0.3s ease-out'
+                  }}>
+                    <button 
+                      onClick={() => handleDownload(media.url, media.type)}
+                      title="Pobierz"
+                      style={{
+                        background: 'rgba(0,0,0,0.5)',
+                        backdropFilter: 'blur(10px)',
+                        border: '1px solid rgba(255,255,255,0.2)',
+                        color: 'white',
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        transition: 'all 0.3s ease'
+                      }}
+                      onMouseOver={(e) => { e.currentTarget.style.background = 'var(--color-primary)'; e.currentTarget.style.transform = 'scale(1.1)'; }}
+                      onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0.5)'; e.currentTarget.style.transform = 'scale(1)'; }}
+                    >
+                      <span className="material-icons" style={{ fontSize: '1.2rem' }}>download</span>
+                    </button>
+                    <button 
+                      onClick={() => {
+                        const newHistory = [...mediaHistory];
+                        newHistory.splice(idx, 1);
+                        setMediaHistory(newHistory);
+                        if (newHistory.length === 0) {
+                          setGeneratedImage(null);
+                          setGeneratedVideo(null);
+                        }
+                      }}
+                      title="Usuń"
+                      style={{
+                        background: 'rgba(255, 68, 68, 0.2)',
+                        backdropFilter: 'blur(10px)',
+                        border: '1px solid rgba(255, 68, 68, 0.3)',
+                        color: '#ff4444',
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        transition: 'all 0.3s ease'
+                      }}
+                      onMouseOver={(e) => { e.currentTarget.style.background = '#ff4444'; e.currentTarget.style.color = 'white'; e.currentTarget.style.transform = 'scale(1.1)'; }}
+                      onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(255, 68, 68, 0.2)'; e.currentTarget.style.color = '#ff4444'; e.currentTarget.style.transform = 'scale(1)'; }}
+                    >
+                      <span className="material-icons" style={{ fontSize: '1.2rem' }}>delete</span>
+                    </button>
                   </div>
-                ) : (
-                  <video 
-                    src={media.url} 
-                    controls 
-                    style={{ width: '100%', borderRadius: '20px', boxShadow: 'var(--shadow-md)', background: '#000' }} 
-                  />
-                )}
 
-                {/* Main Action Buttons (Image/Video specific) */}
-                <div style={{ display: 'flex', gap: '1rem', marginTop: '1.2rem' }}>
-                  <button 
-                    onClick={() => {
-                      const newHistory = [...mediaHistory];
-                      newHistory.splice(idx, 1);
-                      setMediaHistory(newHistory);
-                      if (newHistory.length === 0) {
-                        setGeneratedImage(null);
-                        setGeneratedVideo(null);
-                      }
-                    }} 
-                    className="btn-secondary" 
-                    style={{ flex: 1, borderRadius: '15px', fontSize: '0.85rem' }}
-                  >
-                    Usuń
-                  </button>
-                  <button 
-                    onClick={() => setEditingMediaIdx(editingMediaIdx === idx ? null : idx)}
-                    className="btn-secondary"
-                    style={{ 
-                      flex: 1, 
-                      borderRadius: '15px', 
-                      fontSize: '0.85rem', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center', 
-                      gap: '0.4rem',
-                      border: editingMediaIdx === idx ? '1px solid var(--color-primary)' : '1px solid var(--border-color)',
-                      color: editingMediaIdx === idx ? 'var(--color-primary)' : 'var(--text-main)'
-                    }}
-                  >
-                    <span className="material-icons" style={{ fontSize: '1.1rem' }}>edit</span>
-                    Edytuj
-                  </button>
-                  <button 
-                    onClick={() => handleDownload(media.url, media.type)} 
-                    className="btn-primary" 
-                    style={{ flex: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '15px', fontSize: '0.85rem', cursor: 'pointer', border: 'none' }}
-                  >
-                    <span className="material-icons" style={{ fontSize: '1.2rem', marginRight: '0.5rem' }}>download</span>
-                    Pobierz
-                  </button>
+                  {/* Bottom Right Action Links */}
+                  <div style={{ 
+                    position: 'absolute', 
+                    bottom: '20px', 
+                    right: '20px', 
+                    display: 'flex', 
+                    gap: '1.6rem', 
+                    zIndex: 20,
+                    animation: 'fadeIn 0.3s ease-out',
+                    background: 'linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)) padding-box, linear-gradient(135deg, #4285f4, #9b72cb, #d96570, #f4af45) border-box',
+                    backdropFilter: 'blur(12px)',
+                    padding: '12px 28px',
+                    borderRadius: '100px',
+                    border: '1px solid transparent',
+                    boxShadow: '0 10px 30px rgba(0,0,0,0.4)'
+                  }}>
+                    {media.type === 'image' && (
+                      <button 
+                        onClick={() => {
+                          setAnimatingMediaIdx(animatingMediaIdx === idx ? null : idx);
+                          setAnimationFeedback('');
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: animatingMediaIdx === idx ? 'var(--color-primary)' : 'white',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.6rem',
+                          cursor: 'pointer',
+                          fontSize: '1.05rem',
+                          fontWeight: '800',
+                          transition: 'all 0.3s ease'
+                        }}
+                        onMouseOver={(e) => { if (animatingMediaIdx !== idx) e.currentTarget.style.color = 'var(--color-primary)'; }}
+                        onMouseOut={(e) => { if (animatingMediaIdx !== idx) e.currentTarget.style.color = 'white'; }}
+                      >
+                        <span className="material-icons" style={{ fontSize: '1.3rem' }}>{animatingMediaIdx === idx ? 'close' : 'movie'}</span>
+                        {animatingMediaIdx === idx ? 'Anuluj' : 'Ożyw to zdjęcie'}
+                      </button>
+                    )}
+                    <button 
+                      onClick={() => setEditingMediaIdx(editingMediaIdx === idx ? null : idx)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: editingMediaIdx === idx ? 'var(--color-primary)' : 'white',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.6rem',
+                        cursor: 'pointer',
+                        fontSize: '1.05rem',
+                        fontWeight: '800',
+                        transition: 'all 0.3s ease'
+                      }}
+                      onMouseOver={(e) => { if (editingMediaIdx !== idx) e.currentTarget.style.color = 'var(--color-primary)'; }}
+                      onMouseOut={(e) => { if (editingMediaIdx !== idx) e.currentTarget.style.color = 'white'; }}
+                    >
+                      <span className="material-icons" style={{ fontSize: '1.3rem' }}>edit</span>
+                      {editingMediaIdx === idx ? 'Zwiń edycję' : 'Edytuj grafikę'}
+                    </button>
+                  </div>
+
+                  {media.type === 'image' ? (
+                    <img src={media.url} alt={`Generated version ${idx + 1}`} style={{ width: '100%', borderRadius: '20px', boxShadow: 'var(--shadow-md)' }} />
+                  ) : (
+                    <video 
+                      src={media.url} 
+                      controls 
+                      style={{ width: '100%', borderRadius: '20px', boxShadow: 'var(--shadow-md)', background: '#000' }} 
+                    />
+                  )}
                 </div>
 
                 {/* Integrated Refinement Panel for Image */}
@@ -638,50 +720,18 @@ const ResultSection = ({
                   </div>
                 )}
 
-                {/* Animation Section - Now clearly separated and below image actions */}
-                {media.type === 'image' && (
-                  <div style={{ marginTop: '2rem', textAlign: 'left', borderTop: '1px dashed var(--border-color)', paddingTop: '1.5rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'var(--text-muted)' }}>
-                        <span className="material-icons" style={{ fontSize: '1.2rem' }}>auto_videocam</span>
-                        <span style={{ fontSize: '0.85rem', fontWeight: '700', textTransform: 'uppercase' }}>Ożywienie obrazu</span>
-                      </div>
-                      <button 
-                        onClick={() => {
-                          setAnimatingMediaIdx(animatingMediaIdx === idx ? null : idx);
-                          setAnimationFeedback('');
-                        }}
-                        disabled={imageLoading || isReadOnly}
-                        style={{ 
-                          background: animatingMediaIdx === idx ? 'var(--color-primary)' : 'rgba(var(--color-primary-rgb), 0.1)', 
-                          border: 'none',
-                          color: animatingMediaIdx === idx ? '#fff' : 'var(--color-primary)',
-                          padding: '0.6rem 1.2rem',
-                          borderRadius: '12px',
-                          fontSize: '0.85rem',
-                          fontWeight: '800',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.5rem',
-                          transition: 'all 0.3s ease'
-                        }}
-                      >
-                        <span className="material-icons" style={{ fontSize: '1.1rem' }}>{animatingMediaIdx === idx ? 'close' : 'movie'}</span>
-                        {animatingMediaIdx === idx ? 'Anuluj' : 'Ożyw to zdjęcie (wideo)'}
-                      </button>
-                    </div>
+                {/* Animation Prompt Panel */}
+                {animatingMediaIdx === idx && (
+                  <div id={`animation-panel-${idx}`} style={{ 
+                    marginTop: '1rem',
+                    padding: '1.5rem', 
+                    background: 'var(--bg-card)', 
+                    borderRadius: '20px', 
+                    border: '1px solid var(--color-primary)',
+                    animation: 'fadeIn 0.3s ease-out',
+                    textAlign: 'left'
+                  }}>
 
-                    {/* Animation Prompt Panel */}
-                    {animatingMediaIdx === idx && (
-                      <div id={`animation-panel-${idx}`} style={{ 
-                        padding: '1.5rem', 
-                        background: 'var(--bg-card)', 
-                        borderRadius: '20px', 
-                        border: '1px solid var(--color-primary)',
-                        animation: 'fadeIn 0.3s ease-out',
-                        marginBottom: '1.5rem'
-                      }}>
                         <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
                           <div style={{ flex: 1 }}>
                             <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-primary)', marginBottom: '0.6rem', fontWeight: '800' }}>
@@ -773,9 +823,9 @@ const ResultSection = ({
                       </div>
                     )}
                   </div>
-                )}
+                ))}
               </div>
-            ))}
+            )}
 
             {showAdvanced && mediaHistory.length > 0 && (
               <button 
@@ -837,9 +887,6 @@ const ResultSection = ({
 
               </div>
             )}
-            
-          </div>
-        )}
 
         {isPromptMode && currentPromptData && (
           <div id="current-prompt-panel" className="glass" style={{ 
