@@ -13,9 +13,9 @@ export const useNotification = () => {
 export const NotificationProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
 
-  const addNotification = useCallback((message, type = 'info', duration = 5000) => {
+  const addNotification = useCallback((message, type = 'info', duration = 5000, action = null) => {
     const id = Math.random().toString(36).substr(2, 9);
-    setNotifications((prev) => [...prev, { id, message, type, duration }]);
+    setNotifications((prev) => [...prev, { id, message, type, duration, action }]);
 
     if (duration !== Infinity) {
       setTimeout(() => {
@@ -116,6 +116,28 @@ const NotificationItem = ({ notification, onClose }) => {
       <div style={{ flex: 1, fontSize: '0.9rem', fontWeight: '500', color: currentStyle.color }}>
         {message}
       </div>
+      {notification.action && (
+        <button 
+          onClick={() => {
+            notification.action.onClick();
+            onClose();
+          }}
+          style={{
+            background: 'var(--color-primary)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            padding: '0.4rem 0.8rem',
+            fontSize: '0.8rem',
+            fontWeight: '600',
+            cursor: 'pointer',
+            marginLeft: '0.5rem',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          {notification.action.label}
+        </button>
+      )}
       <button 
         onClick={onClose}
         style={{

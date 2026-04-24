@@ -269,7 +269,10 @@ app.post("/refine-image-prompt", async (req, res) => {
       originalPromptObject, // for backward compatibility
       instructions, 
       workspaceContext, 
-      mediaUrl 
+      mediaUrl,
+      targetMediaUrl,
+      type,
+      gifSettings 
     } = req.body;
 
     // Determine context anchors
@@ -280,7 +283,7 @@ app.post("/refine-image-prompt", async (req, res) => {
       return res.status(400).json({ error: "Context (v1/last) and instructions are required." });
     }
 
-    const result = await refineVisualPrompt(v1, last, instructions, workspaceContext, mediaUrl);
+    const result = await refineVisualPrompt(v1, last, instructions, workspaceContext, mediaUrl, targetMediaUrl, type, gifSettings);
     res.json({ visualPlannedPrompt: result });
 
   } catch (error) {
@@ -479,7 +482,7 @@ app.post("/generate-video", async (req, res) => {
 
   try {
     const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const { prompt, aspectRatio, imageUrl, isAlreadyTechnical } = req.body;
+    const { prompt, aspectRatio, imageUrl, targetImageUrl, isAlreadyTechnical } = req.body;
     if (!prompt) return res.status(400).send("Prompt is required.");
 
     // OPTIMIZATION: Skip Gemini Translator if the prompt is already technical

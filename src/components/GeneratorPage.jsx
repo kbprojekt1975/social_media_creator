@@ -17,6 +17,7 @@ import CampaignPlanner from './generator/CampaignPlanner';
 import HelpModal from './generator/HelpModal';
 import VisualEditor from './generator/VisualEditor';
 import { useNotification } from './common/NotificationContext';
+import { useNavigate } from 'react-router-dom';
 
 // Configure axios to retry on 429 errors
 axiosRetry(axios, { 
@@ -35,6 +36,8 @@ axiosRetry(axios, {
 });
 
 const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
+  const navigate = useNavigate();
+  const { showSuccess, showError, showInfo, showWarning, addNotification } = useNotification();
   const [topic, setTopic] = useState('');
   const [platform, setPlatform] = useState('LinkedIn');
   const [style, setStyle] = useState('Profesjonalny');
@@ -94,6 +97,30 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
   // Theme State - Default to dark
   const [isDark, setIsDark] = useState(localStorage.getItem('theme') !== 'light');
 
+  const COSTS = {
+    post: 1,
+    image: 1,
+    video: 5,
+    campaign: 10
+  };
+
+  const checkBalance = (actionType) => {
+    const cost = COSTS[actionType] || 1;
+    if (balance < cost) {
+      addNotification(
+        `Niewystarczająca ilość kredytów. Ta akcja kosztuje ${cost}, a masz ich ${balance}.`, 
+        'warning', 
+        10000, 
+        {
+          label: 'Doładuj konto',
+          onClick: () => navigate('/payment')
+        }
+      );
+      return false;
+    }
+    return true;
+  };
+
   useEffect(() => {
     const theme = isDark ? 'dark' : 'light';
     document.documentElement.setAttribute('data-theme', theme);
@@ -110,8 +137,8 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
   useEffect(() => {
     if (perc <= 25 && balance > 0) setShowTooltip(true);
     if (balance <= 0 && subscriptionStatus === 'active') {
-      setForcePaymentView(true);
-      setIsReadOnly(true);
+      // We don't force read-only anymore, let checkBalance handle it with a notification
+      setIsReadOnly(false); 
     }
   }, [perc, balance, subscriptionStatus]);
 
@@ -364,8 +391,9 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
   };
 
   const handleGenerate = async (e) => {
-    e.preventDefault();
-    if (!topic || subscriptionStatus !== 'active') return;
+    if (e) e.preventDefault();
+    if (!checkBalance('post')) return;
+    if (!topic || subscriptionStatus === 'loading') return;
 
     setLoading(true);
     setResult(null);
@@ -498,6 +526,7 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
   };
 
   const handleGeneratePrompt = async (type, autoGenerate = false) => {
+    if (!checkBalance(type)) return;
     if (!result || imageLoading || isReadOnly) return;
     
     setImageLoading(true);
@@ -759,6 +788,7 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
   };
 
   const handleRefineText = async () => {
+    if (!checkBalance('post')) return; // Same cost as original post
     if (!textFeedback.trim() || !result) return;
     setIsTextRefining(true);
     try {
@@ -810,6 +840,7 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
     }
 
     if (!mediaFeedback.trim() || !currentPromptData) return;
+    if (!checkBalance(visualizationType)) return;
     
     setIsMediaRefining(true);
     setAiDetectionLog(""); 
@@ -897,10 +928,7 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
     }
   };
 
-  const handleReset = () => {
-    if (activeCampaignContext) {
-      markCampaignItemCompleted(activeCampaignContext.campaignId, activeCampaignContext.itemIndex);
-    }
+  const clearEditor = () => {
     setTopic('');
     setResult('');
     setPlannedPrompt(null);
@@ -915,6 +943,13 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
     setAiDetectionLog("");
     setCurrentRecordId(null);
     setActiveCampaignContext(null);
+  };
+
+  const handleReset = () => {
+    if (activeCampaignContext) {
+      markCampaignItemCompleted(activeCampaignContext.campaignId, activeCampaignContext.itemIndex);
+    }
+    clearEditor();
   };
 
   const handleEditHistoryItem = (item) => {
@@ -999,6 +1034,7 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
   };
 
   const handleGenerateCampaign = async (campaignData) => {
+    if (!checkBalance('campaign')) return;
     setCampaignLoading(true);
     try {
       const token = await user.getIdToken();
@@ -1022,7 +1058,18 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
     }
   };
 
-  const handleSelectCampaignItem = (item, campaignId, itemIndex) => {
+  const handleSelectCampaignItem = async (item, campaignId, itemIndex) => {
+    if (item.isCompleted) {
+      const confirmReset = window.confirm("Ten post został już wygenerowany. Czy na pewno chcesz go wygenerować ponownie? Spowoduje to usunięcie poprzedniej wersji z historii i zresetowanie obecnego tematu.");
+      if (!confirmReset) return;
+
+      // Delete old version from history
+      await deleteRelatedHistoryItem(campaignId, itemIndex, item.topic, item.platform);
+    }
+
+    // Always clear the editor before loading a campaign item
+    clearEditor();
+
     setTopic(item.topic);
     setPlatform(item.platform || 'LinkedIn');
     setActiveCampaignContext({ campaignId, itemIndex });
@@ -1107,20 +1154,50 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
     }
   };
 
+  const deleteRelatedHistoryItem = async (campaignId, itemIndex, topic, platform) => {
+    try {
+      // Find matching item in history
+      let historyItem = history.find(h => 
+        h.campaignId === campaignId && 
+        (h.campaignItemIndex !== undefined && Number(h.campaignItemIndex) === Number(itemIndex))
+      );
+
+      // Fallback if index matching fails
+      if (!historyItem) {
+        historyItem = history.find(h => 
+          h.campaignId === campaignId && 
+          h.topic === topic &&
+          h.platform === platform
+        );
+      }
+
+      if (historyItem) {
+        await deleteDoc(doc(db, 'users', user.uid, 'history', historyItem.id));
+      }
+    } catch (err) {
+      console.error("Error deleting related history item:", err);
+    }
+  };
+
   const handleResetCampaignItem = async (campaignId, itemIndex) => {
-    if (!window.confirm('Czy na pewno chcesz usunąć status wykonania dla tego posta?')) return;
+    if (!window.confirm('Czy na pewno chcesz usunąć status wykonania dla tego posta? Powiązany wpis zniknie również z historii.')) return;
     try {
       const campaignRef = doc(db, 'users', user.uid, 'campaigns', campaignId);
       const camp = campaigns.find(c => c.id === campaignId);
       if (!camp) return;
 
+      const item = camp.strategy[itemIndex];
       const newStrategy = [...camp.strategy];
       newStrategy[itemIndex] = { ...newStrategy[itemIndex], isCompleted: false };
 
       await updateDoc(campaignRef, {
         strategy: newStrategy
       });
-      showInfo('Status posta został zresetowany.');
+
+      // Also delete from history
+      await deleteRelatedHistoryItem(campaignId, itemIndex, item.topic, item.platform);
+
+      showInfo('Status posta został zresetowany, a wpis usunięty z historii.');
     } catch (error) {
       console.error('Error resetting item status:', error);
     }

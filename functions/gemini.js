@@ -420,7 +420,7 @@ async function refinePost(originalPost, instructions, workspaceContext = null) {
  * Refines a visual prompt using "Deep Scene Reconstruction".
  * Context-aware: takes Version 1 (Anchor) and Last Version to prevent style drift.
  */
-async function refineVisualPrompt(v1PromptObject, lastPromptObject, instructions, workspaceContext = null, mediaUrl = null) {
+async function refineVisualPrompt(v1PromptObject, lastPromptObject, instructions, workspaceContext = null, mediaUrl = null, targetMediaUrl = null, type = 'image', gifSettings = null) {
   const ai = initGemini();
   if (!ai) throw new Error("Gemini API not initialized.");
 
@@ -441,13 +441,66 @@ async function refineVisualPrompt(v1PromptObject, lastPromptObject, instructions
           mimeType: "image/png"
         }
       });
+      console.log("[Multimodal] Added start image context.");
     } catch (e) {
-      console.error("Multimodal analysis fetch failed:", e);
+      console.error("Multimodal analysis fetch failed (mediaUrl):", e);
     }
   }
 
-  const textPrompt = `
+  // TARGET IMAGE: If provided, add it as the second visual context
+  if (targetMediaUrl) {
+    try {
+      const axios = require('axios');
+      const response = await axios.get(targetMediaUrl, { responseType: 'arraybuffer' });
+      const base64Target = Buffer.from(response.data, 'binary').toString('base64');
+      
+      promptParts.push({
+        inlineData: {
+          data: base64Target,
+          mimeType: "image/png"
+        }
+      });
+      console.log("[Multimodal] Added target image context.");
+    } catch (e) {
+      console.error("Multimodal analysis fetch failed (targetMediaUrl):", e);
+    }
+  }
+
+  const isTransition = !!targetMediaUrl;
+  const isGif = type === 'gif';
+
+  const textPrompt = (isTransition || isGif) 
+    ? `
+    Jesteś reżyserem wizualnym AI. Twoim zadaniem jest stworzenie technicznego promptu dla modelu ${isGif ? 'animacji (GIF)' : 'wideo (Veo 3.1)'}.
+    
+    KONTEKST:
+    - TRYB: ${isGif ? 'Krótki, zapętlony GIF (idealny do social media/naklejek)' : 'Płynne wideo cinematic'}
+    ${isTransition ? '- ZADANIE: Przejście (morphing) między Obrazem 1 a Obrazem 2.' : '- ZADANIE: Animacja pojedynczego obrazu.'}
+    - WYTYCZNE UŻYTKOWNIKA: "${instructions}"
+    
+    ${isGif ? `SPECYFIKA GIF:
+    - TRYB ANIMACJI: ${gifSettings?.loopType || 'loop'} (jeśli ping-pong, animacja musi wracać do punktu wyjścia).
+    - PRĘDKOŚĆ: ${gifSettings?.speed || 0.5}s na cykl zmiany (płynny vs dynamiczny).
+    - NAPIS (OVERLAY): "${gifSettings?.text || ''}" (Styl: ${gifSettings?.font || 'modern'}). Umieść napis czytelnie, w dolnej lub środkowej części.
+    - EFEKT BEAUTY: ${gifSettings?.beautyEffect || 'none'}.
+    - PRZYCISK CTA: ${gifSettings?.cta || 'none'}.
+    - PRZEZROCZYSTOŚĆ: ${gifSettings?.isTransparent ? 'TAK (generuj na jednolitym tle ułatwiającym wycięcie/alpha)' : 'NIE'}.
+    - Skup się na efektach typu "Sparkle" (błysk), "Before & After" (jeśli są dwa obrazy), lub dynamicznych naklejkach (CTA).
+    - Animacja musi być krótka i zaprojektowana tak, aby idealnie się zapętlała (seamless loop).` : ''}
+    
+    WYMAGANIA TECHNICZNE:
+    1. Przeanalizuj załączone obrazy. 
+    2. Opisz precyzyjnie ruch kamery i zmiany w kadrze.
+    3. ZWRÓĆ DANE TYLKO JAKO JSON:
+    {
+      "polishDescription": "Krótki, marketingowy opis dla użytkownika.",
+      "englishPrompt": "Technical EN prompt for ${isGif ? 'short looping animation' : 'Veo 3.1 video'}.",
+      "aiDetectionLog": "PL: [Analiza] | EN: [Strategy]"
+    }
+    `
+    : `
     Jesteś ekspertem od edycji wizualnej AI (Visual Auditor). Twoim celem jest stworzenie technicznego promptu, który zachowa 100% spójności z pierwowzorem, wprowadzając jedynie wskazane poprawki.
+...
 
     KONTEKST (KOTWICA):
     - ORYGINALNY POMYSŁ (V1): "${v1PromptObject?.englishPrompt || v1PromptObject?.polishDescription}"

@@ -183,7 +183,7 @@ const PostGenerator = ({
               onClick={handleGeneratePlan}
               disabled={isPlanning || !topic || isReadOnly}
               className="btn-secondary"
-              style={{ flex: 1, padding: '1.2rem', fontSize: '0.95rem', borderRadius: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: isReadOnly ? 0.3 : 1 }}
+              style={{ flex: 1, padding: '1.2rem', fontSize: '0.95rem', borderRadius: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
               {isPlanning ? 'Planowanie...' : (
                 <>
@@ -195,19 +195,14 @@ const PostGenerator = ({
             </button>
             
             <button 
-              type={balance < 1000 ? "button" : "submit"} 
-              onClick={balance < 1000 ? () => setForcePaymentView(true) : undefined}
+              type="submit"
               className="btn-primary" 
-              disabled={loading || isReadOnly} 
-              style={{ flex: 1.2, padding: '1.2rem', borderRadius: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', animation: balance < 1000 ? 'pulse 2s infinite' : 'none' }}
+              disabled={loading} 
+              style={{ flex: 1.2, padding: '1.2rem', borderRadius: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
               {loading ? 'Generowanie...' : (
                 <>
-                  {isReadOnly || balance < 1000 ? (
-                    <>Doładuj portfel <span className="material-icons" style={{ fontSize: '1.2rem', marginLeft: '0.5rem' }}>payments</span></>
-                  ) : (
-                    <>Generuj Treść <span className="material-icons" style={{ fontSize: '1.2rem', marginLeft: '0.5rem' }}>bolt</span></>
-                  )}
+                  Generuj Treść <span className="material-icons" style={{ fontSize: '1.2rem', marginLeft: '0.5rem' }}>bolt</span>
                 </>
               )}
               {loading && <span className="spinner"></span>}
@@ -297,11 +292,7 @@ const PostGenerator = ({
         </div>
       )}
 
-      {balance < 1000 && !isReadOnly && (
-        <p style={{ textAlign: 'center', color: '#ef4444', fontSize: '0.9rem', fontWeight: '500' }}>
-          Wymagane doładowanie konta, aby kontynuować generowanie.
-        </p>
-      )}
+
 
       {/* Add Custom Style Modal */}
       {showStyleModal && (
