@@ -17,7 +17,6 @@ import CampaignPlanner from './generator/CampaignPlanner';
 import HelpModal from './generator/HelpModal';
 import VisualEditor from './generator/VisualEditor';
 import { useNotification } from './common/NotificationContext';
-import { useNavigate } from 'react-router-dom';
 
 // Configure axios to retry on 429 errors
 axiosRetry(axios, { 
@@ -97,18 +96,39 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
   // Theme State - Default to dark
   const [isDark, setIsDark] = useState(localStorage.getItem('theme') !== 'light');
 
-  const COSTS = {
-    post: 1,
-    image: 1,
-    video: 5,
-    campaign: 10
-  };
+  const [pricing, setPricing] = useState({
+    post: 5000,
+    image: 105000,
+    video: 1100000,
+    campaign: 25000,
+    gif: 350000,
+    refine: 5000
+  });
+
+  useEffect(() => {
+    // Live sync pricing from Firestore
+    const pricingRef = doc(db, 'config', 'pricing');
+    const unsubscribe = onSnapshot(pricingRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setPricing({
+          post: data.POST_COST || 5000,
+          image: data.IMAGE_COST || 105000,
+          video: data.VIDEO_COST || 1100000,
+          campaign: data.CAMPAIGN_COST || 25000,
+          gif: data.GIF_COST || 350000,
+          refine: data.REFINE_COST || 5000
+        });
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   const checkBalance = (actionType) => {
-    const cost = COSTS[actionType] || 1;
+    const cost = pricing[actionType] || 1;
     if (balance < cost) {
       addNotification(
-        `Niewystarczająca ilość kredytów. Ta akcja kosztuje ${cost}, a masz ich ${balance}.`, 
+        `Niewystarczająca ilość kredytów. Ta akcja kosztuje ${cost.toLocaleString()}, a masz ich ${balance.toLocaleString()}.`, 
         'warning', 
         10000, 
         {
@@ -142,7 +162,6 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
     }
   }, [perc, balance, subscriptionStatus]);
 
-  const navigate = useNavigate();
   const location = useLocation();
   const [user, setUser] = useState(auth.currentUser);
 
@@ -164,7 +183,7 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
   const [showAdvancedMenu, setShowAdvancedMenu] = useState(false);
   const [newWorkspace, setNewWorkspace] = useState({ name: '', contentDirectives: '', visualStyle: '' });
 
-  const { showError, showSuccess, showWarning, showInfo } = useNotification();
+
 
   // Auto-scroll refs
   const resultSectionRef = useRef(null);
@@ -202,6 +221,12 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
         navigate('/login');
       } else {
         setUser(u);
+        // Inicjalizacja użytkownika (nadanie powitalnych tokenów)
+        u.getIdToken().then(token => {
+          axios.post(`${API_BASE_URL}/initialize-user`, {}, {
+            headers: { Authorization: `Bearer ${token}` }
+          }).catch(err => console.error("Błąd inicjalizacji użytkownika:", err));
+        });
       }
     });
     return () => unsubscribe();
@@ -1483,6 +1508,7 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
             API_BASE_URL={API_BASE_URL}
             initialSession={activeEditorSession}
             onClearSession={() => setActiveEditorSession(null)}
+            pricing={pricing}
           />
         )}
       </div>

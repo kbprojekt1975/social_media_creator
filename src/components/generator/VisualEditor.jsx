@@ -13,7 +13,8 @@ const VisualEditor = ({
   handleApiError, 
   API_BASE_URL,
   initialSession,
-  onClearSession
+  onClearSession,
+  pricing
 }) => {
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -42,7 +43,8 @@ const VisualEditor = ({
 
   const fileInputRef = useRef(null);
   const targetFileInputRef = useRef(null);
-  const { showSuccess, showError, showInfo, showWarning } = useNotification();
+  const { showSuccess, showError, showInfo, showWarning, addNotification } = useNotification();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (initialSession) {
@@ -161,18 +163,11 @@ const VisualEditor = ({
     }
   };
 
-  const COSTS = {
-    image: 1,
-    video: 5,
-    gif: 3,
-    refine: 1
-  };
-
   const checkBalance = (type) => {
-    const cost = COSTS[type] || 1;
+    const cost = pricing[type] || 1;
     if (balance < cost) {
       addNotification(
-        `Niewystarczająca ilość kredytów. Generowanie ${type === 'image' ? 'obrazu' : (type === 'video' ? 'wideo' : (type === 'gif' ? 'GIF-a' : 'poprawki'))} kosztuje ${cost}, a masz ich ${balance}.`, 
+        `Niewystarczająca ilość kredytów. Generowanie ${type === 'image' ? 'obrazu' : (type === 'video' ? 'wideo' : (type === 'gif' ? 'GIF-a' : 'poprawki'))} kosztuje ${cost.toLocaleString()}, a masz ich ${balance.toLocaleString()}.`, 
         'warning', 
         10000, 
         {
@@ -191,10 +186,11 @@ const VisualEditor = ({
       showError("Wybierz obraz i wpisz instrukcję.");
       return;
     }
-    if (!instruction.trim()) {
+    if (type !== 'gif' && !instruction.trim()) {
       showError("Wpisz instrukcję.");
       return;
     }
+    const finalInstruction = instruction.trim() || "Ożyw ten obraz i dodaj wskazane efekty.";
     setLoadingType(type);
     try {
       const token = await auth.currentUser.getIdToken();
@@ -213,7 +209,7 @@ const VisualEditor = ({
       const response = await axios.post(`${API_BASE_URL}/refine-image-prompt`, {
         v1PromptObject: { englishPrompt: "Initial uploaded image", polishDescription: "Oryginalny obraz" },
         lastPromptObject: { englishPrompt: "Initial uploaded image", polishDescription: "Oryginalny obraz" },
-        instructions: instruction,
+        instructions: finalInstruction,
         mediaUrl: uploadedUrl,
         targetMediaUrl: uploadedTargetUrl, // Pass target image if present
         type, // 'image' | 'video' | 'gif'
@@ -237,7 +233,7 @@ const VisualEditor = ({
 
       // Step 2: Generate the media
       if (type === 'video' || type === 'gif') {
-        await generateVideo(vPlan, uploadedUrl, uploadedTargetUrl);
+        await generateVideo(vPlan, uploadedUrl, uploadedTargetUrl, type);
       } else {
         await generateImage(vPlan, uploadedUrl);
         showSuccess("Pierwsza wersja wygenerowana!");
@@ -272,20 +268,21 @@ const VisualEditor = ({
     setLoadingType(null);
   };
 
-  const generateVideo = async (promptData, contextUrl, targetUrl = null) => {
+  const generateVideo = async (promptData, contextUrl, targetUrl = null, type = 'video') => {
     const token = await auth.currentUser.getIdToken();
     const response = await axios.post(`${API_BASE_URL}/generate-video`, {
       prompt: promptData.englishPrompt,
       aspectRatio: aspectRatio === '1:1' ? '1:1' : (aspectRatio === '9:16' ? '9:16' : '16:9'),
       imageUrl: contextUrl,
-      targetImageUrl: targetUrl
+      targetImageUrl: targetUrl,
+      type: type
     }, {
       headers: { Authorization: `Bearer ${token}` }
     });
 
     if (response.data.status === 'started') {
       showInfo("Rozpoczęto generowanie wideo. To może potrwać do 2 minut.");
-      pollVideoStatus(response.data.operationName, promptData, contextUrl);
+      pollVideoStatus(response.data.operationName, promptData, contextUrl, type);
     } else if (response.data.status === 'done') {
       const newMedia = { type: 'video', url: response.data.videoUrl };
       setGeneratedMedia(newMedia);
@@ -295,7 +292,7 @@ const VisualEditor = ({
     }
   };
 
-  const pollVideoStatus = async (operationName, promptData, contextUrl) => {
+  const pollVideoStatus = async (operationName, promptData, contextUrl, type = 'video') => {
     const token = await auth.currentUser.getIdToken();
     let isDone = false;
     let attempts = 0;
@@ -303,18 +300,18 @@ const VisualEditor = ({
       attempts++;
       await new Promise(r => setTimeout(r, 5000));
       try {
-        const res = await axios.get(`${API_BASE_URL}/video-status?operationName=${encodeURIComponent(operationName)}`, {
+        const response = await axios.get(`${API_BASE_URL}/video-status?operationName=${encodeURIComponent(operationName)}&type=${type}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        if (res.data.status === 'done') {
+        if (response.data.status === 'done') {
           isDone = true;
-          const newMedia = { type: 'video', url: res.data.videoUrl };
+          const newMedia = { type: 'video', url: response.data.videoUrl };
           setGeneratedMedia(newMedia);
           const updatedHistory = [...mediaHistory, { ...newMedia, prompt: promptData }];
           setMediaHistory(updatedHistory);
           saveSession(updatedHistory, promptData, v1PromptData || promptData, contextUrl);
           showSuccess("Wideo jest gotowe!");
-        } else if (res.data.status === 'failed') {
+        } else if (response.data.status === 'failed') {
           showError("Generowanie wideo nie powiodło się.");
           isDone = true;
         }
@@ -367,14 +364,6 @@ const VisualEditor = ({
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
           <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: '700' }}>Edytor Wizualny</h2>
           <div style={{ display: 'flex', gap: '0.8rem' }}>
-            <button 
-              onClick={handleFinalSave}
-              className="btn-primary"
-              style={{ padding: '0.5rem 1.5rem', borderRadius: '12px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'var(--color-primary)', border: 'none', color: 'white' }}
-            >
-              <span className="material-icons" style={{ fontSize: '1.1rem' }}>save</span>
-              Zapisz
-            </button>
 
             {(currentSessionId || mediaHistory.length > 0) && (
               <button 
@@ -666,28 +655,7 @@ const VisualEditor = ({
                     />
                   </div>
 
-                  {/* Text Overlay */}
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.8rem', opacity: 0.8 }}>Napis na GIFie</label>
-                    <input 
-                      type="text" value={gifText} onChange={(e) => setGifText(e.target.value)}
-                      placeholder="Np. PROMOCJA -20%"
-                      style={{ width: '100%', padding: '0.8rem', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff' }}
-                    />
-                  </div>
 
-                  {/* Font Selection */}
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.8rem', opacity: 0.8 }}>Styl napisu</label>
-                    <select 
-                      value={gifFont} onChange={(e) => setGifFont(e.target.value)}
-                      style={{ width: '100%', padding: '0.8rem', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff' }}
-                    >
-                      <option value="elegant">Elegancki (Serif)</option>
-                      <option value="modern">Nowoczesny (Bold)</option>
-                      <option value="handwritten">Odręczny (Script)</option>
-                    </select>
-                  </div>
 
                   {/* Beauty Effects */}
                   <div>
@@ -704,19 +672,7 @@ const VisualEditor = ({
                     </select>
                   </div>
 
-                  {/* CTA Buttons */}
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.8rem', opacity: 0.8 }}>Przycisk CTA</label>
-                    <select 
-                      value={gifCTA} onChange={(e) => setGifCTA(e.target.value)}
-                      style={{ width: '100%', padding: '0.8rem', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff' }}
-                    >
-                      <option value="none">Brak przycisku</option>
-                      <option value="zapisz_sie">Zapisz się</option>
-                      <option value="click_bio">Link w Bio</option>
-                      <option value="book_now">Book Now</option>
-                    </select>
-                  </div>
+
                 </div>
 
                 <div style={{ marginTop: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -733,7 +689,7 @@ const VisualEditor = ({
             <div style={{ marginTop: '1.5rem' }}>
               <button 
                 onClick={() => handleInitialGenerate(editorMode)}
-                disabled={loadingType !== null || !file || !instruction.trim() || isReadOnly}
+                disabled={loadingType !== null || !file || (editorMode !== 'gif' && !instruction.trim()) || isReadOnly}
                 className="btn-primary"
                 style={{ flex: 1, padding: '1rem', borderRadius: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
               >
@@ -917,6 +873,25 @@ const VisualEditor = ({
               </div>
             ))}
           </div>
+        </div>
+      )}
+      {/* Bottom Save Button */}
+      {(generatedMedia || mediaHistory.length > 0) && (
+        <div style={{ marginTop: '3rem', display: 'flex', justifyContent: 'center', borderTop: '1px solid var(--border-color)', paddingTop: '2rem' }}>
+          <button 
+            onClick={handleFinalSave}
+            className="premium-button"
+            style={{ 
+              padding: '1rem 3rem', 
+              borderRadius: '50px', 
+              fontSize: '1rem',
+              gap: '0.8rem',
+              boxShadow: '0 10px 25px rgba(0,0,0,0.2)'
+            }}
+          >
+            <span className="material-icons" style={{ fontSize: '1.3rem' }}>cloud_done</span>
+            Zakończ i Zapisz Projekt
+          </button>
         </div>
       )}
     </div>

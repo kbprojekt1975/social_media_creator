@@ -631,7 +631,7 @@ async function syncVisualPrompt({ polishDescription, aspectRatio = '1:1', type =
  * Generates a video using the Veo 3.1 model via Google AI Studio (Gemini API) REST.
  * We use predictLongRunning as it's the only supported method for this model.
  */
-async function generateVeoVideo(visualPrompt, aspectRatio = '1:1', imageBase64 = null) {
+async function generateVeoVideo(visualPrompt, aspectRatio = '1:1', imageBase64 = null, isGif = false) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY not found.");
 
@@ -651,7 +651,7 @@ async function generateVeoVideo(visualPrompt, aspectRatio = '1:1', imageBase64 =
     parameters: {
       sampleCount: 1,
       aspectRatio: aspectRatio === '9:16' ? '9:16' : '16:9',
-      durationSeconds: 6
+      durationSeconds: isGif ? 4 : 6
     }
   };
 

@@ -1,6 +1,11 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Reguły dla konfiguracji (np. cennik) - tylko do odczytu
+    match /config/{document} {
+      allow read: if true;
+    }
+
     // Reguły dla produktów i cen (widoczne dla wszystkich)
     match /products/{id} {
       allow read: if true;

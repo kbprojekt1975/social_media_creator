@@ -48,13 +48,37 @@ app.get("/list-models", async (req, res) => {
 });
 
 // --- CONFIGURATION ---
-const TOKENS_PER_PLN = 1000000; // 1 PLN = 1,000,000 tokens (adjust margin here)
-const CREDIT_RATIO = 0.20; // 20% of payment goes to user token balance
-const MIN_TOKENS_FOR_GEN = 1000; // Minimal buffer to allow generation
-const POST_COST = 5000; // 5,000 tokens for one post (fixed cost)
-const IMAGE_COST = 105000; // 105,000 tokens for one image (approx 0.10 PLN)
-const VIDEO_COST = 1100000; // 1,100,000 tokens for one video (approx 1.10 PLN)
-const CAMPAIGN_COST = 25000; // 25,000 tokens for a full campaign strategy
+// --- DYNAMIC CONFIGURATION (Now in Firestore) ---
+let pricingConfig = {
+  TOKENS_PER_PLN: 1000000,
+  CREDIT_RATIO: 0.20,
+  MIN_TOKENS_FOR_GEN: 1000,
+  POST_COST: 5000,
+  IMAGE_COST: 105000,
+  VIDEO_COST: 1100000,
+  CAMPAIGN_COST: 25000,
+  GIF_COST: 350000,
+  REFINE_COST: 5000,
+  WELCOME_TOKENS: 50000, // Tokens for registration
+  SUBSCRIPTION_TOKENS: 10000000 // Tokens for active subscription
+};
+
+// Helper to get latest pricing from Firestore
+async function getPricingConfig() {
+  try {
+    const configDoc = await db.collection("config").doc("pricing").get();
+    if (configDoc.exists) {
+      pricingConfig = { ...pricingConfig, ...configDoc.data() };
+    } else {
+      // Create initial config if it doesn't exist
+      await db.collection("config").doc("pricing").set(pricingConfig);
+      console.log("Created default pricing config in Firestore.");
+    }
+  } catch (e) {
+    console.error("Error fetching pricing config, using defaults:", e);
+  }
+  return pricingConfig;
+}
 
 // Helper to get Stripe instance (using secret from environment)
 const getStripe = () => {
@@ -108,6 +132,7 @@ app.post("/generate", async (req, res) => {
       return res.status(400).json({ error: "Platform and topic are required." });
     }
 
+    const pricing = await getPricingConfig();
     const { content, tokens } = await generatePost({ platform, topic, style, plannedPrompt, workspaceContext, customStyleGuidelines });
     
     // Check balance and deduct cost
@@ -119,13 +144,13 @@ app.post("/generate", async (req, res) => {
       const userData = userDoc.data() || {};
       const currentBalance = userData.balance || 0;
 
-      if (currentBalance < tokens && currentBalance < MIN_TOKENS_FOR_GEN) {
+      if (currentBalance < tokens && currentBalance < pricing.MIN_TOKENS_FOR_GEN) {
         throw new Error("INSUFFICIENT_FUNDS");
       }
 
       // Deduct balance (using fixed cost)
       t.update(userRef, { 
-        balance: admin.firestore.FieldValue.increment(-POST_COST) 
+        balance: admin.firestore.FieldValue.increment(-pricing.POST_COST) 
       });
 
       // Save to history
@@ -136,12 +161,12 @@ app.post("/generate", async (req, res) => {
         topic,
         style,
         content,
-        tokensUsed: POST_COST,
+        tokensUsed: pricing.POST_COST,
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       });
     });
 
-    res.json({ content, tokensUsed: POST_COST, historyId });
+    res.json({ content, tokensUsed: pricing.POST_COST, historyId });
 
   } catch (error) {
     if (error.message === "INSUFFICIENT_FUNDS") {
@@ -306,6 +331,7 @@ app.post("/generate-campaign", async (req, res) => {
       return res.status(400).json({ error: "Name, goal, and product description are required." });
     }
 
+    const pricing = await getPricingConfig();
     const strategy = await generateCampaignPlan({ 
       name, 
       goal, 
@@ -324,13 +350,13 @@ app.post("/generate-campaign", async (req, res) => {
       const userData = userDoc.data() || {};
       const currentBalance = userData.balance || 0;
 
-      if (currentBalance < CAMPAIGN_COST) {
+      if (currentBalance < pricing.CAMPAIGN_COST) {
         throw new Error("INSUFFICIENT_FUNDS");
       }
 
       // Deduct balance
       t.update(userRef, { 
-        balance: admin.firestore.FieldValue.increment(-CAMPAIGN_COST) 
+        balance: admin.firestore.FieldValue.increment(-pricing.CAMPAIGN_COST) 
       });
 
       // Save to campaigns collection
@@ -347,7 +373,7 @@ app.post("/generate-campaign", async (req, res) => {
       });
     });
 
-    res.json({ strategy, cost: CAMPAIGN_COST });
+    res.json({ strategy, cost: pricing.CAMPAIGN_COST });
 
   } catch (error) {
     if (error.message === "INSUFFICIENT_FUNDS") {
@@ -421,11 +447,12 @@ app.post("/generate-image", async (req, res) => {
     const { prompt, aspectRatio, originalImageUrl, isAlreadyTechnical } = req.body;
     if (!prompt) return res.status(400).send("Prompt is required.");
 
+    const pricing = await getPricingConfig();
     const userRef = db.collection("users").doc(decodedToken.uid);
     const userDoc = await userRef.get();
     const balance = userDoc.data()?.balance || 0;
 
-    if (balance < IMAGE_COST) {
+    if (balance < pricing.IMAGE_COST) {
       return res.status(402).json({ error: "Brak tokenów na koncie. Doładuj portfel." });
     }
 
@@ -465,10 +492,10 @@ app.post("/generate-image", async (req, res) => {
 
     // Deduct tokens
     await userRef.update({ 
-      balance: admin.firestore.FieldValue.increment(-IMAGE_COST) 
+      balance: admin.firestore.FieldValue.increment(-pricing.IMAGE_COST) 
     });
 
-    res.json({ imageUrl: downloadUrl, cost: IMAGE_COST });
+    res.json({ imageUrl: downloadUrl, cost: pricing.IMAGE_COST });
   } catch (error) {
     console.error("Nano Banana Generation Error:", error);
     res.status(500).json({ error: error.message });
@@ -482,7 +509,7 @@ app.post("/generate-video", async (req, res) => {
 
   try {
     const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const { prompt, aspectRatio, imageUrl, targetImageUrl, isAlreadyTechnical } = req.body;
+    const { prompt, aspectRatio, imageUrl, targetImageUrl, isAlreadyTechnical, type } = req.body;
     if (!prompt) return res.status(400).send("Prompt is required.");
 
     // OPTIMIZATION: Skip Gemini Translator if the prompt is already technical
@@ -507,7 +534,7 @@ app.post("/generate-video", async (req, res) => {
     }
 
     // This now returns { status, operationName, videoBase64 }
-    const result = await generateVeoVideo(technicalPrompt, aspectRatio || '1:1', base64Context);
+    const result = await generateVeoVideo(technicalPrompt, aspectRatio || '1:1', base64Context, type === 'gif');
     
     if (result.status === "done" && result.videoBase64) {
       // 1. Save to Storage (Direct case)
@@ -521,16 +548,18 @@ app.post("/generate-video", async (req, res) => {
       const downloadUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
 
       // 2. Deduct tokens
+      const pricing = await getPricingConfig();
+      const cost = type === 'gif' ? (pricing.GIF_COST || 350000) : (pricing.VIDEO_COST || 1100000);
       const userRef = db.collection("users").doc(decodedToken.uid);
       await userRef.update({ 
-        balance: admin.firestore.FieldValue.increment(-VIDEO_COST) 
+        balance: admin.firestore.FieldValue.increment(-cost) 
       });
 
       return res.json({ 
         status: "done", 
         videoUrl: downloadUrl,
         videoBase64: result.videoBase64,
-        cost: VIDEO_COST
+        cost: cost
       });
     }
 
@@ -552,7 +581,7 @@ app.get("/video-status", async (req, res) => {
   if (!idToken) return res.status(401).send("Unauthorized");
 
   try {
-    const { operationName } = req.query;
+    const { operationName, type } = req.query;
     if (!operationName) return res.status(400).send("operationName is required.");
 
     const decodedToken = await admin.auth().verifyIdToken(idToken);
@@ -609,15 +638,17 @@ app.get("/video-status", async (req, res) => {
       const downloadUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
 
       // 4. Deduct tokens
+      const pricing = await getPricingConfig();
+      const cost = type === 'gif' ? (pricing.GIF_COST || 350000) : (pricing.VIDEO_COST || 1100000);
       const userRef = db.collection("users").doc(decodedToken.uid);
       await userRef.update({ 
-        balance: admin.firestore.FieldValue.increment(-VIDEO_COST) 
+        balance: admin.firestore.FieldValue.increment(-cost) 
       });
 
       return res.json({ 
         status: "done", 
         videoUrl: downloadUrl,
-        cost: VIDEO_COST
+        cost: cost
       });
     } else {
       // 6. Still in progress
@@ -661,9 +692,12 @@ exports.grantTokens = onDocumentCreated({
           return;
         }
 
-        console.log(`🎁 Przyznawanie 10M tokenów dla ${userId}`);
+        const pricing = await getPricingConfig();
+        const tokensToGrant = pricing.SUBSCRIPTION_TOKENS || 10000000;
+
+        console.log(`🎁 Przyznawanie tokenów dla ${userId}`);
         transaction.set(userRef, {
-          balance: admin.firestore.FieldValue.increment(10000000),
+          balance: admin.firestore.FieldValue.increment(tokensToGrant),
           lastSubscriptionId: event.params.subscriptionId,
           subscriptionStatus: subscription.status,
           updatedAt: admin.firestore.FieldValue.serverTimestamp()
@@ -695,6 +729,43 @@ exports.onSubscriptionUpdate = onDocumentUpdated({
 
 
 
+
+// Endpoint: Initialize User (Grant Welcome Tokens)
+app.post("/initialize-user", async (req, res) => {
+  const idToken = req.headers.authorization?.split("Bearer ")[1];
+  if (!idToken) return res.status(401).send("Unauthorized");
+
+  try {
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const userId = decodedToken.uid;
+    const userRef = db.collection("users").doc(userId);
+
+    const userDoc = await userRef.get();
+    if (userDoc.exists) {
+      return res.json({ status: "exists", balance: userDoc.data().balance });
+    }
+
+    const pricing = await getPricingConfig();
+    const welcomeTokens = pricing.WELCOME_TOKENS || 50000;
+
+    console.log(`🎉 Initializing new user: ${userId}. Granting ${welcomeTokens} welcome tokens.`);
+    
+    const newUser = {
+      email: decodedToken.email || "",
+      balance: welcomeTokens,
+      subscriptionStatus: "none",
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+
+    await userRef.set(newUser);
+    res.json({ status: "initialized", balance: welcomeTokens });
+
+  } catch (error) {
+    console.error("Initialize User Error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // Export the app as a Cloud Function
 exports.api = onRequest({
