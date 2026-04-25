@@ -117,7 +117,15 @@ const SimulationSlide = ({ topic, prompt, responsePost, imageSrc, videoSrc, isHe
         </div>
       </div>
 
-      <div style={{ padding: '1.5rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem', overflow: 'hidden' }}>
+      <div style={{ 
+        padding: '1.5rem', 
+        flex: 1, 
+        display: 'flex', 
+        flexDirection: 'column', 
+        gap: '1.5rem', 
+        overflowY: 'auto',
+        maxHeight: '100%'
+      }}>
         {/* Prompt Container */}
         <div style={{ 
           padding: '1.2rem', 
@@ -359,23 +367,7 @@ const InteractiveDemo = ({ isHero }) => {
     }}>
       <SimulationSlide {...slides[currentSlide]} key={currentSlide} isHero={isHero} />
       
-      {/* Navigation Controls */}
-      <div style={{ display: 'flex', gap: '10px', paddingLeft: isHero ? '1.5rem' : '0', alignItems: 'center' }}>
-        {slides.map((_, i) => (
-          <div 
-            key={i} 
-            onClick={() => setCurrentSlide(i)}
-            style={{ 
-              width: currentSlide === i ? '24px' : '10px', 
-              height: '10px', 
-              borderRadius: '5px', 
-              background: currentSlide === i ? '#38BDF8' : 'rgba(255,255,255,0.1)',
-              cursor: 'pointer',
-              transition: 'all 0.4s ease'
-            }}
-          />
-        ))}
-      </div>
+      {/* Navigation Controls removed as requested */}
     </div>
   );
 };

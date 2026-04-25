@@ -17,6 +17,7 @@ const ResultSection = ({
   imageLoading, 
   isReadOnly, 
   visualizationType, 
+  setVisualizationType, 
   handleGeneratePrompt, 
   isAutoGenerating,
   videoAspectRatio, 
@@ -43,7 +44,9 @@ const ResultSection = ({
   setGeneratedImage,
   setGeneratedVideo,
   API_BASE_URL,
-  handleReset
+  handleReset,
+  handleOptimizePrompt,
+  isOptimizing
 }) => {
   const [isModified, setIsModified] = useState(false);
   const [isSyncSuccess, setIsSyncSuccess] = useState(false);
@@ -364,7 +367,7 @@ const ResultSection = ({
             {/* Main Action Buttons - Grid Layout */}
             <div style={{ 
               display: 'grid', 
-              gridTemplateColumns: '1fr 1fr', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
               gap: '2rem', 
               marginTop: '3rem',
               maxWidth: '1000px',
@@ -684,23 +687,49 @@ const ResultSection = ({
                           <span className="material-icons" style={{ fontSize: '1.1rem', verticalAlign: 'middle', marginRight: '0.5rem' }}>auto_fix_high</span>
                           Co chcesz zmienić na tym obrazie?
                         </label>
-                        <textarea 
-                          value={mediaFeedback}
-                          onChange={(e) => setMediaFeedback(e.target.value)}
-                          placeholder="np. zmień kolor sukienki na czerwony, dodaj okulary przeciwsłoneczne..."
-                          style={{ 
-                            width: '100%', 
-                            minHeight: '80px', 
-                            padding: '1rem', 
-                            fontSize: '0.9rem', 
-                            borderRadius: '15px', 
-                            border: '1px solid var(--border-color)', 
-                            background: 'var(--bg-white)', 
-                            color: 'var(--text-main)', 
-                            resize: 'none' 
-                          }}
-                          disabled={isMediaRefining}
-                        />
+                        <div style={{ position: 'relative' }}>
+                          <textarea 
+                            value={mediaFeedback}
+                            onChange={(e) => setMediaFeedback(e.target.value)}
+                            placeholder="np. zmień kolor sukienki na czerwony, dodaj okulary przeciwsłoneczne..."
+                            style={{ 
+                              width: '100%', 
+                              minHeight: '80px', 
+                              padding: '1rem', 
+                              paddingRight: '3.5rem',
+                              fontSize: '0.9rem', 
+                              borderRadius: '15px', 
+                              border: '1px solid var(--border-color)', 
+                              background: 'var(--bg-white)', 
+                              color: 'var(--text-main)', 
+                              resize: 'none' 
+                            }}
+                            disabled={isMediaRefining}
+                          />
+                          <button 
+                            onClick={() => handleOptimizePrompt(mediaFeedback, setMediaFeedback)}
+                            disabled={isOptimizing || !mediaFeedback.trim()}
+                            title="Ulepsz instrukcję za pomocą AI"
+                            style={{
+                              position: 'absolute',
+                              top: '10px',
+                              right: '10px',
+                              background: 'rgba(var(--color-primary-rgb), 0.1)',
+                              border: 'none',
+                              borderRadius: '10px',
+                              width: '32px',
+                              height: '32px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              color: 'var(--color-primary)',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            {isOptimizing ? <span className="spinner" style={{ width: '14px', height: '14px' }}></span> : <span className="material-icons" style={{ fontSize: '1.2rem' }}>auto_awesome</span>}
+                          </button>
+                        </div>
                       </div>
                       <button 
                         onClick={() => handleRefineMedia(idx)}

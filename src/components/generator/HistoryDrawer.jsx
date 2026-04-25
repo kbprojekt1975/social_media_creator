@@ -273,6 +273,7 @@ const HistoryDrawer = ({
       {/* Floating Drawer Trigger */}
       {!isHistoryDrawerOpen && (
         <button 
+          className="desktop-floating-btn"
           onClick={toggleHistoryDrawer}
           style={{
             position: 'fixed',

@@ -40,15 +40,29 @@ const PostGenerator = ({
       console.error("Sync error:", error);
     }
   };
+
+  const formatTopicTitle = (text) => {
+    if (!text) return 'Nowy Projekt';
+    let formatted = text.trim();
+    if (formatted.length > 20) {
+      return formatted.slice(0, 20) + '...';
+    }
+    const words = formatted.split(/\s+/);
+    if (words.length > 3) {
+      return words.slice(0, 3).join(' ') + '...';
+    }
+    return formatted;
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       
       <div className="premium-border" style={{ padding: '2.5rem', animation: 'fadeIn 0.5s ease-out 0.2s both' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-            <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: '700' }}>
-              {topic ? (topic.length > 40 ? topic.slice(0, 40) + '...' : topic) : 'Nowy Projekt'}
-            </h2>
+        <div className="generator-header-container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+          <h2 className="generator-title" style={{ margin: 0, fontSize: '1.8rem', fontWeight: '700' }}>
+            {formatTopicTitle(topic)}
+          </h2>
+          <div className="generator-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
             <button 
               type="button"
               onClick={onShowHelp}
@@ -57,16 +71,16 @@ const PostGenerator = ({
             >
               <span className="material-icons" style={{ fontSize: '1.4rem' }}>info</span>
             </button>
+            <button 
+              onClick={handleReset} 
+              className="btn-secondary" 
+              style={{ padding: '0.5rem 1rem', borderRadius: '15px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+              title="Wyczyść formularz i zacznij od nowa"
+            >
+              <span className="material-icons" style={{ fontSize: '1rem' }}>refresh</span>
+              Resetuj
+            </button>
           </div>
-          <button 
-            onClick={handleReset} 
-            className="btn-secondary" 
-            style={{ padding: '0.5rem 1rem', borderRadius: '15px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-            title="Wyczyść formularz i zacznij od nowa"
-          >
-            <span className="material-icons" style={{ fontSize: '1.1rem' }}>refresh</span>
-            Resetuj
-          </button>
         </div>
 
         <form onSubmit={handleGenerate}>

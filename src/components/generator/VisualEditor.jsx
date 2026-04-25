@@ -14,7 +14,9 @@ const VisualEditor = ({
   API_BASE_URL,
   initialSession,
   onClearSession,
-  pricing
+  pricing,
+  handleOptimizePrompt,
+  isOptimizingProp
 }) => {
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -463,7 +465,7 @@ const VisualEditor = ({
 
         <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
           {/* Left Side: Upload & Initial Instruction */}
-          <div style={{ flex: 1, minWidth: '300px' }}>
+          <div style={{ flex: 1, minWidth: 'min(300px, 100%)' }}>
             <div style={{ display: 'grid', gridTemplateColumns: (editorMode === 'video' || editorMode === 'gif' ? '1fr 1fr' : '1fr'), gap: '1rem', marginBottom: '1rem' }}>
               <div 
                 onClick={() => fileInputRef.current.click()}
@@ -561,21 +563,49 @@ const VisualEditor = ({
 
             <div style={{ marginTop: '1.5rem' }}>
               <label style={{ display: 'block', marginBottom: '0.8rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Co chcesz zrobić z tym obrazem?</label>
-              <textarea 
-                value={instruction}
-                onChange={(e) => setInstruction(e.target.value)}
-                placeholder="Np. zmień tło na futurystyczne miasto lub dodaj neonowy napis 'Summer'..."
-                style={{
-                  width: '100%',
-                  minHeight: '100px',
-                  padding: '1rem',
-                  background: 'var(--bg-app)',
-                  border: '1px solid var(--border-color)',
-                  borderRadius: '15px',
-                  color: 'var(--text-main)',
-                  resize: 'none'
-                }}
-              />
+              <div style={{ position: 'relative' }}>
+                <textarea 
+                  value={instruction}
+                  onChange={(e) => setInstruction(e.target.value)}
+                  placeholder="Np. zmień tło na futurystyczne miasto lub dodaj neonowy napis 'Summer'..."
+                  style={{
+                    width: '100%',
+                    minHeight: '120px',
+                    padding: '1rem',
+                    paddingRight: '3.5rem',
+                    background: 'var(--bg-app)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '15px',
+                    color: 'var(--text-main)',
+                    resize: 'none'
+                  }}
+                />
+                <button 
+                  onClick={() => handleOptimizePrompt(instruction, setInstruction)}
+                  disabled={isOptimizingProp || !instruction.trim()}
+                  title="Ulepsz instrukcję za pomocą AI"
+                  style={{
+                    position: 'absolute',
+                    top: '10px',
+                    right: '10px',
+                    background: 'rgba(var(--color-primary-rgb), 0.1)',
+                    border: '1px solid rgba(var(--color-primary-rgb), 0.2)',
+                    borderRadius: '10px',
+                    width: '32px',
+                    height: '32px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    color: 'var(--color-primary)',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(var(--color-primary-rgb), 0.2)'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(var(--color-primary-rgb), 0.1)'}
+                >
+                  {isOptimizingProp ? <span className="spinner" style={{ width: '14px', height: '14px' }}></span> : <span className="material-icons" style={{ fontSize: '1.2rem' }}>auto_awesome</span>}
+                </button>
+              </div>
             </div>
 
             {/* GIF SETTINGS PANEL */}
@@ -700,7 +730,7 @@ const VisualEditor = ({
           </div>
 
           {/* Right Side: Result & Iterative Editing */}
-          <div style={{ flex: 1.2, minWidth: '350px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div style={{ flex: 1.2, minWidth: 'min(350px, 100%)', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             <div style={{ 
               width: '100%', 
               minHeight: '400px', 
@@ -785,23 +815,47 @@ const VisualEditor = ({
                   <span className="material-icons" style={{ fontSize: '1.2rem', color: 'var(--color-primary)' }}>edit</span>
                   Chcesz coś zmienić? Opisz kolejną poprawkę:
                 </h4>
-                <div style={{ display: 'flex', gap: '0.8rem' }}>
-                  <input 
-                    type="text"
-                    value={modificationText}
-                    onChange={(e) => setModificationText(e.target.value)}
-                    placeholder="Np. zrób to jaśniej, dodaj więcej detali..."
-                    onKeyDown={(e) => e.key === 'Enter' && handleRefine()}
-                    style={{
-                      flex: 1,
-                      padding: '0.8rem 1.2rem',
-                      background: 'var(--bg-app)',
-                      border: '1px solid var(--border-color)',
-                      borderRadius: '12px',
-                      color: 'var(--text-main)',
-                      outline: 'none'
-                    }}
-                  />
+                <div style={{ display: 'flex', gap: '0.8rem', position: 'relative', width: '100%' }}>
+                  <div style={{ flex: 1, position: 'relative' }}>
+                    <input 
+                      type="text"
+                      value={modificationText}
+                      onChange={(e) => setModificationText(e.target.value)}
+                      placeholder="Np. zrób to jaśniej, dodaj więcej detali..."
+                      onKeyDown={(e) => e.key === 'Enter' && handleRefine()}
+                      style={{
+                        width: '100%',
+                        padding: '0.8rem 3.5rem 0.8rem 1.2rem',
+                        background: 'var(--bg-app)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '12px',
+                        color: 'var(--text-main)',
+                        outline: 'none'
+                      }}
+                    />
+                    <button 
+                      onClick={() => handleOptimizePrompt(modificationText, setModificationText)}
+                      disabled={isOptimizingProp || !modificationText.trim()}
+                      title="Ulepsz instrukcję za pomocą AI"
+                      style={{
+                        position: 'absolute',
+                        right: '8px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--color-primary)',
+                        cursor: 'pointer',
+                        padding: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        opacity: modificationText.trim() ? 1 : 0.4
+                      }}
+                    >
+                      {isOptimizingProp ? <span className="spinner" style={{ width: '14px', height: '14px' }}></span> : <span className="material-icons" style={{ fontSize: '1.2rem' }}>auto_awesome</span>}
+                    </button>
+                  </div>
                   <button 
                     onClick={handleRefine}
                     disabled={loadingType !== null || !modificationText.trim()}

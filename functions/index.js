@@ -7,7 +7,7 @@ const admin = require("firebase-admin");
 const express = require("express");
 const cors = require("cors");
 const stripe = require("stripe");
-const { generatePost, generatePostPlan, syncEnglishPrompt, generateVisualPrompt, syncVisualPrompt, translateToTechnicalPrompt, generateNanoBananaImage, generateVeoVideo, refinePost, refineVisualPrompt, generateCampaignPlan, refineCampaignGoal, refineProductDescription, refineUSP } = require("./gemini");
+const { generatePost, generatePostPlan, syncEnglishPrompt, generateVisualPrompt, syncVisualPrompt, translateToTechnicalPrompt, generateNanoBananaImage, generateVeoVideo, refinePost, refineVisualPrompt, generateCampaignPlan, refineCampaignGoal, refineProductDescription, refineUSP, chatWithAssistant } = require("./gemini");
 
 
 // Initialize Firebase Admin
@@ -59,6 +59,7 @@ let pricingConfig = {
   CAMPAIGN_COST: 25000,
   GIF_COST: 350000,
   REFINE_COST: 5000,
+  CHAT_COST: 1000,
   WELCOME_TOKENS: 50000, // Tokens for registration
   SUBSCRIPTION_TOKENS: 10000000 // Tokens for active subscription
 };
@@ -763,6 +764,48 @@ app.post("/initialize-user", async (req, res) => {
 
   } catch (error) {
     console.error("Initialize User Error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint: Chat Assistant
+app.post("/chat-assistant", async (req, res) => {
+  const idToken = req.headers.authorization?.split("Bearer ")[1];
+  if (!idToken) return res.status(401).send("Unauthorized");
+
+  const { history, message } = req.body;
+  if (!message) return res.status(400).send("No message provided");
+
+  try {
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const userId = decodedToken.uid;
+    const userRef = db.collection("users").doc(userId);
+
+    // 1. Check balance
+    const userDoc = await userRef.get();
+    if (!userDoc.exists) return res.status(404).send("User not found");
+    
+    const pricing = await getPricingConfig();
+    const balance = userDoc.data().balance || 0;
+    const cost = pricing.CHAT_COST || 1000;
+
+    if (balance < cost) {
+      return res.status(403).json({ error: "Brak wystarczających środków na rozmowę z asystentem." });
+    }
+
+    // 2. Call Gemini Chat
+    const response = await chatWithAssistant(history, message);
+
+    // 3. Deduct tokens
+    await userRef.update({
+      balance: admin.firestore.FieldValue.increment(-cost),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    res.json({ response, cost });
+
+  } catch (error) {
+    console.error("Chat Assistant Route Error:", error);
     res.status(500).json({ error: error.message });
   }
 });

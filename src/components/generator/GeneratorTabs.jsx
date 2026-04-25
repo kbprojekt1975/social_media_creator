@@ -2,7 +2,7 @@ import React from 'react';
 
 const GeneratorTabs = ({ activeTab, setActiveTab, activeWorkspace, showAdvanced, setShowAdvanced }) => {
   return (
-    <div style={{ maxWidth: '1000px', margin: '0 auto', width: '100%' }}>
+    <div className="generator-tabs" style={{ maxWidth: '1000px', margin: '0 auto', width: '100%' }}>
       <div style={{ 
         display: 'flex', 
         gap: '0', 
@@ -36,7 +36,7 @@ const GeneratorTabs = ({ activeTab, setActiveTab, activeWorkspace, showAdvanced,
         }}
       >
         <span className="material-icons" style={{ fontSize: '1.2rem' }}>bolt</span>
-        Generator
+        <span className="tab-label">Generator</span>
       </button>
 
       <div style={{ 
@@ -67,7 +67,7 @@ const GeneratorTabs = ({ activeTab, setActiveTab, activeWorkspace, showAdvanced,
           }}
         >
           <span className="material-icons" style={{ fontSize: '1.1rem' }}>business_center</span>
-          Przestrzenie
+          <span className="tab-label">Przestrzenie</span>
           {activeWorkspace && <div style={{ width: '6px', height: '6px', background: '#4ade80', borderRadius: '50%' }}></div>}
         </button>
         <button 
@@ -87,7 +87,7 @@ const GeneratorTabs = ({ activeTab, setActiveTab, activeWorkspace, showAdvanced,
           }}
         >
           <span className="material-icons" style={{ fontSize: '1.1rem' }}>event_note</span>
-          Kampanie
+          <span className="tab-label">Kampanie</span>
         </button>
         <button 
           onClick={() => setActiveTab('visual_editor')}
@@ -106,7 +106,7 @@ const GeneratorTabs = ({ activeTab, setActiveTab, activeWorkspace, showAdvanced,
           }}
         >
           <span className="material-icons" style={{ fontSize: '1.1rem' }}>brush</span>
-          Edytor
+          <span className="tab-label">Edytor</span>
         </button>
       </div>
 
@@ -131,7 +131,7 @@ const GeneratorTabs = ({ activeTab, setActiveTab, activeWorkspace, showAdvanced,
         <span className="material-icons" style={{ fontSize: '1.2rem' }}>
           {showAdvanced ? 'close' : 'more_horiz'}
         </span>
-        {showAdvanced ? 'Zwiń' : 'Zaawansowane'}
+        <span className="tab-label">{showAdvanced ? 'Zwiń' : 'Zaawansowane'}</span>
       </button>
     </div>
     </div>

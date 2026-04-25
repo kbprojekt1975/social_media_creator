@@ -911,6 +911,53 @@ async function refineUSP(rawUSP) {
   }
 }
 
-module.exports = { generatePost, generatePostPlan, syncEnglishPrompt, generateVisualPrompt, syncVisualPrompt, translateToTechnicalPrompt, generateNanoBananaImage, generateVeoVideo, refinePost, refineVisualPrompt, generateCampaignPlan, refineCampaignGoal, refineProductDescription, refineUSP };
+/**
+ * Chat with the SMC Assistant.
+ */
+async function chatWithAssistant(history, message) {
+  const ai = initGemini();
+  if (!ai) throw new Error("Gemini API not initialized.");
+
+  const model = ai.getGenerativeModel({ 
+    model: "gemini-2.5-flash-lite",
+    systemInstruction: `Jesteś pomocnym asystentem aplikacji "Social Media Creator" (SMC). Twoim celem jest prowadzenie użytkownika przez proces tworzenia treści. 
+
+**Ważne:** Ty sam nie generujesz obrazów ani wideo, ale instruujesz użytkownika, jak to zrobić w aplikacji.
+
+Kluczowe ścieżki pomocy:
+1. **Tworzenie Wideo/GIF/Obrazów (2 drogi):**
+   - **Podczas tworzenia posta:** Po wygenerowaniu treści posta, zjedź niżej do sekcji "Wizualizacje". Tam możesz wybrać format i kliknąć przycisk "Generuj Obraz", "Wideo" lub "GIF".
+   - **Z własnym zdjęciem:** Przejdź do zakładki "Edytor Wizualny" w górnym menu. Tam możesz wgrać własne zdjęcie i zamienić je w animację lub edytować opisem.
+2. **Kampanie:** Zakładka "Kampanie" pozwala stworzyć wielodniową strategię. Każdy pomysł z harmonogramu można wysłać do generatora jednym kliknięciem.
+3. **Workspace:** W zakładce "Workspace" (Przestrzenie Robocze) definiuje się styl marki, aby AI zawsze pisało i generowało grafiki w tym samym tonie.
+
+Jeśli użytkownik zapyta "czy zrobisz mi wideo?", odpowiedz: "Ja służę pomocą i radą, ale wideo wygenerujesz sam w kilka sekund! Możesz to zrobić pod aktualnym postem w sekcji Wizualizacje lub w zakładce Edytor Wizualny, jeśli chcesz ożywić własne zdjęcie."
+
+Bądź profesjonalny, konkretny i podawaj dokładne nazwy sekcji/zakładek. Odpowiadaj w języku polskim.`
+  });
+
+  const chat = model.startChat({
+    history: history || [],
+    generationConfig: {
+      maxOutputTokens: 1000,
+      temperature: 0.7,
+    },
+  });
+
+  try {
+    const result = await withRetry(() => chat.sendMessage(message));
+    return result.response.text();
+  } catch (error) {
+    console.error("Chat Assistant Error:", error);
+    throw new Error("Błąd asystenta czatu.");
+  }
+}
+
+module.exports = { 
+  generatePost, generatePostPlan, syncEnglishPrompt, generateVisualPrompt, 
+  syncVisualPrompt, translateToTechnicalPrompt, generateNanoBananaImage, 
+  generateVeoVideo, refinePost, refineVisualPrompt, generateCampaignPlan, 
+  refineCampaignGoal, refineProductDescription, refineUSP, chatWithAssistant 
+};
 
 

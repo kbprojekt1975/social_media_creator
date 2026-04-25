@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { auth, db } from '../firebase'
 import { onAuthStateChanged, signOut } from 'firebase/auth'
-import { doc, onSnapshot, query, collection, orderBy } from 'firebase/firestore'
-import heroImage from '../assets/hero.png'
+import { doc, onSnapshot, query, collection, orderBy, limit } from 'firebase/firestore'
+import heroBg from '../assets/hero-bg-globe-highres.png'
 import InteractiveDemo from './InteractiveDemo'
 import HelpModal from './generator/HelpModal'
 import StatusHeader from './generator/StatusHeader'
@@ -19,9 +19,13 @@ const LandingPage = ({ deferredPrompt, setDeferredPrompt }) => {
 
   // Auth & Data States
   const [user, setUser] = useState(null);
+  const [showDemo, setShowDemo] = useState(false);
   const [balance, setBalance] = useState(0);
   const [activeWorkspace, setActiveWorkspace] = useState(null);
   const [showTooltip, setShowTooltip] = useState(false);
+  const [subscriptionData, setSubscriptionData] = useState(null);
+  const [activeStatIdx, setActiveStatIdx] = useState(0);
+  const [isFading, setIsFading] = useState(false);
   const MAX_TOKENS = 10000000;
   const perc = Math.max(0, Math.min(100, (balance / MAX_TOKENS) * 100));
 
@@ -48,9 +52,23 @@ const LandingPage = ({ deferredPrompt, setDeferredPrompt }) => {
           setActiveWorkspace(active || null);
         });
 
+        // Fetch Subscription Status
+        const subQuery = query(
+          collection(db, 'customers', currentUser.uid, 'subscriptions'),
+          limit(1)
+        );
+        const unsubSub = onSnapshot(subQuery, (snapshot) => {
+          if (!snapshot.empty) {
+            setSubscriptionData(snapshot.docs[0].data());
+          } else {
+            setSubscriptionData(null);
+          }
+        });
+
         return () => {
           unsubUser();
           unsubWorkspaces();
+          unsubSub();
         };
       }
     });
@@ -121,39 +139,46 @@ const LandingPage = ({ deferredPrompt, setDeferredPrompt }) => {
     return () => observer.disconnect();
   }, []);
 
+  const stats = [
+    { label: 'Wzrost zasięgu', value: '+124%', icon: '📈', color: 'var(--color-primary)', bars: ['40%', '60%', '100%'] },
+    { label: 'Konwersja', value: '+12%', icon: '💰', color: '#10b981', bars: ['30%', '50%', '80%'] },
+    { label: 'Engagement', value: '+85%', icon: '🔥', color: '#f4af45', bars: ['50%', '70%', '90%'] },
+    { label: 'Czas', value: 'Oszczędzone: 4h', icon: '⏱️', color: 'var(--color-info)', bars: ['20%', '40%', '60%'] },
+    { label: 'Kliknięcia', value: '240', icon: '🔗', color: '#38bdf8', bars: ['35%', '55%', '75%'] }
+  ];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIsFading(true);
+      setTimeout(() => {
+        setActiveStatIdx(prev => (prev + 1) % stats.length);
+        setIsFading(false);
+      }, 500);
+    }, 4500);
+    return () => clearInterval(interval);
+  }, [stats.length]);
+
   return (
     <div className="landing-page" style={{ overflowX: 'hidden' }}>
-      <nav className="premium-border" style={{
-        position: 'fixed',
-        top: '20px',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        width: '90%',
-        maxWidth: '1200px',
-        padding: '1rem 2rem',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        zIndex: 1000,
-        boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
-        background: 'rgba(var(--bg-app-rgb), 0.8)',
-        backdropFilter: 'blur(20px)'
-      }}>
+      <nav className="landing-nav premium-border">
         <a href="#hero" className="logo" style={{ 
           fontWeight: '800', 
-          fontSize: '1.5rem', 
+          fontSize: 'clamp(0.9rem, 4vw, 1.5rem)', 
           letterSpacing: '-1px', 
           textDecoration: 'none', 
           color: 'var(--text-main)',
           cursor: 'pointer',
-          textTransform: 'uppercase'
+          textTransform: 'uppercase',
+          display: 'flex',
+          alignItems: 'center'
         }}>
-          KUŹNIA<span style={{ color: 'var(--color-primary)' }}>TREŚCI</span>
+          KUŹNIA<span className="logo-suffix" style={{ color: 'var(--color-primary)' }}>TREŚCI</span>
         </a>
         
-        <div className="nav-links" style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
+        <div className="nav-links-container">
           <a 
             href="#how-it-works" 
+            className="nav-text-link"
             style={{ 
               color: activeSection === 'how-it-works' ? 'var(--color-primary)' : 'var(--text-muted)', 
               textDecoration: 'none',
@@ -165,6 +190,7 @@ const LandingPage = ({ deferredPrompt, setDeferredPrompt }) => {
           </a>
           <a 
             href="#showcase" 
+            className="nav-text-link"
             style={{ 
               color: activeSection === 'showcase' ? 'var(--color-primary)' : 'var(--text-muted)', 
               textDecoration: 'none',
@@ -226,6 +252,7 @@ const LandingPage = ({ deferredPrompt, setDeferredPrompt }) => {
                 handleLogout={handleLogout}
                 deferredPrompt={deferredPrompt}
                 setDeferredPrompt={setDeferredPrompt}
+                subscriptionData={subscriptionData}
               />
             </>
           )}
@@ -235,15 +262,19 @@ const LandingPage = ({ deferredPrompt, setDeferredPrompt }) => {
       {/* Hero Section */}
       <section id="hero" className="hero" style={{
         minHeight: '100vh',
+        width: '100vw',
+        margin: '0',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'center',
         alignItems: 'center',
         textAlign: 'center',
         padding: '6rem 1rem 0',
-        background: '#050505',
+        background: `radial-gradient(circle, rgba(0,0,0,0.3) 0%, #050505 90%), #050505 url(${heroBg}) no-repeat center center`,
+        backgroundSize: 'cover',
+        backgroundAttachment: 'fixed',
         position: 'relative',
-        overflow: 'hidden'
+        overflow: 'visible'
       }}>
         {/* Interactive Mouse Glow */}
         <div style={{
@@ -259,31 +290,66 @@ const LandingPage = ({ deferredPrompt, setDeferredPrompt }) => {
         }}></div>
 
         <div className="hero-content animate-float" style={{ maxWidth: '900px', zIndex: 5, position: 'relative', padding: '0 2rem' }}>
-          <h1 style={{ fontSize: '4.5rem', lineHeight: '1.1', marginBottom: '1.5rem', fontWeight: '700' }}>
-            Zbuduj swoją <br/><span className="gradient-text">Obecność w Social Media z AI</span>
+          <h1 style={{ 
+            fontSize: '4.5rem', 
+            lineHeight: '1.2', 
+            marginBottom: '1.5rem', 
+            fontWeight: '700'
+          }}>
+            Zbuduj Swoją <br/>
+            <span className="gradient-text" style={{ fontSize: '0.7em', display: 'block', marginTop: '0.5rem' }}>
+              Obecność W Social Media Z AI
+            </span>
           </h1>
-          <p style={{ fontSize: '1.25rem', color: 'var(--text-muted)', marginBottom: '2.5rem', maxWidth: '600px', marginInline: 'auto' }}>
+          <p style={{ 
+            fontSize: '1.25rem', 
+            color: 'white', // Zmienione z muted na biały dla kontrastu
+            marginBottom: '2.5rem', 
+            maxWidth: '600px', 
+            marginInline: 'auto',
+            fontWeight: '500'
+          }}>
             Kompleksowa platforma AI do projektowania, planowania i analizowania Twoich treści w mediach społecznościowych z zachwycającą estetyką i maksymalnym zasięgiem.
           </p>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
             <Link 
               to={user ? "/dashboard" : "/login"} 
               className="btn-primary" 
-              style={{ padding: '1rem 2.5rem', fontSize: '1.1rem', boxShadow: '0 0 20px var(--primary-glow)' }}
+              style={{ padding: '1rem 3rem', fontSize: '1.1rem', boxShadow: '0 0 20px var(--primary-glow)' }}
             >
               {user ? "Przejdź do panelu" : "Zaczynamy"}
             </Link>
+
+            <button 
+              onClick={() => setShowDemo(!showDemo)} 
+              className="btn-secondary mobile-demo-toggle-btn"
+              style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px', 
+                padding: '1rem 2rem',
+                fontSize: '1.1rem',
+                borderRadius: '100px',
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid var(--border-color)',
+                backdropFilter: 'blur(10px)'
+              }}
+            >
+              <span className="material-icons">{showDemo ? 'close' : 'play_circle'}</span>
+              {showDemo ? 'Zamknij Demo' : 'Zobacz Demo'}
+            </button>
           </div>
         </div>
-        
+
         {/* Main Interactive Demo in Hero */}
-        <div style={{
+        <div className={`hero-demo-wrapper ${showDemo ? 'show-mobile' : ''}`} style={{
           position: 'absolute',
-          top: '10%',
-          left: '1%',
-          zIndex: 1,
-          transform: 'scale(0.85)',
-          transformOrigin: 'left center'
+          top: '120px', 
+          left: '2%',
+          zIndex: 10,
+          maxWidth: '45%',
+          height: 'calc(100vh - 160px)', 
+          pointerEvents: 'all'
         }}>
           <InteractiveDemo isHero={true} />
         </div>
@@ -291,25 +357,71 @@ const LandingPage = ({ deferredPrompt, setDeferredPrompt }) => {
         <div className="animate-float" style={{
           position: 'absolute',
           bottom: '15%',
-          right: '2%',
-          padding: '1.5rem',
-          borderRadius: '16px',
-          width: '220px',
-          textAlign: 'left',
-          animationDelay: '1s',
+          right: '5%',
           zIndex: 1,
-          transform: 'scale(0.9)',
-          transformOrigin: 'right bottom',
-          background: '#0a0a0a',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          boxShadow: '0 30px 60px rgba(0,0,0,0.5)'
         }}>
-          <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Wzrost zasięgu</h4>
-          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--color-primary)' }}>+124% 📈</div>
-          <div style={{ display: 'flex', alignItems: 'flex-end', height: '60px', gap: '5px', marginTop: '1rem' }}>
-            <div style={{ width: '20px', height: '40%', background: 'var(--color-info)', borderRadius: '4px' }}></div>
-            <div style={{ width: '20px', height: '60%', background: 'var(--color-info)', borderRadius: '4px' }}></div>
-            <div style={{ width: '20px', height: '100%', background: 'var(--color-primary)', borderRadius: '4px' }}></div>
+          <div className="hero-stats-card" style={{
+            padding: '1.2rem 1.5rem',
+            borderRadius: '20px',
+            width: '320px',
+            textAlign: 'left',
+            transform: 'scale(1.5)',
+            transformOrigin: 'right bottom',
+            background: '#0a0a0a',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            boxShadow: '0 30px 60px rgba(0,0,0,0.5)',
+            transition: 'all 0.5s ease',
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '1rem',
+            overflow: 'hidden'
+          }}>
+            <div style={{ 
+              display: 'flex', 
+              width: '100%', 
+              alignItems: 'center', 
+              justifyContent: 'space-between',
+              opacity: isFading ? 0 : 1,
+              transform: isFading ? 'translateX(10px)' : 'translateX(0)',
+              filter: isFading ? 'blur(4px)' : 'blur(0)',
+              transition: 'all 0.5s ease-in-out'
+            }}>
+              <div style={{ flex: 1 }}>
+                <h4 style={{ margin: '0 0 0.3rem 0', fontSize: '0.85rem', color: 'var(--text-muted)', transition: 'all 0.3s ease' }}>
+                  {stats[activeStatIdx].label}
+                </h4>
+                <div style={{ 
+                  fontSize: stats[activeStatIdx].label === 'Czas' ? '1.1rem' : '1.4rem', 
+                  fontWeight: 'bold', 
+                  color: stats[activeStatIdx].color, 
+                  transition: 'all 0.3s ease', 
+                  lineHeight: '1.2' 
+                }}>
+                  {stats[activeStatIdx].value} {stats[activeStatIdx].icon}
+                </div>
+              </div>
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'flex-end', 
+                height: '45px', 
+                gap: '4px', 
+                flexShrink: 0
+              }}>
+                {stats[activeStatIdx].bars.map((height, i) => (
+                  <div key={i} style={{ 
+                    width: '15px', 
+                    height: height, 
+                    background: i === 2 ? stats[activeStatIdx].color : 'var(--color-secondary)', 
+                    opacity: i === 2 ? 1 : 0.3,
+                    borderRadius: '3px',
+                    transition: 'all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                    transitionDelay: `${i * 100}ms`
+                  }}></div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -337,7 +449,7 @@ const LandingPage = ({ deferredPrompt, setDeferredPrompt }) => {
             <p style={{ color: 'var(--text-muted)', fontSize: '1.2rem' }}>Trzy proste kroki do viralowych treści.</p>
           </div>
           
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '3rem', position: 'relative' }}>
+          <div className="how-it-works-grid" style={{ display: 'grid', gap: '3rem', position: 'relative' }}>
             {[
               { title: '1. Temat', desc: 'Wpisz temat lub wklej link. My zajmiemy się resztą.', icon: '✍️' },
               { title: '2. Magia', desc: 'Nasze AI błyskawicznie generuje zachwycające grafiki, angażujące teksty i popularne hashtagi.', icon: '✨' },
@@ -370,7 +482,7 @@ const LandingPage = ({ deferredPrompt, setDeferredPrompt }) => {
             </p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '2rem' }}>
+          <div className="features-grid" style={{ display: 'grid', gap: '2rem' }}>
             <div className="premium-border" style={{ padding: '2.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--bg-card)' }}>
               <div style={{ color: 'var(--color-primary)', fontSize: '2.5rem' }}><span className="material-icons" style={{ fontSize: '3rem' }}>auto_awesome</span></div>
               <h3 style={{ fontSize: '1.6rem', fontWeight: '700' }}>Osobisty Copywriter 24/7</h3>

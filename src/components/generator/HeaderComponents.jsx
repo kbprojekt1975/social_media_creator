@@ -2,31 +2,39 @@ import React, { useState, useRef, useEffect } from 'react';
 
 export const StatusPill = ({ perc, activeWorkspace, setActiveTab, setForcePaymentView, showTooltip, setShowTooltip }) => {
   return (
-    <div className="glass" style={{ 
-      padding: '0.4rem 0.6rem 0.4rem 1.2rem', 
+    <div className="status-pill" style={{ 
+      padding: '0.4rem 1rem', 
       borderRadius: '40px', 
-      fontSize: '0.9rem', 
+      fontSize: '0.85rem', 
       position: 'relative',
       display: 'flex',
       alignItems: 'center',
-      gap: '1rem',
-      background: 'var(--bg-card)',
-      border: '1px solid var(--border-color)',
-      whiteSpace: 'nowrap'
+      gap: '0.6rem',
+      background: 'rgba(255,255,255,0.04)',
+      border: '1px solid rgba(255,255,255,0.08)',
+      whiteSpace: 'nowrap',
+      minWidth: 0,
+      flexShrink: 1
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-        <div style={{ position: 'relative', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <svg width="24" height="24" viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="10" fill="none" stroke="#e0e4e8" strokeWidth="2.5" />
-            <circle cx="12" cy="12" r="10" fill="none" stroke={perc > 50 ? '#4ade80' : perc > 25 ? '#fb923c' : '#ef4444'} strokeWidth="2.5" 
-              strokeDasharray={2 * Math.PI * 10} 
-              strokeDashoffset={2 * Math.PI * 10 * (1 - perc / 100)} 
-              strokeLinecap="round"
-              transform="rotate(-90 12 12)"
-            />
-          </svg>
+      <div style={{ position: 'relative', width: '38px', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <svg width="38" height="38" viewBox="0 0 38 38">
+          <circle cx="19" cy="19" r="17" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="3" />
+          <circle cx="19" cy="19" r="17" fill="none" stroke={perc > 50 ? '#4ade80' : perc > 25 ? '#fb923c' : '#ef4444'} strokeWidth="3" 
+            strokeDasharray={2 * Math.PI * 17} 
+            strokeDashoffset={2 * Math.PI * 17 * (1 - perc / 100)} 
+            strokeLinecap="round"
+            transform="rotate(-90 19 19)"
+            style={{ transition: 'stroke-dashoffset 0.5s ease' }}
+          />
+        </svg>
+        <div style={{ 
+          position: 'absolute', 
+          fontSize: '0.65rem', 
+          fontWeight: '800', 
+          color: perc > 50 ? '#4ade80' : perc > 25 ? '#fb923c' : '#ef4444' 
+        }}>
+          {Math.round(perc)}%
         </div>
-        <span style={{ color: 'var(--text-muted)', fontWeight: '500' }}>Balans: <span style={{ color: '#4ade80', fontWeight: '700' }}>{perc.toFixed(1)}%</span></span>
       </div>
 
       {activeWorkspace && (
@@ -66,8 +74,8 @@ export const StatusPill = ({ perc, activeWorkspace, setActiveTab, setForcePaymen
               <span className="material-icons" style={{ fontSize: '1rem' }}>business_center</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.5px', lineHeight: 1 }}>Marka</span>
-              <span style={{ fontSize: '0.85rem', color: 'var(--text-main)', fontWeight: '800', lineHeight: 1.2 }}>{activeWorkspace.name}</span>
+              <span className="workspace-label" style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.5px', lineHeight: 1 }}>Marka</span>
+              <span className="workspace-name" style={{ fontSize: '0.85rem', color: 'var(--text-main)', fontWeight: '800', lineHeight: 1.2 }}>{activeWorkspace.name}</span>
             </div>
           </div>
         </>
@@ -87,7 +95,7 @@ export const StatusPill = ({ perc, activeWorkspace, setActiveTab, setForcePaymen
   );
 };
 
-export const ProfileDropdown = ({ user, isDark, setIsDark, onShowHelp, handleLogout, deferredPrompt, setDeferredPrompt }) => {
+export const ProfileDropdown = ({ user, isDark, setIsDark, onShowHelp, handleLogout, deferredPrompt, setDeferredPrompt, subscriptionData }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -115,6 +123,7 @@ export const ProfileDropdown = ({ user, isDark, setIsDark, onShowHelp, handleLog
     <div ref={menuRef} style={{ position: 'relative' }}>
       <button 
         onClick={() => setIsMenuOpen(!isMenuOpen)}
+        className="profile-dropdown-trigger"
         style={{
           width: '45px',
           height: '45px',
@@ -153,6 +162,33 @@ export const ProfileDropdown = ({ user, isDark, setIsDark, onShowHelp, handleLog
             <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Zalogowano jako</p>
             <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.95rem', fontWeight: '600', color: 'var(--text-main)', wordBreak: 'break-all' }}>{user?.email}</p>
           </div>
+
+          {subscriptionData?.current_period_end && (
+            <div style={{ padding: '0.2rem 0.5rem 0.5rem', marginBottom: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>
+              <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Konto ważne do</p>
+              <p style={{ margin: '0.1rem 0 0 0', fontSize: '0.9rem', fontWeight: '700', color: 'var(--color-primary)' }}>
+                {new Date(subscriptionData.current_period_end * 1000).toLocaleDateString('pl-PL')}
+              </p>
+            </div>
+          )}
+
+          <button 
+            className="btn-secondary mobile-only-dropdown-btn"
+            onClick={() => { window.dispatchEvent(new CustomEvent('toggleHistory')); setIsMenuOpen(false); }}
+            style={{ width: '100%', justifyContent: 'flex-start', gap: '1rem', padding: '0.8rem 1rem', borderRadius: '12px' }}
+          >
+            <span className="material-icons" style={{ color: 'var(--color-primary)' }}>history</span>
+            Historia
+          </button>
+
+          <button 
+            className="btn-secondary mobile-only-dropdown-btn"
+            onClick={() => { window.dispatchEvent(new CustomEvent('toggleChat')); setIsMenuOpen(false); }}
+            style={{ width: '100%', justifyContent: 'flex-start', gap: '1rem', padding: '0.8rem 1rem', borderRadius: '12px' }}
+          >
+            <span className="material-icons" style={{ color: '#8b5cf6' }}>chat_bubble</span>
+            Asystent AI
+          </button>
 
           <button 
             onClick={() => { setIsDark(!isDark); setIsMenuOpen(false); }}

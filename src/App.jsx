@@ -7,6 +7,7 @@ import SuccessPage from './components/SuccessPage'
 import GeneratorPage from './components/GeneratorPage'
 import ErrorBoundary from './components/common/ErrorBoundary'
 import { NotificationProvider } from './components/common/NotificationContext'
+import CookieConsent from './components/common/CookieConsent'
 
 function App() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
@@ -32,6 +33,7 @@ function App() {
               <Route path="/cancel" element={<PaymentPage />} />
               <Route path="/dashboard" element={<GeneratorPage deferredPrompt={deferredPrompt} setDeferredPrompt={setDeferredPrompt} />} />
             </Routes>
+            <CookieConsent />
           </div>
         </Router>
       </NotificationProvider>

@@ -16,6 +16,7 @@ import axiosRetry from 'axios-retry';
 import CampaignPlanner from './generator/CampaignPlanner';
 import HelpModal from './generator/HelpModal';
 import VisualEditor from './generator/VisualEditor';
+import ChatAssistant from './common/ChatAssistant';
 import { useNotification } from './common/NotificationContext';
 
 // Configure axios to retry on 429 errors
@@ -46,10 +47,12 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
   const [balance, setBalance] = useState(0);
   const [showHistory, setShowHistory] = useState(false);
   const [subscriptionStatus, setSubscriptionStatus] = useState('loading'); // 'loading', 'active', 'none'
+  const [subscriptionData, setSubscriptionData] = useState(null);
 
   const [imagePromptData, setImagePromptData] = useState(null); // { polishDescription, englishPrompt }
   const [videoPromptData, setVideoPromptData] = useState(null); // { polishDescription, englishPrompt }
   const [isVisualSyncing, setIsVisualSyncing] = useState(false);
+  const [isOptimizing, setIsOptimizing] = useState(false);
   const [isPromptMode, setIsPromptMode] = useState(false);
   const [generatedImage, setGeneratedImage] = useState(null);
   const [imageLoading, setImageLoading] = useState(false);
@@ -251,6 +254,7 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
     const stripeUnsubscribe = onSnapshot(subQuery, (snapshot) => {
       if (!snapshot.empty) {
         const sub = snapshot.docs[0].data();
+        setSubscriptionData(sub);
         if (sub.status === 'active' || sub.status === 'trialing') {
           setSubscriptionStatus('active');
         } else {
@@ -258,6 +262,7 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
         }
       } else {
         setSubscriptionStatus('none');
+        setSubscriptionData(null);
       }
     });
 
@@ -912,6 +917,36 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
     }
   };
 
+  const handleOptimizePrompt = async (text, setter) => {
+    if (!text.trim() || isOptimizing) return;
+    setIsOptimizing(true);
+    try {
+      const token = await user.getIdToken();
+      const prompt = `Jesteś ekspertem od inżynierii promptów dla modeli AI (jak Gemini, Imagen, Veo). 
+      Zredaguj poniższą instrukcję użytkownika tak, aby była jak najlepiej zrozumiała dla modelu generującego obrazy lub wideo. 
+      Dodaj szczegóły techniczne, oświetlenie, styl i kompozycję, które pomogą uzyskać profesjonalny efekt, ale zachowaj oryginalny sens zmian.
+      Twoja odpowiedź musi zawierać TYLKO zredagowaną instrukcję w języku polskim. Nic więcej.
+      
+      Instrukcja użytkownika: "${text}"`;
+      
+      const response = await axios.post(`${API_BASE_URL}/chat-assistant`, {
+        message: prompt,
+        history: []
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      const refined = response.data.response.trim().replace(/^"|"$/g, '');
+      setter(refined);
+      showSuccess("Instrukcja została zoptymalizowana przez AI.");
+    } catch (error) {
+      console.error("Optimization failed:", error);
+      handleApiError(error, "Nie udało się zoptymalizować instrukcji.");
+    } finally {
+      setIsOptimizing(false);
+    }
+  };
+  
   const toggleHistoryItem = (itemId) => {
     setExpandedHistoryItems(prev => ({
       ...prev,
@@ -932,8 +967,13 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
   };
 
   const toggleHistoryDrawer = () => {
-    setIsHistoryDrawerOpen(!isHistoryDrawerOpen);
+    setIsHistoryDrawerOpen(prev => !prev);
   };
+
+  useEffect(() => {
+    window.addEventListener('toggleHistory', toggleHistoryDrawer);
+    return () => window.removeEventListener('toggleHistory', toggleHistoryDrawer);
+  }, []);
 
   const markCampaignItemCompleted = async (campaignId, itemIndex) => {
     try {
@@ -1274,8 +1314,7 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
   return (
     <div className="generator-container" style={{
       minHeight: '100vh',
-      background: 'var(--bg-app)',
-      padding: '1rem 4rem'
+      background: 'var(--bg-app)'
     }}>
       <StatusHeader 
         user={user}
@@ -1284,6 +1323,7 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
         setShowTooltip={setShowTooltip}
         setForcePaymentView={setForcePaymentView}
         isDark={isDark}
+        subscriptionData={subscriptionData}
         setIsDark={setIsDark}
         handleLogout={handleLogout}
         onShowHelp={() => setShowHelp(true)}
@@ -1431,6 +1471,7 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
                 imageLoading={imageLoading}
                 isReadOnly={isReadOnly}
                 visualizationType={visualizationType}
+                setVisualizationType={setVisualizationType}
                 isAutoGenerating={isAutoGenerating}
                 handleGeneratePrompt={handleGeneratePrompt}
                 handleGenerateVideo={handleGenerateVideo}
@@ -1456,10 +1497,13 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
                 setVideoPromptData={setVideoPromptData}
                 mediaHistory={mediaHistory}
                 setMediaHistory={setMediaHistory}
+                v1VisualPrompt={v1VisualPrompt}
                 aiDetectionLog={aiDetectionLog}
                 setAiDetectionLog={setAiDetectionLog}
                 API_BASE_URL={API_BASE_URL}
                 handleReset={handleReset}
+                handleOptimizePrompt={handleOptimizePrompt}
+                isOptimizing={isOptimizing}
               />
             </div>
           </>
@@ -1509,6 +1553,8 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
             initialSession={activeEditorSession}
             onClearSession={() => setActiveEditorSession(null)}
             pricing={pricing}
+            handleOptimizePrompt={handleOptimizePrompt}
+            isOptimizingProp={isOptimizing}
           />
         )}
       </div>
@@ -1516,13 +1562,13 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
       {/* Floating Scroll Navigation */}
       <button 
         onClick={() => scrollToPosition(showScrollTop ? 'up' : 'down')}
-        className="glass"
+        className="glass scroll-to-top-btn"
         style={{
           position: 'fixed',
-          bottom: '2.5rem',
-          right: '2.5rem',
-          width: '55px',
-          height: '55px',
+          bottom: '1.5rem',
+          right: '1.5rem',
+          width: '30px',
+          height: '30px',
           borderRadius: '50%',
           display: 'flex',
           alignItems: 'center',
@@ -1536,17 +1582,19 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
           transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
           opacity: (showScrollTop || isAtTop) ? 1 : 0,
           pointerEvents: (showScrollTop || isAtTop) ? 'auto' : 'none',
-          transform: (showScrollTop || isAtTop) ? 'scale(1)' : 'scale(0.8)'
+          transform: (showScrollTop || isAtTop) ? 'scale(1)' : 'scale(0.8)',
+          padding: 0
         }}
       >
         <span className="material-icons" style={{ 
-          fontSize: '1.8rem',
+          fontSize: '1.2rem',
           transform: showScrollTop ? 'rotate(0deg)' : 'rotate(180deg)',
           transition: 'transform 0.4s ease'
         }}>
           arrow_upward
         </span>
       </button>
+      <ChatAssistant API_BASE_URL={API_BASE_URL} subscriptionStatus={subscriptionStatus} />
   </div>
   );
 };

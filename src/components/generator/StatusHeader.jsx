@@ -15,23 +15,11 @@ const StatusHeader = ({
   deferredPrompt,
   setDeferredPrompt,
   activeWorkspace,
-  setActiveTab
+  setActiveTab,
+  subscriptionData
 }) => {
   return (
-    <header style={{
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      padding: '1rem 2rem',
-      position: 'sticky',
-      top: 0,
-      zIndex: 1000,
-      background: 'rgba(var(--bg-app-rgb), 0.85)',
-      backdropFilter: 'blur(20px) saturate(180%)',
-      borderBottom: '1px solid var(--border-color)',
-      margin: '0 -4rem 1.5rem -4rem',
-      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-    }}>
+    <header className="status-header">
       <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }}>
         <div className="logo" style={{ 
           fontSize: '1.4rem', 
@@ -40,12 +28,12 @@ const StatusHeader = ({
           cursor: 'pointer',
           transition: 'opacity 0.2s ease'
         }}>
-          KUŹNIA<span style={{ color: '#2a8ca8' }}>TREŚCI</span>
+          KUŹNIA<span className="logo-suffix" style={{ color: '#2a8ca8' }}>TREŚCI</span>
         </div>
       </Link>
       
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        <Link to="/" style={{ 
+      <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '1rem', minWidth: 0, flexShrink: 1 }}>
+        <Link to="/" className="home-link" style={{ 
           textDecoration: 'none', 
           color: 'var(--text-muted)', 
           display: 'flex', 
@@ -81,6 +69,7 @@ const StatusHeader = ({
           handleLogout={handleLogout}
           deferredPrompt={deferredPrompt}
           setDeferredPrompt={setDeferredPrompt}
+          subscriptionData={subscriptionData}
         />
       </div>
     </header>

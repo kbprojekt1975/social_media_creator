@@ -70,11 +70,11 @@ const HelpModal = ({ isOpen, onClose }) => {
           <section>
             <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', color: 'var(--color-primary)', fontWeight: '700', marginBottom: '0.8rem' }}>
               <div style={{ background: 'var(--color-primary)', color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem' }}>2</div>
-              Tworzenie Grafiki i Wideo
+              Grafiki, Wideo i GIF-y
             </h3>
             <p style={{ margin: 0, lineHeight: '1.6' }}>
-              Po wygenerowaniu tekstu, pod postem pojawią się opcje wizualne. Wybierz format (np. 1:1 dla Instagrama lub 9:16 dla TikTok/Reels) i kliknij <strong>Generuj Obraz</strong> lub <strong>Wideo</strong>. 
-              System wykorzystuje najnowsze modele GEMINI, oferując fotorealistyczną jakość.
+              Po wygenerowaniu tekstu wybierz format (np. 1:1 lub 9:16) i kliknij <strong>Generuj Obraz</strong>, <strong>Wideo</strong> (6s klip) lub <strong>GIF</strong> (4s zapętlona animacja). 
+              System wykorzystuje najnowsze modele <strong>Google Veo</strong>, oferując kinową jakość i płynny ruch.
             </p>
           </section>
 
@@ -96,11 +96,11 @@ const HelpModal = ({ isOpen, onClose }) => {
           <section>
             <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', color: 'var(--color-primary)', fontWeight: '700', marginBottom: '0.8rem' }}>
               <div style={{ background: 'var(--color-primary)', color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem' }}>3</div>
-              Edytor Wizualny (Własne Obrazy)
+              Edytor Wizualny (Ewolucja Obrazu)
             </h3>
             <p style={{ margin: 0, lineHeight: '1.6' }}>
-              Chcesz edytować własne zdjęcie? Przejdź do zakładki <strong>Edytor Wizualny</strong>. Wgraj obraz, opisz co chcesz zmienić (np. "zmień tło", "dodaj napis") i generuj nową wersję lub klip wideo. 
-              Każda kolejna zmiana w edytorze opiera się na poprzednim kroku, zachowując spójność Twojego projektu.
+              Chcesz tchnąć życie we własne zdjęcie? Wgraj je w zakładce <strong>Edytor Wizualny</strong>. Możesz opisać zmiany (np. "zmień tło na kosmiczne") lub od razu zamienić zdjęcie w animowany GIF lub Wideo. 
+              Pamiętaj, że każda zmiana w edytorze zachowuje spójność poprzedniego kroku, pozwalając na precyzyjne dopracowanie projektu.
             </p>
           </section>
 
