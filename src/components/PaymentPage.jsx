@@ -19,6 +19,7 @@ const PaymentPage = () => {
       // 1. Dodaj dokument sesji płatności do Firestore
       const docRef = await addDoc(collection(db, 'customers', user.uid, 'checkout_sessions'), {
         price: priceId,
+        allow_promotion_codes: true, // Pozwala na używanie kuponów zniżkowych
         success_url: window.location.origin + '/success',
         cancel_url: window.location.origin + '/payment',
       });
@@ -56,7 +57,7 @@ const PaymentPage = () => {
         '40 wysokiej jakości obrazów AI',
         '5 klipów wideo (Reels/TikTok)'
       ],
-      id: 'price_1TLomfDXnXONl2svOFT20RGH', // Ten ID musi zgadzać się z ID produktu w Stripe
+      id: 'price_1TPzD0INb0RkqkJzrAFgirD7', // Produkcyjny ID ceny ze Stripe
       popular: true
     }
   ]
