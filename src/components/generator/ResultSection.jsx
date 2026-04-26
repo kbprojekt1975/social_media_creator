@@ -46,7 +46,11 @@ const ResultSection = ({
   API_BASE_URL,
   handleReset,
   handleOptimizePrompt,
-  isOptimizing
+  isOptimizing,
+  handleGetPostSchedule,
+  topic,
+  platform,
+  productDescription
 }) => {
   const [isModified, setIsModified] = useState(false);
   const [isSyncSuccess, setIsSyncSuccess] = useState(false);
@@ -57,6 +61,35 @@ const ResultSection = ({
   const [mediaError, setMediaError] = useState(false);
   const [animationError, setAnimationError] = useState(false);
   const [isVisualPanelOpen, setIsVisualPanelOpen] = useState(false);
+  
+  const [postSchedule, setPostSchedule] = useState(null);
+  const [isGeneratingPostSchedule, setIsGeneratingPostSchedule] = useState(false);
+
+  const renderMarkdown = (text) => {
+    if (!text) return null;
+    const lines = text.split('\n');
+    return lines.map((line, i) => {
+      let content = line;
+      content = content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      if (line.startsWith('### ')) {
+        return <h3 key={i} style={{ margin: '1rem 0 0.5rem 0', color: 'var(--color-primary)' }} dangerouslySetInnerHTML={{ __html: content.substring(4) }} />;
+      }
+      if (line.startsWith('* ') || line.startsWith('- ')) {
+        return <li key={i} style={{ marginLeft: '1.5rem', marginBottom: '0.4rem' }} dangerouslySetInnerHTML={{ __html: content.substring(2) }} />;
+      }
+      return <p key={i} style={{ margin: '0.4rem 0' }} dangerouslySetInnerHTML={{ __html: content }} />;
+    });
+  };
+
+  const onGetScheduleClick = async () => {
+    if (isGeneratingPostSchedule) return;
+    setIsGeneratingPostSchedule(true);
+    const result = await handleGetPostSchedule();
+    if (result) {
+      setPostSchedule(result);
+    }
+    setIsGeneratingPostSchedule(false);
+  };
 
   // Auto-scroll logic to focus on user action
   React.useEffect(() => {
@@ -155,9 +188,60 @@ const ResultSection = ({
         </div>
         <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.7', color: 'var(--text-main)', fontSize: '1.05rem', marginBottom: '1.5rem' }}>{result}</p>
         
+        {/* Action Buttons Bar */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
+          <button 
+            onClick={onGetScheduleClick}
+            disabled={isGeneratingPostSchedule}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: postSchedule ? 'var(--color-primary)' : 'var(--text-muted)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              fontSize: '0.9rem',
+              fontWeight: '600',
+              padding: '0.5rem',
+              borderRadius: '4px',
+              transition: 'all 0.2s'
+            }}
+            className="hover-opacity"
+            title="Sprawdź kiedy najlepiej opublikować ten post"
+          >
+            {isGeneratingPostSchedule ? <span className="spinner" style={{ width: '14px', height: '14px' }}></span> : <span className="material-icons" style={{ fontSize: '1.2rem' }}>schedule</span>}
+            {postSchedule ? 'Rekomendacja czasu aktywna' : 'Kiedy opublikować?'}
+          </button>
+        </div>
+
+        {postSchedule && (
+          <div style={{ 
+            marginTop: '1rem', 
+            padding: '1.2rem', 
+            background: 'rgba(66, 133, 244, 0.03)', 
+            borderRadius: '8px', 
+            borderLeft: '4px solid var(--color-primary)',
+            animation: 'fadeIn 0.3s ease-out'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem' }}>
+              <h4 style={{ margin: 0, color: 'var(--color-primary)', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <span className="material-icons" style={{ fontSize: '1.1rem' }}>auto_awesome</span>
+                AI: Sugerowany czas publikacji
+              </h4>
+              <button onClick={() => setPostSchedule(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                <span className="material-icons" style={{ fontSize: '1rem' }}>close</span>
+              </button>
+            </div>
+            <div style={{ fontSize: '0.95rem', color: 'var(--text-main)', lineHeight: '1.6' }}>
+              {renderMarkdown(postSchedule)}
+            </div>
+          </div>
+        )}
+
         {/* Text Refinement Field (Hidden under Advanced) */}
         {showAdvanced && (
-          <div className="premium-border" style={{ display: 'flex', gap: '0.8rem', alignItems: 'flex-start', padding: '1rem', animation: 'fadeIn 0.3s ease-out' }}>
+          <div className="premium-border" style={{ display: 'flex', gap: '0.8rem', alignItems: 'flex-start', padding: '1rem', animation: 'fadeIn 0.3s ease-out', marginTop: '1.5rem' }}>
             <textarea 
               value={textFeedback}
               onChange={(e) => setTextFeedback(e.target.value)}

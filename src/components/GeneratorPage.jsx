@@ -1336,6 +1336,52 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
     }
   };
 
+  const handleGetPublishingSchedule = async (campaignData) => {
+    try {
+      const token = await user.getIdToken();
+      const response = await axios.post(`${API_BASE_URL}/get-publishing-schedule`, campaignData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data.result;
+    } catch (error) {
+      console.error('Publishing schedule error:', error);
+      handleApiError(error, 'Nie udało się wygenerować harmonogramu publikacji.');
+      return null;
+    }
+  };
+
+  const handleSavePublishingSchedule = async (campaignId, scheduleText) => {
+    try {
+      const campaignRef = doc(db, 'users', user.uid, 'campaigns', campaignId);
+      await updateDoc(campaignRef, {
+        publishingSchedule: scheduleText
+      });
+    } catch (error) {
+      console.error('Error saving publishing schedule:', error);
+      showError('Nie udało się zapisać harmonogramu w bazie danych.');
+    }
+  };
+
+  const handleGetPostSchedule = async () => {
+    if (!checkBalance('post')) return null;
+    try {
+      const token = await user.getIdToken();
+      const response = await axios.post(`${API_BASE_URL}/get-post-schedule`, {
+        postContent: result,
+        productDescription: activeWorkspace?.contentDirectives || '',
+        topic: topic,
+        platform: platform
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data.result;
+    } catch (error) {
+      console.error('Post schedule error:', error);
+      showError('Nie udało się wygenerować rekomendacji czasu publikacji.');
+      return null;
+    }
+  };
+
 
   // Jeśli trwa sprawdzanie subskrypcji
   if (subscriptionStatus === 'loading') {
@@ -1561,6 +1607,10 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
                 handleReset={handleReset}
                 handleOptimizePrompt={handleOptimizePrompt}
                 isOptimizing={isOptimizing}
+                handleGetPostSchedule={handleGetPostSchedule}
+                topic={topic}
+                platform={platform}
+                productDescription={activeWorkspace?.contentDirectives || ''}
               />
             </div>
           </>
@@ -1593,7 +1643,8 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
             campaigns={campaigns}
             handleSelectCampaignItem={handleSelectCampaignItem}
             handleResetCampaignItem={handleResetCampaignItem}
-            handleEditHistoryItem={handleEditHistoryItem}
+            handleGetPublishingSchedule={handleGetPublishingSchedule}
+            handleSavePublishingSchedule={handleSavePublishingSchedule}
             history={history}
             balance={balance}
             isReadOnly={isReadOnly}

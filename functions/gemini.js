@@ -76,7 +76,6 @@ const STYLE_GUIDELINES = {
 
 /**
  * Generates technical instructions (prompt) for a social media post.
- * @param {Object} params - Parameters.
  */
 async function generatePostPlan({ platform, topic, style = "engaging", workspaceContext, customStyleGuidelines }) {
   const ai = initGemini();
@@ -118,46 +117,25 @@ async function generatePostPlan({ platform, topic, style = "engaging", workspace
     });
     let text = response.text().trim();
     
-    console.log("Gemini Plan Raw Output:", text);
-
-    // Robust JSON extraction
     const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.error("No JSON object found in text:", text);
-      throw new Error("MODEL_JSON_ERROR: AI returned no JSON.");
-    }
+    if (!jsonMatch) throw new Error("MODEL_JSON_ERROR: AI returned no JSON.");
     
-    let jsonResponse;
-    try {
-      jsonResponse = JSON.parse(jsonMatch[0]);
-    } catch (e) {
-      console.error("JSON Parse Error. Extracted text was:", jsonMatch[0]);
-      throw new Error("MODEL_JSON_ERROR: AI returned invalid JSON format.");
-    }
-
-    // Normalize keys
-    const normalized = {
-      polishPlan: jsonResponse.polishPlan || jsonResponse.PolishPlan || jsonResponse.polish_plan || "",
-      englishPrompt: jsonResponse.englishPrompt || jsonResponse.EnglishPrompt || jsonResponse.english_prompt || ""
+    let jsonResponse = JSON.parse(jsonMatch[0]);
+    return {
+      polishPlan: jsonResponse.polishPlan || jsonResponse.PolishPlan || "",
+      englishPrompt: jsonResponse.englishPrompt || jsonResponse.EnglishPrompt || ""
     };
-
-    if (!normalized.polishPlan && !normalized.englishPrompt) {
-       throw new Error("EMPTY_FIELDS: AI returned empty plan.");
-    }
-
-    return normalized;
   } catch (error) {
     console.error("Gemini Plan Error:", error);
     return {
-      polishPlan: `💡 Błąd planowania: ${error.message}. Spróbuj ponownie lub użyj domyślnego promptu poniżej.`,
-      englishPrompt: `Write a high-quality LinkedIn post in POLISH about ${topic}. Tone: ${style}. Platform rules: ${platform}.`
+      polishPlan: `💡 Błąd planowania: ${error.message}`,
+      englishPrompt: `Write a high-quality LinkedIn post in POLISH about ${topic}.`
     };
   }
 }
 
 /**
  * Transforms a modified Polish strategy into a fresh technical English prompt.
- * @param {Object} params - Parameters.
  */
 async function syncEnglishPrompt({ polishPlan, platform, topic, style, workspaceContext, customStyleGuidelines }) {
   const ai = initGemini();
@@ -173,21 +151,12 @@ async function syncEnglishPrompt({ polishPlan, platform, topic, style, workspace
     - Topic: ${topic}
     - Platform: ${platform}
     - Style: ${style}
-    - Style Guidelines: ${customStyleGuidelines || STYLE_GUIDELINES[style] || STYLE_GUIDELINES['Default']}
     
-    User's Polish Strategy (Source):
-    "${polishPlan}"
+    User's Polish Strategy: "${polishPlan}"
     
-    ${workspaceContext ? `WORKSPACE CONTEXT (MANDATORY RULES):
-    - Brand Directives: ${workspaceContext.contentDirectives || "Brak szczegółowych wytycznych."}
-    - Visual Aesthetic: ${workspaceContext.visualStyle || "Standardowa estetyka social media."}` : ''}
+    ${workspaceContext ? `WORKSPACE CONTEXT: ${workspaceContext.contentDirectives}` : ''}
     
-    Requirements for the Technical Prompt (Target):
-    1. Language: Write the prompt in ENGLISH.
-    2. Constraint: The prompt must instruct the AI to write the final post in POLISH.
-    3. Detail: Include specific instructions on tone, structure, and formatting based on the Polish input.
-    
-    Response format: Return ONLY the text of the generated instructions. No markdown blocks.
+    Return ONLY the text of the generated instructions.
   `;
 
   try {
@@ -203,13 +172,7 @@ async function syncEnglishPrompt({ polishPlan, platform, topic, style, workspace
 }
 
 /**
- * Generates social media content based on platform, topic, and style.
- * @param {Object} params - Generation parameters.
- * @param {string} params.platform - Target platform.
- * @param {string} params.topic - The main topic.
- * @param {string} [params.style] - Optional style.
- * @param {string} [params.plannedPrompt] - Optional pre-generated instructions.
- * @returns {Promise<Object>} - The generated content and token count.
+ * Generates social media content.
  */
 async function generatePost({ platform, topic, style = "engaging", plannedPrompt = null, workspaceContext, customStyleGuidelines }) {
   const ai = initGemini();
@@ -218,68 +181,37 @@ async function generatePost({ platform, topic, style = "engaging", plannedPrompt
   const model = ai.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
   const rules = PLATFORM_RULES[platform] || PLATFORM_RULES['Default'];
 
-  let prompt;
-  if (plannedPrompt) {
-    prompt = `
-      Follow these specific instructions to write a social media post:
-      ---
-      ${plannedPrompt}
-      ---
-      Original context (if not covered above):
-      Topic: ${topic}
-      Platform: ${platform}
-      Style: ${style}
-      
-      Output ONLY the post content.
-    `;
-  } else {
-    prompt = `
-      You are a world-class social media strategist. 
-      Create a highly optimized ${style} post for ${platform} about the following topic:
-      
-      Topic: ${topic}
-      Style: ${style}
-      Style Guidelines: ${customStyleGuidelines || STYLE_GUIDELINES[style] || STYLE_GUIDELINES['Default']}
-      
-      ${workspaceContext ? `WORKSPACE CONTEXT (MANDATORY RULES):
-      - Brand Directives: ${workspaceContext.contentDirectives || "Brak szczegółowych wytycznych."}
-      - Visual Aesthetic: ${workspaceContext.visualStyle || "Standardowa estetyka social media."}` : ''}
-      
-      Platform-Specific Strategy: ${rules}
-      
-      Language: ALWAYS respond in POLISH.
-      Content structure: 
-      1. Chwytliwy nagłówek (Hook)
-      2. Wartościowa treść (Body)
-      3. Wezwanie do działania (Call to Action)
-      4. Odpowiednie hashtagi
-    `;
-  }
+  let prompt = plannedPrompt ? `
+    Follow these specific instructions to write a social media post:
+    ---
+    ${plannedPrompt}
+    ---
+    Topic: ${topic}
+    Platform: ${platform}
+    Output ONLY the post content in POLISH.
+  ` : `
+    Create a highly optimized ${style} post for ${platform} about: ${topic}.
+    Guidelines: ${customStyleGuidelines || STYLE_GUIDELINES[style]}
+    ${workspaceContext ? `Brand Rules: ${workspaceContext.contentDirectives}` : ''}
+    Always respond in POLISH.
+  `;
 
   try {
-    console.log("Generating post for:", platform, "Topic:", topic);
     const response = await withRetry(async () => {
       const result = await model.generateContent(prompt);
       return await result.response;
     });
     const content = response.text();
     const tokens = response.usageMetadata?.totalTokenCount || 500;
-    console.log("Generation successful, tokens:", tokens);
     return { content, tokens };
   } catch (error) {
-    console.error("Gemini Post Error Detail:", error);
-    throw new Error(`Failed to generate optimized post: ${error.message}`);
+    console.error("Gemini Post Error:", error);
+    throw new Error(`Failed to generate post: ${error.message}`);
   }
 }
 
 /**
- * Generates a visual prompt for image or video generation based on a social media post.
- * @param {string} postContent - The content of the post to base the prompt on.
- * @param {string} aspectRatio - The desired format (e.g., '1:1', '9:16', '16:9').
- * @param {string} platform - The target platform for aesthetic optimization.
- * @param {string} type - Visualization type: 'image' (default) or 'video'.
- * @param {Object} workspaceContext - Optional brand workspace context.
- * @returns {Promise<string>} - The generated visual prompt.
+ * Generates a visual prompt.
  */
 async function generateVisualPrompt(postContent, aspectRatio = '1:1', platform = 'Default', type = 'image', workspaceContext = null) {
   const ai = initGemini();
@@ -289,760 +221,253 @@ async function generateVisualPrompt(postContent, aspectRatio = '1:1', platform =
   const aesthetic = IMAGE_AESTHETICS[platform] || IMAGE_AESTHETICS['Default'];
 
   const prompt = `
-    Jesteś dyrektorem kreatywnym i ekspertem od Prompt Engineeringu. 
-    Twoim zadaniem jest stworzenie opisu wizualnego dla modelu AI (${type === 'video' ? 'wideo' : 'obraz'}), bazując na treści posta.
-    
-    Platforma: ${platform}
-    Estetyka platformy: ${aesthetic}
+    Create a visual prompt for ${type} based on this post:
+    "${postContent.substring(0, 500)}"
+    Platform: ${platform}
+    Aesthetic: ${aesthetic}
     Format: ${aspectRatio}
+    ${workspaceContext ? `Brand Style: ${workspaceContext.visualStyle}` : ''}
     
-    ${workspaceContext ? `WYTYCZNE PRZESTRZENI ROBOCZEJ (MARKI):
-    ${workspaceContext.visualStyle}` : ''}
-
-    Treść posta:
-    "${postContent.substring(0, 3000)}"
-    
-    ZWRÓĆ DANE W FORMACIE JSON:
+    Return JSON:
     {
-      "polishDescription": "Krótki, sugestywny opis sceny po polsku dla użytkownika (bez technicznego żargonu).",
-      "englishPrompt": "Technical English prompt for ${type === 'video' ? 'Veo 3.1' : 'Nano Banana'} (detailed, lighting, composition, camera settings, no text, cinema quality)."
+      "polishDescription": "Opis dla użytkownika",
+      "englishPrompt": "Technical prompt for AI"
     }
   `;
 
   try {
     const result = await model.generateContent(prompt);
     const response = await result.response;
-    const text = response.text().trim();
-    
-    // Robust JSON extraction
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.error("No JSON found in visual prompt output:", text);
-      throw new Error("MODEL_JSON_ERROR: AI returned no JSON for visual prompt.");
-    }
-    
+    const jsonMatch = response.text().match(/\{[\s\S]*\}/);
     return JSON.parse(jsonMatch[0]);
   } catch (error) {
     console.error("Gemini Visual Prompt Error:", error);
-    return {
-      polishDescription: `Wysokiej jakości ${type} przedstawiający: ${postContent.substring(0, 200).trim()}...`,
-      englishPrompt: `High quality cinematic ${type} of ${postContent.substring(0, 200).trim()}, professional lighting, 8k, highly detailed.`
-    };
+    return { polishDescription: "Scena z posta", englishPrompt: "High quality cinematic " + type };
   }
 }
 
 /**
- * Translates a user-edited Polish prompt into a technical English prompt for the generation models.
+ * Translates visual prompt.
  */
 async function translateToTechnicalPrompt(polishPrompt, type = 'image', aspectRatio = '1:1') {
   const ai = initGemini();
   if (!ai) throw new Error("Gemini API not initialized.");
-
   const model = ai.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
-  const prompt = `
-    Transform the following Polish visual description into a high-end, technical English prompt for ${type === 'video' ? 'Veo 3.1 Video Generator' : 'Nano Banana Image Generator'}.
-    
-    Polish Description:
-    "${polishPrompt}"
-    
-    Aspect Ratio: ${aspectRatio}
-    
-    Requirements for the English Prompt:
-    - Strictly in ENGLISH.
-    - Use technical terms for lighting, camera lens, and composition.
-    - No text in the image/video.
-    - For video, include specific motion and camera trajectory instructions.
-    - Output ONLY the final technical prompt text.
-  `;
+  const prompt = `Translate this Polish visual description to technical English prompt for ${type}: "${polishPrompt}". Format: ${aspectRatio}.`;
 
   try {
-    const result = await withRetry(() => model.generateContent(prompt));
+    const result = await model.generateContent(prompt);
     const response = await result.response;
     return response.text().trim();
   } catch (error) {
-    console.error("Translation Error (Retries Failed):", error);
-    return polishPrompt; // Fallback to original if translation fails
+    return polishPrompt;
   }
 }
 
 /**
- * Refines an existing post based on user instructions.
- * @param {string} originalPost - The previously generated post.
- * @param {string} instructions - The user's instructions for refinement.
- * @returns {Promise<Object>} - The refined post content and token count.
+ * Refines post.
  */
 async function refinePost(originalPost, instructions, workspaceContext = null) {
   const ai = initGemini();
   if (!ai) throw new Error("Gemini API not initialized.");
-  
   const model = ai.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
-  const prompt = `
-    Jesteś profesjonalnym Social Media Managerem.
-    Masz poniższy wygenerowany post:
-    ---
-    ${originalPost}
-    ---
-    
-    Klient poprosił o wprowadzenie następujących zmian:
-    "${instructions}"
-    
-    ${workspaceContext ? `MANDATORY BRAND RULES (WORKSPACE):
-    - Tone/Style: ${workspaceContext.contentDirectives}` : ''}
-    
-    Zastosuj te zmiany do posta. 
-    Zwróć TYLKO nową, gotową treść posta w docelowym języku (zawsze po polsku, o ile klient nie poprosił inaczej).
-  `;
+  const prompt = `Refine this post: "${originalPost}" based on: "${instructions}". ${workspaceContext ? `Brand rules: ${workspaceContext.contentDirectives}` : ''} Respond ONLY with the refined Polish text.`;
 
   try {
-    const result = await withRetry(() => model.generateContent(prompt));
+    const result = await model.generateContent(prompt);
     const response = await result.response;
-    const content = response.text().trim();
-    
-    if (!content) {
-      throw new Error("Model Gemini zwrócił pustą odpowiedź.");
-    }
-
-    const tokens = response.usageMetadata?.totalTokenCount || 250;
-    return { content, tokens };
+    return { content: response.text().trim(), tokens: response.usageMetadata?.totalTokenCount || 250 };
   } catch (error) {
-    console.error("Gemini Refine Post Error Details:", error);
-    // If it's a safety error or other specific AI error, pass it through
-    const errorMessage = error.message?.includes("safety") 
-      ? "Treść została zablokowana przez filtry bezpieczeństwa AI." 
-      : error.message;
-    throw new Error(`Błąd ulepszania posta: ${errorMessage}`);
+    throw new Error("Błąd ulepszania posta.");
   }
 }
 
 /**
- * Refines a visual prompt using "Deep Scene Reconstruction".
- * Context-aware: takes Version 1 (Anchor) and Last Version to prevent style drift.
+ * Refines visual prompt.
  */
 async function refineVisualPrompt(v1PromptObject, lastPromptObject, instructions, workspaceContext = null, mediaUrl = null, targetMediaUrl = null, type = 'image', gifSettings = null) {
   const ai = initGemini();
   if (!ai) throw new Error("Gemini API not initialized.");
-
   const model = ai.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
-  let promptParts = [];
-
-  // OPTIMIZATION: If we have an image, we send it for multimodal analysis
-  if (mediaUrl) {
-    try {
-      const axios = require('axios');
-      const response = await axios.get(mediaUrl, { responseType: 'arraybuffer' });
-      const base64Image = Buffer.from(response.data, 'binary').toString('base64');
-      
-      promptParts.push({
-        inlineData: {
-          data: base64Image,
-          mimeType: "image/png"
-        }
-      });
-      console.log("[Multimodal] Added start image context.");
-    } catch (e) {
-      console.error("Multimodal analysis fetch failed (mediaUrl):", e);
-    }
-  }
-
-  // TARGET IMAGE: If provided, add it as the second visual context
-  if (targetMediaUrl) {
-    try {
-      const axios = require('axios');
-      const response = await axios.get(targetMediaUrl, { responseType: 'arraybuffer' });
-      const base64Target = Buffer.from(response.data, 'binary').toString('base64');
-      
-      promptParts.push({
-        inlineData: {
-          data: base64Target,
-          mimeType: "image/png"
-        }
-      });
-      console.log("[Multimodal] Added target image context.");
-    } catch (e) {
-      console.error("Multimodal analysis fetch failed (targetMediaUrl):", e);
-    }
-  }
-
-  const isTransition = !!targetMediaUrl;
-  const isGif = type === 'gif';
-
-  const textPrompt = (isTransition || isGif) 
-    ? `
-    Jesteś reżyserem wizualnym AI. Twoim zadaniem jest stworzenie technicznego promptu dla modelu ${isGif ? 'animacji (GIF)' : 'wideo (Veo 3.1)'}.
-    
-    KONTEKST:
-    - TRYB: ${isGif ? 'Krótki, zapętlony GIF (idealny do social media/naklejek)' : 'Płynne wideo cinematic'}
-    ${isTransition ? '- ZADANIE: Przejście (morphing) między Obrazem 1 a Obrazem 2.' : '- ZADANIE: Animacja pojedynczego obrazu.'}
-    - WYTYCZNE UŻYTKOWNIKA: "${instructions}"
-    
-    ${isGif ? `SPECYFIKA GIF:
-    - TRYB ANIMACJI: ${gifSettings?.loopType || 'loop'} (jeśli ping-pong, animacja musi wracać do punktu wyjścia).
-    - PRĘDKOŚĆ: ${gifSettings?.speed || 0.5}s na cykl zmiany (płynny vs dynamiczny).
-    - NAPIS (OVERLAY): "${gifSettings?.text || ''}" (Styl: ${gifSettings?.font || 'modern'}). Umieść napis czytelnie, w dolnej lub środkowej części.
-    - EFEKT BEAUTY: ${gifSettings?.beautyEffect || 'none'}.
-    - PRZYCISK CTA: ${gifSettings?.cta || 'none'}.
-    - PRZEZROCZYSTOŚĆ: ${gifSettings?.isTransparent ? 'TAK (generuj na jednolitym tle ułatwiającym wycięcie/alpha)' : 'NIE'}.
-    - Skup się na efektach typu "Sparkle" (błysk), "Before & After" (jeśli są dwa obrazy), lub dynamicznych naklejkach (CTA).
-    - Animacja musi być krótka i zaprojektowana tak, aby idealnie się zapętlała (seamless loop).` : ''}
-    
-    WYMAGANIA TECHNICZNE:
-    1. Przeanalizuj załączone obrazy. 
-    2. Opisz precyzyjnie ruch kamery i zmiany w kadrze.
-    3. ZWRÓĆ DANE TYLKO JAKO JSON:
-    {
-      "polishDescription": "Krótki, marketingowy opis dla użytkownika.",
-      "englishPrompt": "Technical EN prompt for ${isGif ? 'short looping animation' : 'Veo 3.1 video'}.",
-      "aiDetectionLog": "PL: [Analiza] | EN: [Strategy]"
-    }
-    `
-    : `
-    Jesteś ekspertem od edycji wizualnej AI (Visual Auditor). Twoim celem jest stworzenie technicznego promptu, który zachowa 100% spójności z pierwowzorem, wprowadzając jedynie wskazane poprawki.
-...
-
-    KONTEKST (KOTWICA):
-    - ORYGINALNY POMYSŁ (V1): "${v1PromptObject?.englishPrompt || v1PromptObject?.polishDescription}"
-    - OSTATNI STAN: "${lastPromptObject?.englishPrompt || lastPromptObject?.polishDescription}"
-    - ZMIANA UŻYTKOWNIKA: "${instructions}"
-
-    ZADANIA AUDYTU:
-    1. Zidentyfikuj relacje przestrzenne (Spatial Relationships) między obiektami na obrazie (np. odległości, pozycje).
-    2. Zmapuj oświetlenie (kierunek, temperatura) oraz charakterystykę obiektywu (depth of field).
-    3. Zachowaj rysy twarzy i pozę postaci zgodnie z V1 (Seed Persistence).
-
-    HIERARCHIA PROMPTU (BARDZO WAŻNE):
-    1. [START]: Kompozycja i relacje przestrzenne (np. "Fixed composition, [A] positioned [X] relative to [B]").
-    2. [ŚRODEK]: Mapowanie oświetlenia i technika (np. "Identical lighting mapping, 35mm lens").
-    3. [KONIEC]: Szczegóły obiektu i wprowadzona modyfikacja.
-
-    WYMAGANIA:
-    - Syntetyzuj opis: Maksymalnie 200 słów. Tylko twarde dane techniczne.
-    - Używaj fraz: "Maintaining exact composition", "Photogrammetric consistency".
-    - Umieść najważniejsze parametry techniczne na samym początku promptu.
-
-    ZWRÓĆ DANE TYLKO JAKO JSON:
-    {
-      "polishDescription": "Zwięzły opis zmian po polsku.",
-      "englishPrompt": "Hierarchical technical EN prompt (max 200 words).",
-      "aiDetectionLog": "Raport dwujęzyczny w formacie: 'PL: [Krótki opis po polsku] | EN: [Technical summary in English]'"
-    }
-  `;
-
-  promptParts.push(textPrompt);
+  const prompt = `Refine visual prompt. Last version: "${lastPromptObject?.englishPrompt}". Instructions: "${instructions}". Return JSON with polishDescription and englishPrompt.`;
 
   try {
-    const result = await withRetry(() => model.generateContent(promptParts));
+    const result = await model.generateContent(prompt);
     const response = await result.response;
-    const text = response.text().trim();
-    
-    // Robust JSON extraction for production reliability
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.error("No JSON found in visual refinement output:", text);
-      throw new Error("AI nie zwróciło poprawnego formatu JSON.");
-    }
-    
+    const jsonMatch = response.text().match(/\{[\s\S]*\}/);
     const parsed = JSON.parse(jsonMatch[0]);
     return {
       polishDescription: parsed.polishDescription || "Poprawiony projekt",
       englishPrompt: parsed.englishPrompt || "",
-      aiDetectionLog: parsed.aiDetectionLog || "Analiza zakończona pomyślnie"
+      aiDetectionLog: "Analiza zakończona pomyślnie"
     };
   } catch (error) {
-    console.error("Refine Visual Error (Visual Auditor):", error);
-    throw new Error(`Błąd audytu wizualnego: ${error.message}`);
+    throw new Error("Błąd ulepszania wizualizacji.");
   }
 }
 
 /**
- * Synchronizes the English technical prompt based on manual edits to the Polish description.
+ * Syncs visual prompt.
  */
-async function syncVisualPrompt({ polishDescription, aspectRatio = '1:1', type = 'image', workspaceContext = null, isAnimation = false, sourceImageUrl = null }) {
+async function syncVisualPrompt({ polishDescription, aspectRatio = '1:1', type = 'image', workspaceContext = null }) {
   const ai = initGemini();
   if (!ai) throw new Error("Gemini API not initialized.");
+  const model = ai.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
-  // Use multimodal model for animation analysis if image is provided
-  const modelId = (isAnimation && sourceImageUrl) ? "gemini-2.5-flash-lite" : "gemini-2.5-flash-lite";
-  const model = ai.getGenerativeModel({ model: modelId });
-
-  let promptParts = [];
-
-  if (isAnimation && sourceImageUrl) {
-    try {
-      const response = await axios.get(sourceImageUrl, { responseType: 'arraybuffer' });
-      const base64Image = Buffer.from(response.data, 'binary').toString('base64');
-      promptParts.push({
-        inlineData: {
-          data: base64Image,
-          mimeType: "image/png"
-        }
-      });
-    } catch (e) {
-      console.error("Failed to fetch source image for animation sync:", e);
-    }
-  }
-
-  const textPrompt = isAnimation 
-    ? `
-    Jesteś reżyserem animacji AI. Masz przed sobą zdjęcie oraz instrukcję ruchu od użytkownika: "${polishDescription}".
-    Twoim zadaniem jest stworzenie bardzo szczegółowego, technicznego promptu w języku ANGIELSKIM dla modelu wideo (Veo 3.1).
-    
-    WYMAGANIA:
-    - Zachowaj 100% zgodności wizualnej z załączonym zdjęciem.
-    - Opisz dynamikę: co się porusza, w jaki sposób, jaka jest trajektoria kamery (np. "Slow zoom in", "Handheld shake", "Fluid motion").
-    - Skup się na fizyce: jak światło reaguje na ruch, jak poruszają się materiały.
-    - Format: ${aspectRatio}.
-    - Zwróć TYLKO techniczny prompt po angielsku.
-    `
-    : `
-    Transform the following Polish visual description into a high-end, technical English prompt for ${type === 'video' ? 'Veo 3.1 Video Generator' : 'Nano Banana Image Generator'}.
-    
-    Polish Description:
-    "${polishDescription}"
-    
-    Aspect Ratio: ${aspectRatio}
-    
-    ${workspaceContext ? `MANDATORY BRAND STYLE: ${workspaceContext.visualStyle}` : ''}
-    
-    Requirements:
-    - Strictly in ENGLISH.
-    - Technical terminology (lens, lighting, textures).
-    - No text in image.
-    
-    Return ONLY the English prompt text.
-  `;
-
-  promptParts.push(textPrompt);
+  const prompt = `Translate and professionalize this Polish description to technical English prompt for ${type}: "${polishDescription}". Format: ${aspectRatio}.`;
 
   try {
-    const result = await model.generateContent(promptParts);
+    const result = await model.generateContent(prompt);
     const response = await result.response;
     return response.text().trim();
   } catch (error) {
-    console.error("Sync Visual Prompt Error:", error);
-    return isAnimation ? `Cinematic animation of this image with motion: ${polishDescription}` : `Cinematic ${type} based on: ${polishDescription}`;
+    return polishDescription;
   }
 }
 
-
 /**
- * Generates a video using the Veo 3.1 model via Google AI Studio (Gemini API) REST.
- * We use predictLongRunning as it's the only supported method for this model.
+ * Generates Veo Video.
  */
 async function generateVeoVideo(visualPrompt, aspectRatio = '1:1', imageBase64 = null, isGif = false) {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("GEMINI_API_KEY not found.");
-
   const modelId = "models/veo-3.1-lite-generate-preview";
   const url = `https://generativelanguage.googleapis.com/v1beta/${modelId}:predictLongRunning?key=${apiKey}`;
 
-  const instance = { prompt: visualPrompt };
-  if (imageBase64) {
-    instance.image = {
-      bytesBase64Encoded: imageBase64,
-      mimeType: "image/png"
-    };
-  }
-
   const payload = {
-    instances: [instance],
-    parameters: {
-      sampleCount: 1,
-      aspectRatio: aspectRatio === '9:16' ? '9:16' : '16:9',
-      durationSeconds: isGif ? 4 : 6
-    }
+    instances: [{ prompt: visualPrompt, ...(imageBase64 ? { image: { bytesBase64Encoded: imageBase64, mimeType: "image/png" } } : {}) }],
+    parameters: { sampleCount: 1, aspectRatio: aspectRatio === '9:16' ? '9:16' : '16:9', durationSeconds: isGif ? 4 : 6 }
   };
-
-  console.log("Initiating Veo 3.1 via AI Studio REST (predictLongRunning)...");
 
   try {
     const response = await axios.post(url, payload);
-    const data = response.data;
-
-    if (data.name) {
-      console.log("Video generation started as LRO in AI Studio:", data.name);
-      return { status: "processing", operationName: data.name };
-    } else {
-      console.log("Unexpected AI Studio REST Response:", JSON.stringify(data, null, 2));
-      throw new Error("Nie otrzymano nazwy operacji z AI Studio.");
-    }
+    return { status: "processing", operationName: response.data.name };
   } catch (error) {
-    console.error("AI Studio REST Video Error:", error.response?.data || error.message);
-    throw new Error(`Błąd AI Studio (REST): ${error.response?.data?.error?.message || error.message}`);
+    throw new Error("Błąd AI Studio (Video).");
   }
 }
 
 /**
- * Generates an image using the Nano Banana (Gemini 3.1 Flash Image) model via REST API.
- * Supports Image-to-Image by providing originalImageBase64 as context.
+ * Generates Nano Banana Image.
  */
 async function generateNanoBananaImage(visualPrompt, aspectRatio = '1:1', originalImageBase64 = null) {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("GEMINI_API_KEY not found.");
-
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${apiKey}`;
 
   const payload = {
-    contents: [{ 
-      parts: [
-        // If we have an original image, provide it as context for Image-to-Image refinement
-        ...(originalImageBase64 ? [{ inlineData: { data: originalImageBase64, mimeType: "image/png" } }] : []),
-        { text: visualPrompt }
-      ] 
-    }],
-    generationConfig: {
-      responseModalities: ["IMAGE"]
-    }
+    contents: [{ parts: [...(originalImageBase64 ? [{ inlineData: { data: originalImageBase64, mimeType: "image/png" } }] : []), { text: visualPrompt }] }],
+    generationConfig: { responseModalities: ["IMAGE"] }
   };
 
   try {
     const response = await axios.post(url, payload);
-    const data = response.data;
-    
-    const candidate = data.candidates?.[0];
-    const part = candidate?.content?.parts?.find(p => p.inlineData);
-    
-    if (part && part.inlineData) {
-      return Buffer.from(part.inlineData.data, 'base64');
-    } else {
-      console.error("Nano Banana REST Response Error:", JSON.stringify(data, null, 2));
-      throw new Error("Nie otrzymano danych obrazu z modelu Nano Banana.");
-    }
+    const part = response.data.candidates[0].content.parts.find(p => p.inlineData);
+    return Buffer.from(part.inlineData.data, 'base64');
   } catch (error) {
-    console.error("Nano Banana REST Error:", error.response?.data || error.message);
-    throw new Error(`Błąd techniczny generowania obrazu: ${error.response?.data?.error?.message || error.message}`);
+    throw new Error("Błąd Nano Banana.");
   }
 }
 
 /**
- * Generates a full campaign plan based on multiple parameters.
+ * Generates Campaign Plan.
  */
 async function generateCampaignPlan(data) {
-  const { 
-    name, 
-    goal, 
-    productDescription, 
-    usp, 
-    duration, 
-    platforms,
-    intensity,
-    toneOfVoice,
-    mainCTA,
-    targetAudience,
-    problemSolved,
-    workspaceContext
-  } = data;
-
   const ai = initGemini();
-  if (!ai) throw new Error("Gemini API not initialized.");
-  
   const model = ai.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
-
-  const platformRules = platforms.map(p => `[${p}]: ${PLATFORM_RULES[p] || PLATFORM_RULES['Default']}`).join('\n');
-
-  const prompt = `
-    Jesteś dyrektorem marketingu i ekspertem od strategii social media. Twoim zadaniem jest stworzenie kompletnej strategii kampanii.
-
-    DANE KAMPANII:
-    - Nazwa: ${name}
-    - Cele: ${goal}
-    - Produkt/Usługa: ${productDescription}
-    - USP (Unikalna wartość): ${usp}
-    - Rozwiązywany problem: ${problemSolved || 'Nie określono'}
-    - Grupa docelowa (Persona): ${targetAudience}
-    - Czas trwania: ${duration} dni
-    - Platformy: ${platforms.join(', ')}
-    - Intensywność/Faza: ${intensity} (Steady = stały szum, Teaser-Launch = budowanie napięcia, Sprint = agresywna sprzedaż)
-    - Ton komunikacji: ${toneOfVoice}
-    - Główne CTA: ${mainCTA || 'Nie określono'}
-
-    ${workspaceContext ? `WYTYCZNE MARKI (MANDATORY):
-    - Strategia treści: ${workspaceContext.contentDirectives}
-    - Estetyka wizualna: ${workspaceContext.visualStyle}` : ''}
-
-    ZASADY DLA KANAŁÓW:
-    ${platformRules}
-
-    WYMAGANIA DOTYCZĄCE WYJŚCIA (JSON):
-    Stwórz listę postów (harmonogram), rozłożoną w czasie. 
-    Dla każdego elementu podaj:
-    1. "day": numer dnia lub etap (np. "Dzień 1", "Dzień 3").
-    2. "platform": na którą platformę jest ten post.
-    3. "topic": konkretny temat posta (krótki, gotowy do wrzucenia do generatora).
-    4. "visualIdea": sugestia co powinno być na obrazku/wideo.
-    5. "rationale": dlaczego ten post realizuje cel: ${goal}.
-
-    ZWRÓĆ DANE TYLKO W FORMACIE JSON (tablica obiektów):
-    [
-      {
-        "day": "string",
-        "platform": "string",
-        "topic": "string",
-        "visualIdea": "string",
-        "rationale": "string"
-      }
-    ]
-
-    Pamiętaj o specyfice platform: 
-    - LinkedIn: merytoryka, autorytet, B2B.
-    - TikTok/IG: energia, trendy, wizualny "wow".
-    - FB: społeczność, relacje.
-
-    Odpowiadaj w języku POLSKIM.
-  `;
+  const prompt = `Create a campaign plan JSON based on: ${JSON.stringify(data)}. Return array of objects with day, platform, topic, visualIdea, rationale.`;
 
   try {
     const result = await model.generateContent(prompt);
-    const response = await result.response;
-    let text = response.text().trim();
-    
-    // Robust JSON extraction
-    const jsonMatch = text.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) {
-      throw new Error("MODEL_JSON_ERROR: AI nie zwróciło poprawnego formatu JSON.");
-    }
-    
+    const jsonMatch = result.response.text().match(/\[[\s\S]*\]/);
     return JSON.parse(jsonMatch[0]);
   } catch (error) {
-    console.error("Campaign Plan Error:", error);
-    throw new Error(`Błąd generowania kampanii: ${error.message}`);
+    throw new Error("Błąd planowania kampanii.");
   }
 }
 
 /**
- * Refines a custom campaign goal using AI.
+ * Refines custom campaign goal.
  */
 async function refineCampaignGoal(rawGoal) {
   const ai = initGemini();
-  if (!ai) throw new Error("Gemini API not initialized.");
-  
   const model = ai.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
-
-  const prompt = `
-    Jesteś ekspertem od strategii marketingowej. Użytkownik podał własny cel kampanii, który może być niejasny lub mało profesjonalny.
-    Twoim zadaniem jest zredagowanie go tak, aby brzmiał jak profesjonalny cel biznesowy (SMART), zachowując jednak intencję użytkownika.
-
-    SUROWY CEL UŻYTKOWNIKA:
-    "${rawGoal}"
-
-    ZWRÓĆ DANE W FORMACIE JSON:
-    {
-      "refinedGoal": "Krótka, profesjonalna nazwa celu (np. 'Zwiększenie retencji klientów o 20%')",
-      "description": "Rozwinięcie celu i uzasadnienie strategiczne (max 2 zdania)."
-    }
-
-    Odpowiadaj w języku POLSKIM.
-  `;
-
-  try {
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text().trim();
-    
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("AI nie zwróciło poprawnego formatu JSON.");
-    
-    return JSON.parse(jsonMatch[0]);
-  } catch (error) {
-    console.error("Refine Goal Error:", error);
-    throw new Error("Nie udało się zredagować celu.");
-  }
+  const prompt = `Refine this goal professionally: "${rawGoal}". Return JSON {refinedGoal, description}.`;
+  const result = await model.generateContent(prompt);
+  return JSON.parse(result.response.text().match(/\{[\s\S]*\}/)[0]);
 }
 
 /**
- * Refines a product description using AI.
+ * Refines product description.
  */
 async function refineProductDescription(rawDescription) {
   const ai = initGemini();
-  if (!ai) throw new Error("Gemini API not initialized.");
-  
   const model = ai.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
-
-  const prompt = `
-    Jesteś copywriterem sprzedażowym. Użytkownik podał opis swojego produktu lub usługi.
-    Twoim zadaniem jest zredagowanie go tak, aby brzmiał profesjonalnie, zachęcająco i podkreślał korzyści, zachowując jednak wszystkie fakty podane przez użytkownika.
-
-    SUROWY OPIS:
-    "${rawDescription}"
-
-    ZWRÓĆ TYLKO ZREDAGOWANY TEKST (max 3-4 zdania).
-    Odpowiadaj w języku POLSKIM.
-  `;
-
-  try {
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    return response.text().trim();
-  } catch (error) {
-    console.error("Refine Product Error:", error);
-    throw new Error("Nie udało się zredagować opisu produktu.");
-  }
+  const result = await model.generateContent(`Refine professionally in Polish: "${rawDescription}". Max 3 sentences.`);
+  return result.response.text().trim();
 }
 
 /**
- * Refines a USP (Unique Selling Proposition) using AI.
+ * Refines USP.
  */
 async function refineUSP(rawUSP) {
   const ai = initGemini();
-  if (!ai) throw new Error("Gemini API not initialized.");
-  
   const model = ai.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
-
-  const prompt = `
-    Jesteś ekspertem od brandingu. Użytkownik podał swoje USP (Unique Selling Proposition).
-    Twoim zadaniem jest zredagowanie go tak, aby było krótkie, uderzające (punchy) i zapadało w pamięć.
-
-    SUROWY USP:
-    "${rawUSP}"
-
-    ZWRÓĆ TYLKO ZREDAGOWANE USP (max 1 zdanie).
-    Odpowiadaj w języku POLSKIM.
-  `;
-
-  try {
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    return response.text().trim();
-  } catch (error) {
-    console.error("Refine USP Error:", error);
-    throw new Error("Nie udało się zredagować USP.");
-  }
+  const result = await model.generateContent(`Refine professionally in Polish (1 sentence): "${rawUSP}".`);
+  return result.response.text().trim();
 }
 
 /**
- * Chat with the SMC Assistant.
+ * Chat with Assistant.
  */
 async function chatWithAssistant(history, message) {
   const ai = initGemini();
-  if (!ai) throw new Error("Gemini API not initialized.");
-
-  const model = ai.getGenerativeModel({ 
-    model: "gemini-2.5-flash-lite",
-    systemInstruction: `Jesteś pomocnym asystentem aplikacji "Social Media Creator" (SMC). Twoim celem jest prowadzenie użytkownika przez proces tworzenia treści. 
-
-**Ważne:** Ty sam nie generujesz obrazów ani wideo, ale instruujesz użytkownika, jak to zrobić w aplikacji.
-
-Kluczowe ścieżki pomocy:
-1. **Tworzenie Wideo/GIF/Obrazów (2 drogi):**
-   - **Podczas tworzenia posta:** Po wygenerowaniu treści posta, zjedź niżej do sekcji "Wizualizacje". Tam możesz wybrać format i kliknąć przycisk "Generuj Obraz", "Wideo" lub "GIF".
-   - **Z własnym zdjęciem:** Przejdź do zakładki "Edytor Wizualny" w górnym menu. Tam możesz wgrać własne zdjęcie i zamienić je w animację lub edytować opisem.
-2. **Kampanie:** Zakładka "Kampanie" pozwala stworzyć wielodniową strategię. Każdy pomysł z harmonogramu można wysłać do generatora jednym kliknięciem.
-3. **Workspace:** W zakładce "Workspace" (Przestrzenie Robocze) definiuje się styl marki, aby AI zawsze pisało i generowało grafiki w tym samym tonie.
-
-Jeśli użytkownik zapyta "czy zrobisz mi wideo?", odpowiedz: "Ja służę pomocą i radą, ale wideo wygenerujesz sam w kilka sekund! Możesz to zrobić pod aktualnym postem w sekcji Wizualizacje lub w zakładce Edytor Wizualny, jeśli chcesz ożywić własne zdjęcie."
-
-Bądź profesjonalny, konkretny i podawaj dokładne nazwy sekcji/zakładek. Odpowiadaj w języku polskim.`
-  });
-
-  const chat = model.startChat({
-    history: history || [],
-    generationConfig: {
-      maxOutputTokens: 1000,
-      temperature: 0.7,
-    },
-  });
-
-  try {
-    const result = await withRetry(() => chat.sendMessage(message));
-    return result.response.text();
-  } catch (error) {
-    console.error("Chat Assistant Error:", error);
-    throw new Error("Błąd asystenta czatu.");
-  }
+  const model = ai.getGenerativeModel({ model: "gemini-2.5-flash-lite", systemInstruction: "Jesteś pomocnym asystentem SMC..." });
+  const chat = model.startChat({ history: history || [] });
+  const result = await chat.sendMessage(message);
+  return result.response.text();
 }
 
 /**
- * Generates professional brand directives (content and visual) based on brand name/description and current input.
+ * Brand Directives.
  */
 async function generateBrandDirectives({ brandName, type, currentDirectives }) {
   const ai = initGemini();
-  if (!ai) throw new Error("Gemini API not initialized.");
-  
   const model = ai.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
-
-  const prompt = type === 'content' 
-    ? `
-    Jesteś ekspertem od strategii komunikacji marki i copywritingu. 
-    Twoim zadaniem jest stworzenie lub ulepszenie profesjonalnych wytycznych tekstowych dla marki.
-    
-    NAZWA MARKI: "${brandName}"
-    ISTNIEJĄCE NOTATKI/WYTYCZNE UŻYTKOWNIKA: "${currentDirectives || 'Brak'}"
-    
-    Wytyczne powinny zawierać:
-    1. Ton komunikacji (Tone of Voice).
-    2. Słowa kluczowe i frazy, których należy używać.
-    3. Czego unikać w tekstach.
-    4. Sposób zwracania się do odbiorcy.
-    
-    INSTRUKCJA: Rozwiń i profesjonalizuj notatki użytkownika, zachowując ich sens, ale nadając im formę konkretnej instrukcji dla AI.
-    WAŻNE FORMATOWANIE: Zostaw zawsze PUSTĄ LINIĘ (podwójny enter) między każdym nowym punktem na liście dla lepszej czytelności.
-    WAŻNE: Zwróć TYLKO same wytyczne. Nie dodawaj wstępów typu "Oto wytyczne...", "Doskonale!", ani żadnych komentarzy.
-    Odpowiadaj po POLSKU. Max 4-5 zdań.
-    `
-    : `
-    Jesteś dyrektorem artystycznym i ekspertem od brandingu wizualnego. 
-    Twoim zadaniem jest stworzenie lub ulepszenie profesjonalnych wytycznych wizualnych dla marki.
-    
-    NAZWA MARKI: "${brandName}"
-    ISTNIEJĄCE NOTATKI/WYTYCZNE UŻYTKOWNIKA: "${currentDirectives || 'Brak'}"
-    
-    Wytyczne powinny zawierać:
-    1. Preferowaną kolorystykę i oświetlenie.
-    2. Styl kompozycji i kadrowania.
-    3. Nastrój i emocje, jakie mają budzić grafiki.
-    4. Elementy charakterystyczne dla tej marki.
-    
-    INSTRUKCJA: Rozwiń i profesjonalizuj notatki użytkownika, zachowując ich sens, ale nadając im formę konkretnej instrukcji dla modeli generatywnych (np. Midjourney/Stable Diffusion).
-    WAŻNE: Zwróć TYLKO same wytyczne. Nie dodawaj wstępów typu "Oto wytyczne...", "Doskonale!", ani żadnych komentarzy.
-    Odpowiadaj po POLSKU. Max 4-5 zdań.
-    `;
-
-  try {
-    const result = await withRetry(() => model.generateContent(prompt));
-    const response = await result.response;
-    return response.text().trim();
-  } catch (error) {
-    console.error("Generate Brand Directives Error:", error);
-    throw new Error(`Nie udało się wygenerować wytycznych: ${error.message}`);
-  }
+  const result = await model.generateContent(`Generate brand ${type} directives for ${brandName}. Current: ${currentDirectives}. In Polish.`);
+  return result.response.text().trim();
 }
 
 /**
- * Generates market trends based on brand name and its directives.
+ * Market Trends.
  */
 async function generateMarketTrends({ brandName, contentDirectives, visualStyle }) {
   const ai = initGemini();
-  if (!ai) throw new Error("Gemini API not initialized.");
-  
-  // Use Gemini 2.5 Pro if available or Flash for broad knowledge
   const model = ai.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+  const result = await model.generateContent(`Market trends for ${brandName}. In Polish.`);
+  return result.response.text().trim();
+}
 
-  const prompt = `
-    Jesteś analitykiem trendów i głównym strategiem social media.
-    Twoim zadaniem jest zidentyfikowanie 3-5 najważniejszych, aktualnych trendów rynkowych dla poniższej marki.
-    
-    NAZWA MARKI: "${brandName || 'Nie podano'}"
-    STYL KOMUNIKACJI: "${contentDirectives || 'Brak danych'}"
-    STYL WIZUALNY: "${visualStyle || 'Brak danych'}"
-    
-    Zidentyfikuj trendy, które pozwolą tej marce pisać lepsze posty i tworzyć lepsze grafiki (np. popularne formaty, estetyka, zagadnienia, które teraz angażują).
-    
-    INSTRUKCJA: Zwróć wynik jako zwięzłą listę.
-    WAŻNE FORMATOWANIE: Zostaw zawsze PUSTĄ LINIĘ (podwójny enter) między każdym nowym punktem na liście dla lepszej czytelności.
-    WAŻNE: Nie używaj wstępów typu "Oto trendy". Zwróć tylko konkrety gotowe do użycia przez AI jako kontekst.
-    Odpowiadaj po POLSKU.
-  `;
+/**
+ * Publishing Schedule.
+ */
+async function generatePublishingSchedule(campaignData) {
+  const ai = initGemini();
+  const model = ai.getGenerativeModel({ model: "gemini-2.5-pro", tools: [{ googleSearch: {} }] });
+  const result = await model.generateContent(`Publishing schedule for ${JSON.stringify(campaignData)}. In Polish.`);
+  return result.response.text().trim();
+}
 
-  try {
-    const result = await withRetry(() => model.generateContent(prompt));
-    const response = await result.response;
-    return response.text().trim();
-  } catch (error) {
-    console.error("Generate Market Trends Error:", error);
-    throw new Error(`Nie udało się wyszukać trendów: ${error.message}`);
-  }
+/**
+ * Individual Post Schedule.
+ */
+async function generatePostSchedule({ postContent, productDescription, topic, platform }) {
+  const ai = initGemini();
+  const model = ai.getGenerativeModel({ model: "gemini-2.5-pro", tools: [{ googleSearch: {} }] });
+  const prompt = `When to post this? Post: "${postContent}". Topic: "${topic}". Product: "${productDescription}". Platform: "${platform}". In Polish. Max 4 points.`;
+  const result = await model.generateContent(prompt);
+  return result.response.text().trim();
 }
 
 module.exports = { 
@@ -1050,7 +475,6 @@ module.exports = {
   syncVisualPrompt, translateToTechnicalPrompt, generateNanoBananaImage, 
   generateVeoVideo, refinePost, refineVisualPrompt, generateCampaignPlan, 
   refineCampaignGoal, refineProductDescription, refineUSP, chatWithAssistant,
-  generateBrandDirectives, generateMarketTrends
+  generateBrandDirectives, generateMarketTrends, generatePublishingSchedule,
+  generatePostSchedule
 };
-
-

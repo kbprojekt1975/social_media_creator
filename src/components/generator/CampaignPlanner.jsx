@@ -1,5 +1,28 @@
 import React, { useState, useEffect } from 'react';
 
+const parseBold = (str) => {
+  const parts = str.split(/(\*\*.*?\*\*)/g);
+  return parts.map((part, index) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={index} style={{ fontWeight: 800 }}>{part.slice(2, -2)}</strong>;
+    }
+    return part;
+  });
+};
+
+const renderMarkdown = (text) => {
+  if (!text) return null;
+  const lines = text.split('\n');
+  return lines.map((line, i) => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('### ')) return <h5 key={i} style={{ margin: '1.2rem 0 0.8rem', color: 'var(--color-primary)', fontSize: '1.3rem' }}>{parseBold(trimmed.replace('### ', ''))}</h5>;
+    if (trimmed.startsWith('#### ')) return <h6 key={i} style={{ margin: '1.2rem 0 0.8rem', color: 'var(--color-primary)', fontSize: '1.2rem' }}>{parseBold(trimmed.replace('#### ', ''))}</h6>;
+    if (trimmed.startsWith('* ') || trimmed.startsWith('- ')) return <li key={i} style={{ marginLeft: '1.5rem', marginBottom: '0.5rem', lineHeight: '1.6' }}>{parseBold(trimmed.substring(2))}</li>;
+    if (trimmed === '' || trimmed === '---') return <br key={i} />;
+    return <div key={i} style={{ marginBottom: '0.8rem', lineHeight: '1.6' }}>{parseBold(line)}</div>;
+  });
+};
+
 const CampaignPlanner = ({ 
   handleGenerateCampaign, 
   handleRefineCustomGoal,
@@ -15,7 +38,9 @@ const CampaignPlanner = ({
   balance,
   isReadOnly,
   initialSession,
-  onClearSession
+  onClearSession,
+  handleGetPublishingSchedule,
+  handleSavePublishingSchedule
 }) => {
   const [name, setName] = useState('');
   const [editingId, setEditingId] = useState(null);
@@ -33,6 +58,18 @@ const CampaignPlanner = ({
   const [hideHistory, setHideHistory] = useState(false);
   const [collapsedCampaigns, setCollapsedCampaigns] = useState({});
   const [showCampaignHelp, setShowCampaignHelp] = useState(false);
+  
+  // Publishing Schedule states
+  const [publishingSchedule, setPublishingSchedule] = useState({});
+  const [isGeneratingSchedule, setIsGeneratingSchedule] = useState({});
+  const [collapsedSchedules, setCollapsedSchedules] = useState({});
+
+  const toggleSchedule = (id) => {
+    setCollapsedSchedules(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
 
   const toggleCampaign = (id) => {
     setCollapsedCampaigns(prev => ({
@@ -609,6 +646,51 @@ const CampaignPlanner = ({
                   <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Cel: {campaign.goal} | {campaign.duration} dni</p>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <button
+                    onClick={async () => {
+                      // Check if already generating
+                      if (isGeneratingSchedule[campaign.id]) return;
+
+                      // If we already have it in state, we just toggle UI (locally)
+                      // but usually we want to toggle the block visibility
+                      if (publishingSchedule[campaign.id] || campaign.publishingSchedule) {
+                        // If it's already there, the button could toggle "collapsed" state of that specific block
+                        toggleSchedule(campaign.id);
+                        return;
+                      }
+                      
+                      setIsGeneratingSchedule(prev => ({ ...prev, [campaign.id]: true }));
+                      const result = await handleGetPublishingSchedule(campaign);
+                      if (result) {
+                        // 1. Save to local state for immediate feedback
+                        setPublishingSchedule(prev => ({ ...prev, [campaign.id]: result }));
+                        // 2. Save to Firestore for permanence
+                        await handleSavePublishingSchedule(campaign.id, result);
+                        // 3. Ensure campaign and schedule are expanded
+                        setCollapsedCampaigns(prev => ({ ...prev, [campaign.id]: false }));
+                        setCollapsedSchedules(prev => ({ ...prev, [campaign.id]: false }));
+                      }
+                      setIsGeneratingSchedule(prev => ({ ...prev, [campaign.id]: false }));
+                    }}
+                    disabled={isGeneratingSchedule[campaign.id]}
+                    className="btn-secondary"
+                    style={{ 
+                      padding: '0.5rem 1rem', 
+                      borderRadius: '4px', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '0.4rem', 
+                      fontSize: '0.85rem', 
+                      borderColor: (publishingSchedule[campaign.id] || campaign.publishingSchedule) ? 'var(--color-primary)' : 'var(--border-color)', 
+                      color: (publishingSchedule[campaign.id] || campaign.publishingSchedule) ? 'var(--color-primary)' : 'var(--text-main)' 
+                    }}
+                    title="Sprawdź optymalne godziny publikacji"
+                  >
+                    <span className="material-icons" style={{ fontSize: '1.1rem' }}>
+                      {isGeneratingSchedule[campaign.id] ? 'sync' : 'schedule'}
+                    </span>
+                    {isGeneratingSchedule[campaign.id] ? 'Analizowanie...' : 'Kiedy publikować?'}
+                  </button>
                   <span className="material-icons" style={{ color: 'var(--color-primary)' }}>verified</span>
                   <button 
                     onClick={() => toggleCampaign(campaign.id)}
@@ -630,6 +712,36 @@ const CampaignPlanner = ({
                   </button>
                 </div>
               </div>
+
+              {(publishingSchedule[campaign.id] || campaign.publishingSchedule) && (
+                <div style={{ background: 'rgba(66, 133, 244, 0.05)', borderRadius: '8px', border: '1px solid var(--color-primary)', marginBottom: '1.5rem', animation: 'fadeIn 0.3s ease-out', overflow: 'hidden' }}>
+                  <div 
+                    onClick={() => toggleSchedule(campaign.id)}
+                    style={{ 
+                      padding: '1rem 1.5rem', 
+                      cursor: 'pointer', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'space-between',
+                      borderBottom: collapsedSchedules[campaign.id] ? 'none' : '1px solid rgba(0, 163, 193, 0.1)'
+                    }}
+                  >
+                    <h4 style={{ color: 'var(--color-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.1rem' }}>
+                      <span className="material-icons" style={{ fontSize: '1.3rem' }}>insights</span>
+                      Rekomendacja czasu publikacji (AI)
+                    </h4>
+                    <span className="material-icons" style={{ color: 'var(--color-primary)', transition: 'transform 0.3s', transform: collapsedSchedules[campaign.id] ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                      expand_more
+                    </span>
+                  </div>
+                  
+                  {!collapsedSchedules[campaign.id] && (
+                    <div style={{ padding: '1.5rem', fontSize: '1.2rem', color: 'var(--text-main)', lineHeight: '1.7' }}>
+                      {renderMarkdown(publishingSchedule[campaign.id] || campaign.publishingSchedule)}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {!collapsedCampaigns[campaign.id] && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>

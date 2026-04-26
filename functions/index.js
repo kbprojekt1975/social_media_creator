@@ -7,7 +7,12 @@ const admin = require("firebase-admin");
 const express = require("express");
 const cors = require("cors");
 const stripe = require("stripe");
-const { generatePost, generatePostPlan, syncEnglishPrompt, generateVisualPrompt, syncVisualPrompt, translateToTechnicalPrompt, generateNanoBananaImage, generateVeoVideo, refinePost, refineVisualPrompt, generateCampaignPlan, refineCampaignGoal, refineProductDescription, refineUSP, chatWithAssistant, generateBrandDirectives, generateMarketTrends } = require("./gemini");
+const { 
+  generatePost, generatePostPlan, syncEnglishPrompt, generateVisualPrompt, syncVisualPrompt, 
+  translateToTechnicalPrompt, generateNanoBananaImage, generateVeoVideo, refinePost, refineVisualPrompt, 
+  generateCampaignPlan, refineCampaignGoal, refineProductDescription, refineUSP, chatWithAssistant,
+  generateBrandDirectives, generateMarketTrends, generatePublishingSchedule, generatePostSchedule
+} = require("./gemini");
 
 
 // Initialize Firebase Admin
@@ -880,6 +885,84 @@ app.post("/generate-market-trends", async (req, res) => {
 
   } catch (error) {
     console.error("Market Trends Error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint: Generate Publishing Schedule
+app.post("/get-publishing-schedule", async (req, res) => {
+  const idToken = req.headers.authorization?.split("Bearer ")[1];
+  if (!idToken) return res.status(401).send("Unauthorized");
+
+  try {
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const campaignData = req.body;
+    
+    if (!campaignData || !campaignData.name) {
+      return res.status(400).json({ error: "Campaign data is required." });
+    }
+
+    const pricing = await getPricingConfig();
+    const cost = pricing.PLAN_COST || 10000; // using plan cost as it's a strategic operation
+
+    const userRef = db.collection("users").doc(decodedToken.uid);
+    const userDoc = await userRef.get();
+    const balance = userDoc.data()?.balance || 0;
+
+    if (balance < cost) {
+      return res.status(402).json({ error: "Brak tokenów na koncie." });
+    }
+
+    const result = await generatePublishingSchedule(campaignData);
+
+    // Deduct tokens
+    await userRef.update({ 
+      balance: admin.firestore.FieldValue.increment(-cost) 
+    });
+
+    res.json({ result, cost });
+
+  } catch (error) {
+    console.error("Publishing Schedule Error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint: Generate Individual Post Schedule
+app.post("/get-post-schedule", async (req, res) => {
+  const idToken = req.headers.authorization?.split("Bearer ")[1];
+  if (!idToken) return res.status(401).send("Unauthorized");
+
+  try {
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const { postContent, productDescription, topic, platform } = req.body;
+    
+    if (!postContent) {
+      return res.status(400).json({ error: "Post content is required." });
+    }
+
+    const pricing = await getPricingConfig();
+    const cost = pricing.PLAN_COST || 10000;
+
+    const userRef = db.collection("users").doc(decodedToken.uid);
+    const userDoc = await userRef.get();
+    const balance = userDoc.data()?.balance || 0;
+
+    if (balance < cost) {
+      return res.status(402).json({ error: "Brak tokenów na koncie." });
+    }
+
+    const result = await generatePostSchedule({ postContent, productDescription, topic, platform });
+
+    // Deduct tokens
+    await userRef.update({ 
+      balance: admin.firestore.FieldValue.increment(-cost) 
+    });
+
+    res.json({ result, cost });
+
+  } catch (error) {
+    console.error("Post Schedule Error:", error);
     res.status(500).json({ error: error.message });
   }
 });
