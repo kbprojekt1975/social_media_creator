@@ -361,7 +361,7 @@ const VisualEditor = ({
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%' }}>
       <div className="premium-border" style={{ padding: '2.5rem', borderRadius: '8px', animation: 'fadeIn 0.5s ease-out 0.2s both' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
           <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: '700' }}>Edytor Wizualny</h2>
@@ -918,11 +918,46 @@ const VisualEditor = ({
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    zIndex: 2
                   }}
                   title="Pobierz"
                 >
                   <span className="material-icons" style={{ fontSize: '1.1rem' }}>download</span>
+                </button>
+                <button 
+                  onClick={(e) => { 
+                    e.stopPropagation(); 
+                    if (window.confirm('Czy na pewno chcesz usunąć tę wersję z historii sesji?')) {
+                      const newHistory = [...mediaHistory];
+                      newHistory.splice(idx, 1);
+                      setMediaHistory(newHistory);
+                      if (newHistory.length > 0) {
+                        setGeneratedMedia(newHistory[newHistory.length - 1]);
+                      } else {
+                        setGeneratedMedia(null);
+                      }
+                    }
+                  }}
+                  style={{
+                    position: 'absolute',
+                    top: '5px',
+                    right: '5px',
+                    background: 'rgba(239, 68, 68, 0.8)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '30px',
+                    height: '30px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    zIndex: 2
+                  }}
+                  title="Usuń wersję"
+                >
+                  <span className="material-icons" style={{ fontSize: '1.1rem' }}>delete_outline</span>
                 </button>
               </div>
             ))}

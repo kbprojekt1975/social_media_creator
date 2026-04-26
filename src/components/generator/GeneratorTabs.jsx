@@ -2,7 +2,7 @@ import React from 'react';
 
 const GeneratorTabs = ({ activeTab, setActiveTab, activeWorkspace, showAdvanced, setShowAdvanced }) => {
   return (
-    <div className="generator-tabs" style={{ maxWidth: '50%', margin: '0 auto', width: '100%' }}>
+    <div className="generator-tabs" style={{ maxWidth: '66%', margin: '0 auto', width: '100%' }}>
       <div className="tabs-inner-container" style={{ 
         display: 'flex', 
         gap: '0', 
@@ -19,6 +19,7 @@ const GeneratorTabs = ({ activeTab, setActiveTab, activeWorkspace, showAdvanced,
         boxShadow: '0 10px 30px rgba(0,0,0,0.2)'
       }}>
       <button 
+        className="tab-button"
         onClick={() => setActiveTab('generator')}
         style={{ 
           padding: '0.8rem 1.8rem', 
@@ -51,6 +52,7 @@ const GeneratorTabs = ({ activeTab, setActiveTab, activeWorkspace, showAdvanced,
         whiteSpace: 'nowrap'
       }}>
         <button 
+          className="tab-button"
           onClick={() => setActiveTab('workspaces')}
           style={{ 
             padding: '0.8rem 1.4rem', 
@@ -71,6 +73,7 @@ const GeneratorTabs = ({ activeTab, setActiveTab, activeWorkspace, showAdvanced,
           {activeWorkspace && <div style={{ width: '6px', height: '6px', background: '#4ade80', borderRadius: '50%' }}></div>}
         </button>
         <button 
+          className="tab-button"
           onClick={() => setActiveTab('campaigns')}
           style={{ 
             padding: '0.8rem 1.4rem', 
@@ -90,6 +93,7 @@ const GeneratorTabs = ({ activeTab, setActiveTab, activeWorkspace, showAdvanced,
           <span className="tab-label">Kampanie</span>
         </button>
         <button 
+          className="tab-button"
           onClick={() => setActiveTab('visual_editor')}
           style={{ 
             padding: '0.8rem 1.4rem', 

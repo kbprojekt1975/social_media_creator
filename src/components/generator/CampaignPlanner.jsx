@@ -173,8 +173,8 @@ const CampaignPlanner = ({
   const isFormInvalid = !name || !productDescription || selectedGoals.length === 0 || !targetAudience;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-      <div className="glass" style={{ padding: '2.5rem', borderRadius: '30px', background: 'var(--bg-white)', border: 'none' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', width: '100%' }}>
+      <div className="glass" style={{ padding: '2.5rem', borderRadius: '8px', background: 'var(--bg-white)', border: 'none' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
           <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: '700' }}>Planer Kampanii</h2>
           {(name || productDescription || initialSession) && (
@@ -196,7 +196,7 @@ const CampaignPlanner = ({
                 if (onClearSession) onClearSession();
               }}
               className="btn-secondary"
-              style={{ padding: '0.5rem 1rem', borderRadius: '12px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+              style={{ padding: '0.5rem 1rem', borderRadius: '3px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
             >
               <span className="material-icons" style={{ fontSize: '1.1rem' }}>add_circle_outline</span>
               Nowa kampania
@@ -218,7 +218,7 @@ const CampaignPlanner = ({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="np. Wyprzedaż letnia / Premiera nowej marki"
-                style={{ width: '100%', padding: '1rem', background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '15px', color: 'var(--text-main)' }}
+                style={{ width: '100%', padding: '1rem', background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '4px', color: 'var(--text-main)' }}
               />
             </div>
 
@@ -266,7 +266,7 @@ const CampaignPlanner = ({
             </div>
 
             {showCustomForm && (
-              <div className="glass" style={{ padding: '1.5rem', borderRadius: '20px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', marginBottom: '1.5rem' }}>
+              <div className="glass" style={{ padding: '1.5rem', borderRadius: '5px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', marginBottom: '1.5rem' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr auto', gap: '0.8rem', alignItems: 'end' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Nazwa (na przycisku)</label>
@@ -275,7 +275,7 @@ const CampaignPlanner = ({
                       value={customGoalLabel}
                       onChange={(e) => setCustomGoalLabel(e.target.value)}
                       placeholder="np. Retencja"
-                      style={{ padding: '0.8rem', background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '12px', color: 'var(--text-main)', fontSize: '0.9rem' }}
+                      style={{ padding: '0.8rem', background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '3px', color: 'var(--text-main)', fontSize: '0.9rem' }}
                     />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
@@ -285,7 +285,7 @@ const CampaignPlanner = ({
                       value={customGoalName}
                       onChange={(e) => setCustomGoalName(e.target.value)}
                       placeholder="np. Zwiększenie retencji klientów o 20%"
-                      style={{ padding: '0.8rem', background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '12px', color: 'var(--text-main)', fontSize: '0.9rem' }}
+                      style={{ padding: '0.8rem', background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '3px', color: 'var(--text-main)', fontSize: '0.9rem' }}
                     />
                   </div>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -306,7 +306,7 @@ const CampaignPlanner = ({
                       onClick={() => handleAddCustomGoal(customGoalLabel || customGoalName, customGoalName)}
                       disabled={!customGoalName}
                       className="btn-secondary"
-                      style={{ padding: '0.8rem', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      style={{ padding: '0.8rem', borderRadius: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                       title="Zatwierdź"
                     >
                       <span className="material-icons" style={{ color: '#4ade80' }}>check_circle</span>
@@ -329,7 +329,7 @@ const CampaignPlanner = ({
                 value={productDescription}
                 onChange={(e) => setProductDescription(e.target.value)}
                 placeholder="Opisz swoją usługę tak, jakbyś mówił do klienta..."
-                style={{ width: '100%', minHeight: '120px', padding: '1rem', paddingBottom: '3.5rem', background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '15px', color: 'var(--text-main)', resize: 'vertical' }}
+                style={{ width: '100%', minHeight: '120px', padding: '1rem', paddingBottom: '3.5rem', background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '4px', color: 'var(--text-main)', resize: 'vertical' }}
               />
               <button
                 type="button"
@@ -351,7 +351,7 @@ const CampaignPlanner = ({
                   value={usp}
                   onChange={(e) => setUsp(e.target.value)}
                   placeholder="np. Jedyna platforma z dostępem do ekspertów 24/7"
-                  style={{ width: '100%', padding: '1rem', paddingRight: '120px', background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '15px', color: 'var(--text-main)' }}
+                  style={{ width: '100%', padding: '1rem', paddingRight: '120px', background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '4px', color: 'var(--text-main)' }}
                 />
                 <button
                   type="button"
@@ -373,7 +373,7 @@ const CampaignPlanner = ({
                 value={problemSolved}
                 onChange={(e) => setProblemSolved(e.target.value)}
                 placeholder="np. Brak czasu na regularne publikowanie postów"
-                style={{ width: '100%', padding: '1rem', background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '15px', color: 'var(--text-main)' }}
+                style={{ width: '100%', padding: '1rem', background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '4px', color: 'var(--text-main)' }}
               />
             </div>
           </div>
@@ -389,7 +389,7 @@ const CampaignPlanner = ({
                 value={targetAudience}
                 onChange={(e) => setTargetAudience(e.target.value)}
                 placeholder="np. Właściciele małych firm e-commerce, szukający sposobów na automatyzację marketingu."
-                style={{ width: '100%', minHeight: '80px', padding: '1rem', paddingBottom: '3.5rem', background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '15px', color: 'var(--text-main)', resize: 'vertical' }}
+                style={{ width: '100%', minHeight: '80px', padding: '1rem', paddingBottom: '3.5rem', background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '4px', color: 'var(--text-main)', resize: 'vertical' }}
               />
               <button
                 type="button"
@@ -440,7 +440,7 @@ const CampaignPlanner = ({
                 <select 
                   value={intensity}
                   onChange={(e) => setIntensity(e.target.value)}
-                  style={{ width: '100%', padding: '1rem', background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '15px', color: 'var(--text-main)' }}
+                  style={{ width: '100%', padding: '1rem', background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '4px', color: 'var(--text-main)' }}
                 >
                   <option value="Steady">Steady (Stały szum)</option>
                   <option value="Teaser-Launch">Teaser-Launch (Budowanie napięcia)</option>
@@ -455,7 +455,7 @@ const CampaignPlanner = ({
                 <select 
                   value={toneOfVoice}
                   onChange={(e) => setToneOfVoice(e.target.value)}
-                  style={{ width: '100%', padding: '1rem', background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '15px', color: 'var(--text-main)' }}
+                  style={{ width: '100%', padding: '1rem', background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '4px', color: 'var(--text-main)' }}
                 >
                   <option value="Profesjonalny">Profesjonalny</option>
                   <option value="Luźny">Luźny / Przyjacielski</option>
@@ -471,7 +471,7 @@ const CampaignPlanner = ({
                   value={mainCTA}
                   onChange={(e) => setMainCTA(e.target.value)}
                   placeholder="np. Zapis na darmową lekcję"
-                  style={{ width: '100%', padding: '1rem', background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '15px', color: 'var(--text-main)' }}
+                  style={{ width: '100%', padding: '1rem', background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '4px', color: 'var(--text-main)' }}
                 />
               </div>
             </div>
@@ -479,7 +479,7 @@ const CampaignPlanner = ({
             <label style={{ display: 'block', marginBottom: '0.8rem', color: 'var(--text-muted)' }}>Platformy docelowe</label>
             <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
               {platformsList.map(p => (
-                <label key={p} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', background: 'var(--bg-app)', padding: '0.6rem 1.2rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                <label key={p} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', background: 'var(--bg-app)', padding: '0.6rem 1.2rem', borderRadius: '3px', border: '1px solid var(--border-color)' }}>
                   <input 
                     type="checkbox" 
                     checked={selectedPlatforms.includes(p)}
@@ -496,7 +496,7 @@ const CampaignPlanner = ({
             type="submit" 
             className="btn-primary" 
             disabled={loading || balance < 25000 || isReadOnly || isFormInvalid} 
-            style={{ width: '100%', padding: '1.2rem', borderRadius: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.8rem', fontSize: '1.1rem' }}
+            style={{ width: '100%', padding: '1.2rem', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.8rem', fontSize: '1.1rem' }}
           >
             {loading ? 'Planowanie strategii...' : (
               <>
@@ -540,7 +540,7 @@ const CampaignPlanner = ({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <h3 style={{ margin: '1rem 0 0.5rem 0', fontWeight: '700' }}>Twoje Strategie</h3>
           {campaigns.map(campaign => (
-            <div key={campaign.id} className="glass" style={{ padding: '2rem', borderRadius: '6px', background: 'var(--bg-white)', border: 'none' }}>
+            <div key={campaign.id} className="glass" style={{ padding: '2rem', borderRadius: '2px', background: 'var(--bg-white)', border: 'none' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                 <div style={{ flex: 1 }}>
                   {editingId === campaign.id ? (
@@ -606,7 +606,7 @@ const CampaignPlanner = ({
               {!collapsedCampaigns[campaign.id] && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {campaign.strategy.map((item, idx) => (
-                  <div key={idx} className="campaign-item-card" style={{ padding: '1.2rem', background: 'var(--bg-app)', borderRadius: '5px', border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
+                  <div key={idx} className="campaign-item-card" style={{ padding: '1.2rem', background: 'var(--bg-app)', borderRadius: '1px', border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.4rem' }}>
                         <span style={{ fontSize: '0.75rem', fontWeight: '800', background: 'var(--color-primary)', color: 'white', padding: '0.2rem 0.6rem', borderRadius: '2px' }}>{item.day}</span>
@@ -653,10 +653,14 @@ const CampaignPlanner = ({
 
                           {/* Button to reset completion status */}
                           <button 
-                            onClick={() => handleResetCampaignItem(campaign.id, idx)}
+                            onClick={() => {
+                              if (window.confirm('Czy na pewno chcesz usunąć ten wygenerowany post z historii? Tej operacji nie można cofnąć.')) {
+                                handleResetCampaignItem(campaign.id, idx);
+                              }
+                            }}
                             className="btn-secondary"
-                            style={{ padding: '0.4rem', minWidth: 'auto', borderRadius: '10px', color: '#ef4444' }}
-                            title="Usuń status wykonania"
+                            style={{ padding: '0.4rem', minWidth: 'auto', borderRadius: '3px', color: '#ef4444' }}
+                            title="Usuń wygenerowaną treść"
                           >
                             <span className="material-icons" style={{ fontSize: '1.2rem' }}>delete_outline</span>
                           </button>

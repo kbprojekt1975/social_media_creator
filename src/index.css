@@ -77,7 +77,7 @@
   }
   
   .status-header .logo, .landing-nav .logo {
-    font-size: 0.75rem !important; /* ~30% reduction from 1.1rem */
+    font-size: 0.95rem !important; /* Increased by 25% from 0.75rem */
     letter-spacing: -0.5px;
     flex-direction: column !important;
     align-items: flex-start !important;
@@ -120,7 +120,7 @@
   }
 
   .workspace-name {
-    font-size: 0.7rem !important;
+    font-size: 0.9rem !important; /* Increased by 25% from 0.7rem */
     max-width: 100px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -581,7 +581,7 @@ body {
     display: block !important;
     background: rgba(10, 10, 10, 0.95);
     padding: 10px;
-    border-radius: 32px;
+    border-radius: 8px;
     box-shadow: 0 0 50px rgba(0,0,0,0.9);
     height: auto !important;
     max-height: 80vh;
@@ -810,7 +810,7 @@ body {
   }
 
   .format-card h4 {
-    font-size: 0.8rem !important;
+    font-size: 1rem !important; /* Increased from 0.8rem */
   }
 
   .format-card p {
@@ -837,6 +837,14 @@ body {
     width: 100%;
   }
 
+  .generator-tabs {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 5px 0 !important;
+    display: flex !important;
+    justify-content: center !important;
+  }
+
   .tabs-inner-container {
     max-width: 100% !important;
     overflow-x: auto !important;
@@ -852,6 +860,14 @@ body {
 
   .tab-label {
     display: none; /* Ukryj napisy na bardzo małych ekranach, zostaw ikony */
+  }
+
+  .tab-button {
+    padding: 1rem 1.2rem !important; /* Increased size */
+  }
+
+  .tab-button .material-icons {
+    font-size: 1.5rem !important; /* Increased by ~25% from 1.2rem */
   }
 
   @media (min-width: 480px) {
@@ -873,7 +889,7 @@ body {
 
   .history-drawer button {
     padding: 0.4rem 0.8rem !important;
-    font-size: 0.75rem !important;
+    font-size: 0.95rem !important; /* Increased from 0.75rem */
   }
 
   .history-drawer .material-icons {
@@ -894,6 +910,19 @@ body {
 
   .scroll-to-top-btn {
     padding: 0 !important;
+  }
+
+  /* Global smallest fonts enlargement */
+  .workspace-label, 
+  .status-pill span:not(.material-icons),
+  label,
+  .chip,
+  .btn-secondary {
+    font-size: 0.95rem !important;
+  }
+
+  .workspace-name {
+    font-size: 1.05rem !important; /* Increased further */
   }
 }
 

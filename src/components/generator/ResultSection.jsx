@@ -550,12 +550,14 @@ const ResultSection = ({
                     </button>
                     <button 
                       onClick={() => {
-                        const newHistory = [...mediaHistory];
-                        newHistory.splice(idx, 1);
-                        setMediaHistory(newHistory);
-                        if (newHistory.length === 0) {
-                          setGeneratedImage(null);
-                          setGeneratedVideo(null);
+                        if (window.confirm('Czy na pewno chcesz usunąć to zdjęcie/wideo? Tej operacji nie można cofnąć.')) {
+                          const newHistory = [...mediaHistory];
+                          newHistory.splice(idx, 1);
+                          setMediaHistory(newHistory);
+                          if (newHistory.length === 0) {
+                            setGeneratedImage(null);
+                            setGeneratedVideo(null);
+                          }
                         }
                       }}
                       title="Usuń"

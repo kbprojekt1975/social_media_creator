@@ -105,7 +105,7 @@ const ChatAssistant = ({ API_BASE_URL, subscriptionStatus }) => {
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="glass" style={{
+        <div className="chat-window glass" style={{
           position: 'fixed',
           bottom: '11.5rem',
           right: '2rem',
@@ -118,11 +118,12 @@ const ChatAssistant = ({ API_BASE_URL, subscriptionStatus }) => {
           animation: 'slideUp 0.4s cubic-bezier(0.165, 0.84, 0.44, 1)',
           background: 'rgba(23, 23, 23, 0.95)',
           border: '1px solid rgba(255,255,255,0.1)',
-          boxShadow: '0 20px 50px rgba(0,0,0,0.5)'
+          boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
+          borderRadius: '12px'
         }}>
           {/* Header */}
           <div style={{
-            padding: '1.5rem',
+            padding: '1.2rem 1.5rem',
             background: 'linear-gradient(135deg, var(--color-primary), var(--color-secondary))',
             color: 'white',
             display: 'flex',
@@ -137,23 +138,42 @@ const ChatAssistant = ({ API_BASE_URL, subscriptionStatus }) => {
                 <p style={{ margin: 0, fontSize: '0.75rem', opacity: 0.9 }}>Twój ekspert od Social Media</p>
               </div>
             </div>
-            <button 
-              onClick={handleResetChat}
-              title="Resetuj czat"
-              style={{
-                background: 'rgba(255,255,255,0.1)',
-                border: 'none',
-                color: 'white',
-                cursor: 'pointer',
-                padding: '0.4rem',
-                borderRadius: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-            >
-              <span className="material-icons" style={{ fontSize: '1.2rem' }}>delete_sweep</span>
-            </button>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button 
+                onClick={handleResetChat}
+                title="Resetuj czat"
+                style={{
+                  background: 'rgba(255,255,255,0.1)',
+                  border: 'none',
+                  color: 'white',
+                  cursor: 'pointer',
+                  padding: '0.4rem',
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <span className="material-icons" style={{ fontSize: '1.2rem' }}>delete_sweep</span>
+              </button>
+              <button 
+                className="mobile-only-chat-close"
+                onClick={() => setIsOpen(false)}
+                style={{
+                  background: 'rgba(255,255,255,0.1)',
+                  border: 'none',
+                  color: 'white',
+                  cursor: 'pointer',
+                  padding: '0.4rem',
+                  borderRadius: '8px',
+                  display: 'none',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <span className="material-icons" style={{ fontSize: '1.2rem' }}>close</span>
+              </button>
+            </div>
           </div>
 
           {/* Messages */}
@@ -167,13 +187,14 @@ const ChatAssistant = ({ API_BASE_URL, subscriptionStatus }) => {
           }}>
             {chatHistory.length === 0 && (
               <div style={{ textAlign: 'center', marginTop: '2rem', opacity: 0.6 }}>
-                <p style={{ fontSize: '0.9rem' }}>Cześć! W czym mogę Ci dzisiaj pomóc?</p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'center', marginTop: '1rem' }}>
+                <p style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '1rem' }}>Cześć! W czym mogę Ci dzisiaj pomóc?</p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.8rem', justifyContent: 'center', marginTop: '1rem' }}>
                   {['Jak stworzyć wideo?', 'Plan kampanii', 'Pomysł na post'].map(hint => (
                     <button 
                       key={hint}
                       onClick={() => setMessage(hint)}
-                      style={{ padding: '0.4rem 0.8rem', borderRadius: '15px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', fontSize: '0.8rem', cursor: 'pointer' }}
+                      className="chip"
+                      style={{ padding: '0.6rem 1rem', borderRadius: '20px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', cursor: 'pointer' }}
                     >
                       {hint}
                     </button>
@@ -188,11 +209,11 @@ const ChatAssistant = ({ API_BASE_URL, subscriptionStatus }) => {
                 style={{
                   alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
                   maxWidth: '85%',
-                  padding: '0.8rem 1rem',
+                  padding: '1rem 1.2rem',
                   borderRadius: msg.role === 'user' ? '18px 18px 2px 18px' : '18px 18px 18px 2px',
                   background: msg.role === 'user' ? 'var(--color-primary)' : 'rgba(255,255,255,0.08)',
                   color: 'white',
-                  fontSize: '0.9rem',
+                  fontSize: '1rem',
                   lineHeight: '1.5',
                   boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
                   border: msg.isError ? '1px solid #ef4444' : 'none'
@@ -202,7 +223,7 @@ const ChatAssistant = ({ API_BASE_URL, subscriptionStatus }) => {
               </div>
             ))}
             {isLoading && (
-              <div style={{ alignSelf: 'flex-start', padding: '0.8rem 1rem', background: 'rgba(255,255,255,0.08)', borderRadius: '18px 18px 18px 2px' }}>
+              <div style={{ alignSelf: 'flex-start', padding: '1rem 1.2rem', background: 'rgba(255,255,255,0.08)', borderRadius: '18px 18px 18px 2px' }}>
                 <div className="dot-flashing"></div>
               </div>
             )}
@@ -211,10 +232,11 @@ const ChatAssistant = ({ API_BASE_URL, subscriptionStatus }) => {
 
           {/* Input */}
           <form onSubmit={handleSend} style={{
-            padding: '1.2rem',
+            padding: '1.5rem',
             borderTop: '1px solid rgba(255,255,255,0.1)',
             display: 'flex',
-            gap: '0.8rem'
+            gap: '1rem',
+            background: 'rgba(10, 10, 10, 0.5)'
           }}>
             <input 
               type="text"
@@ -227,9 +249,10 @@ const ChatAssistant = ({ API_BASE_URL, subscriptionStatus }) => {
                 background: 'rgba(255,255,255,0.05)',
                 border: '1px solid rgba(255,255,255,0.1)',
                 borderRadius: '12px',
-                padding: '0.8rem 1rem',
+                padding: '1rem 1.2rem',
                 color: 'white',
-                outline: 'none'
+                outline: 'none',
+                fontSize: '1rem'
               }}
             />
             <button 
@@ -239,8 +262,8 @@ const ChatAssistant = ({ API_BASE_URL, subscriptionStatus }) => {
                 background: 'var(--color-primary)',
                 color: 'white',
                 border: 'none',
-                width: '45px',
-                height: '45px',
+                width: '50px',
+                height: '50px',
                 borderRadius: '12px',
                 display: 'flex',
                 alignItems: 'center',
@@ -249,7 +272,7 @@ const ChatAssistant = ({ API_BASE_URL, subscriptionStatus }) => {
                 opacity: message.trim() ? 1 : 0.5
               }}
             >
-              <span className="material-icons">send</span>
+              <span className="material-icons" style={{ fontSize: '1.5rem' }}>send</span>
             </button>
           </form>
         </div>
@@ -260,6 +283,22 @@ const ChatAssistant = ({ API_BASE_URL, subscriptionStatus }) => {
           from { transform: translateY(20px); opacity: 0; }
           to { transform: translateY(0); opacity: 1; }
         }
+        
+        @media (max-width: 768px) {
+          .chat-window {
+            width: 100% !important;
+            height: 100% !important;
+            bottom: 0 !important;
+            right: 0 !important;
+            left: 0 !important;
+            border-radius: 0 !important;
+            z-index: 100000 !important;
+          }
+          .mobile-only-chat-close {
+            display: flex !important;
+          }
+        }
+
         .dot-flashing {
           position: relative;
           width: 6px;

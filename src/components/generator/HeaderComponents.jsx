@@ -95,7 +95,7 @@ export const StatusPill = ({ perc, activeWorkspace, setActiveTab, setForcePaymen
   );
 };
 
-export const ProfileDropdown = ({ user, isDark, setIsDark, onShowHelp, handleLogout, deferredPrompt, setDeferredPrompt, subscriptionData }) => {
+export const ProfileDropdown = ({ user, isDark, setIsDark, onShowHelp, handleLogout, deferredPrompt, setDeferredPrompt, subscriptionData, hideMobileExtra = false }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -172,23 +172,27 @@ export const ProfileDropdown = ({ user, isDark, setIsDark, onShowHelp, handleLog
             </div>
           )}
 
-          <button 
-            className="btn-secondary mobile-only-dropdown-btn"
-            onClick={() => { window.dispatchEvent(new CustomEvent('toggleHistory')); setIsMenuOpen(false); }}
-            style={{ width: '100%', justifyContent: 'flex-start', gap: '1rem', padding: '0.8rem 1rem', borderRadius: '12px' }}
-          >
-            <span className="material-icons" style={{ color: 'var(--color-primary)' }}>history</span>
-            Historia
-          </button>
+          {!hideMobileExtra && (
+            <>
+              <button 
+                className="btn-secondary mobile-only-dropdown-btn"
+                onClick={() => { window.dispatchEvent(new CustomEvent('toggleHistory')); setIsMenuOpen(false); }}
+                style={{ width: '100%', justifyContent: 'flex-start', gap: '1rem', padding: '0.8rem 1rem', borderRadius: '12px' }}
+              >
+                <span className="material-icons" style={{ color: 'var(--color-primary)' }}>history</span>
+                Historia
+              </button>
 
-          <button 
-            className="btn-secondary mobile-only-dropdown-btn"
-            onClick={() => { window.dispatchEvent(new CustomEvent('toggleChat')); setIsMenuOpen(false); }}
-            style={{ width: '100%', justifyContent: 'flex-start', gap: '1rem', padding: '0.8rem 1rem', borderRadius: '12px' }}
-          >
-            <span className="material-icons" style={{ color: '#8b5cf6' }}>chat_bubble</span>
-            Asystent AI
-          </button>
+              <button 
+                className="btn-secondary mobile-only-dropdown-btn"
+                onClick={() => { window.dispatchEvent(new CustomEvent('toggleChat')); setIsMenuOpen(false); }}
+                style={{ width: '100%', justifyContent: 'flex-start', gap: '1rem', padding: '0.8rem 1rem', borderRadius: '12px' }}
+              >
+                <span className="material-icons" style={{ color: '#8b5cf6' }}>chat_bubble</span>
+                Asystent AI
+              </button>
+            </>
+          )}
 
           <button 
             onClick={() => { setIsDark(!isDark); setIsMenuOpen(false); }}

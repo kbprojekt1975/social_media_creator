@@ -253,6 +253,7 @@ const LandingPage = ({ deferredPrompt, setDeferredPrompt }) => {
                 deferredPrompt={deferredPrompt}
                 setDeferredPrompt={setDeferredPrompt}
                 subscriptionData={subscriptionData}
+                hideMobileExtra={true}
               />
             </>
           )}
@@ -342,17 +343,19 @@ const LandingPage = ({ deferredPrompt, setDeferredPrompt }) => {
         </div>
 
         {/* Main Interactive Demo in Hero */}
-        <div className={`hero-demo-wrapper ${showDemo ? 'show-mobile' : ''}`} style={{
-          position: 'absolute',
-          top: '120px', 
-          left: '2%',
-          zIndex: 10,
-          maxWidth: '45%',
-          height: 'calc(100vh - 160px)', 
-          pointerEvents: 'all'
-        }}>
-          <InteractiveDemo isHero={true} />
-        </div>
+        {showDemo && (
+          <div className="hero-demo-wrapper show-mobile" style={{
+            position: 'absolute',
+            top: '120px', 
+            left: '2%',
+            zIndex: 100,
+            maxWidth: '45%',
+            height: 'calc(100vh - 160px)', 
+            pointerEvents: 'all'
+          }}>
+            <InteractiveDemo key={showDemo} isHero={true} onClose={() => setShowDemo(false)} />
+          </div>
+        )}
 
         <div className="animate-float" style={{
           position: 'absolute',

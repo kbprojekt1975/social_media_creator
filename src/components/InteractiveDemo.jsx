@@ -21,7 +21,7 @@ const TypewriterText = ({ text, delay = 30, onComplete, onUpdate }) => {
   return <span>{displayedText}</span>;
 };
 
-const SimulationSlide = ({ topic, prompt, responsePost, imageSrc, videoSrc, isHero }) => {
+const SimulationSlide = ({ topic, prompt, responsePost, imageSrc, videoSrc, isHero, onClose }) => {
   const [step, setStep] = useState(0); 
   const [isTypingPrompt, setIsTypingPrompt] = useState(true);
   const [isTypingPost, setIsTypingPost] = useState(false);
@@ -70,14 +70,14 @@ const SimulationSlide = ({ topic, prompt, responsePost, imageSrc, videoSrc, isHe
         default: return { width: '950px', height: '800px' };
       }
     }
-    const constantWidth = '420px';
+    const constantWidth = '100%';
     switch (step) {
       case 0: return { width: constantWidth, height: '240px' };
       case 1: return { width: constantWidth, height: '440px' };
       case 2: return { width: constantWidth, height: '540px' };
-      case 3: return { width: constantWidth, height: '760px' };
-      case 4: return { width: constantWidth, height: '820px' };
-      case 5: return { width: constantWidth, height: '960px' };
+      case 3: return { width: constantWidth, height: '800px' };
+      case 4: return { width: constantWidth, height: '880px' };
+      case 5: return { width: constantWidth, height: '1050px' };
       default: return { width: constantWidth, height: '240px' };
     }
   };
@@ -88,9 +88,10 @@ const SimulationSlide = ({ topic, prompt, responsePost, imageSrc, videoSrc, isHe
     <div className="simulation-window" style={{
       width,
       height,
+      maxWidth: isHero ? '420px' : 'none',
       transition: 'all 1s cubic-bezier(0.23, 1, 0.32, 1)',
       background: '#0a0a0a',
-      borderRadius: '32px',
+      borderRadius: '8px',
       border: '1px solid rgba(255, 255, 255, 0.1)',
       boxShadow: '0 40px 100px rgba(0,0,0,0.8)',
       overflow: 'hidden',
@@ -109,12 +110,31 @@ const SimulationSlide = ({ topic, prompt, responsePost, imageSrc, videoSrc, isHe
         background: 'rgba(255,255,255,0.02)'
       }}>
         <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(45deg, #FF6B6B, #FFD93D)' }}></div>
-        <span style={{ fontWeight: '700', fontSize: '0.85rem', color: '#FFF' }}>@TwojaMarka_AI</span>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: '5px' }}>
-          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }}></div>
-          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }}></div>
-          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }}></div>
-        </div>
+        <span style={{ fontWeight: '700', fontSize: '1.05rem', color: '#FFF' }}>@TwojaMarka_AI</span>
+        
+        {onClose && (
+          <button 
+            onClick={onClose}
+            style={{
+              marginLeft: 'auto',
+              background: 'rgba(255,255,255,0.05)',
+              border: 'none',
+              borderRadius: '50%',
+              width: '32px',
+              height: '32px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'rgba(255,255,255,0.5)',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'; e.currentTarget.style.color = '#ef4444'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; }}
+          >
+            <span className="material-icons" style={{ fontSize: '1.2rem' }}>close</span>
+          </button>
+        )}
       </div>
 
       <div style={{ 
@@ -129,14 +149,14 @@ const SimulationSlide = ({ topic, prompt, responsePost, imageSrc, videoSrc, isHe
         {/* Prompt Container */}
         <div style={{ 
           padding: '1.2rem', 
-          borderRadius: '20px', 
+          borderRadius: '5px', 
           background: 'rgba(255,255,255,0.04)',
           border: '1px solid rgba(255,255,255,0.08)',
-          fontSize: '0.9rem',
+          fontSize: '1.1rem',
           width: '100%',
           boxSizing: 'border-box'
         }}>
-          <div style={{ fontSize: '0.6rem', color: '#38BDF8', fontWeight: 'bold', marginBottom: '0.8rem', letterSpacing: '1px', textTransform: 'uppercase' }}>Twoje Zapytanie:</div>
+          <div style={{ fontSize: '0.85rem', color: '#38BDF8', fontWeight: 'bold', marginBottom: '0.8rem', letterSpacing: '1px', textTransform: 'uppercase' }}>Twoje Zapytanie:</div>
           <div style={{ color: 'rgba(255,255,255,0.95)', lineHeight: '1.6' }}>
             {isTypingPrompt ? (
               <TypewriterText 
@@ -165,9 +185,9 @@ const SimulationSlide = ({ topic, prompt, responsePost, imageSrc, videoSrc, isHe
             style={{ 
               background: 'rgba(56, 189, 248, 0.05)', 
               padding: '1.2rem', 
-              borderRadius: '20px', 
+              borderRadius: '5px', 
               border: '1px solid rgba(56, 189, 248, 0.15)',
-              fontSize: '0.75rem',
+              fontSize: '0.95rem',
               lineHeight: '1.5',
               color: 'rgba(255,255,255,0.8)',
               maxHeight: step >= 3 ? '220px' : 'none',
@@ -180,7 +200,7 @@ const SimulationSlide = ({ topic, prompt, responsePost, imageSrc, videoSrc, isHe
                .simulation-window ::-webkit-scrollbar-track { background: transparent; }
                .simulation-window ::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.2); border-radius: 10px; }
              `}</style>
-             <div style={{ fontSize: '0.6rem', color: '#818CF8', fontWeight: 'bold', marginBottom: '0.5rem', letterSpacing: '1px' }}>POST:</div>
+             <div style={{ fontSize: '0.75rem', color: '#818CF8', fontWeight: 'bold', marginBottom: '0.5rem', letterSpacing: '1px' }}>POST:</div>
              <div style={{ whiteSpace: 'pre-wrap' }}>
                {isTypingPost ? (
                  <TypewriterText 
@@ -204,7 +224,7 @@ const SimulationSlide = ({ topic, prompt, responsePost, imageSrc, videoSrc, isHe
           <div className="animate-zoom-in" style={{ 
             height: step >= 3 ? '240px' : '100px', 
             background: step >= 3 ? 'rgba(255,255,255,0.02)' : 'transparent',
-            borderRadius: '20px', 
+            borderRadius: '5px', 
             border: step >= 3 ? '1px solid rgba(56, 189, 248, 0.3)' : 'none',
             display: 'flex',
             alignItems: 'center',
@@ -225,7 +245,7 @@ const SimulationSlide = ({ topic, prompt, responsePost, imageSrc, videoSrc, isHe
                   <img 
                     src={imageSrc} 
                     alt="AI Generated" 
-                    style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '20px' }} 
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '5px' }} 
                   />
                 ) : (
                   <div style={{ textAlign: 'center' }}>
@@ -339,7 +359,7 @@ const SimulationSlide = ({ topic, prompt, responsePost, imageSrc, videoSrc, isHe
   );
 };
 
-const InteractiveDemo = ({ isHero }) => {
+const InteractiveDemo = ({ isHero, onClose }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   
   const slides = [
@@ -365,7 +385,7 @@ const InteractiveDemo = ({ isHero }) => {
       alignItems: isHero ? 'flex-start' : 'center',
       gap: '1.2rem'
     }}>
-      <SimulationSlide {...slides[currentSlide]} key={currentSlide} isHero={isHero} />
+      <SimulationSlide {...slides[currentSlide]} key={currentSlide} isHero={isHero} onClose={onClose} />
       
       {/* Navigation Controls removed as requested */}
     </div>
