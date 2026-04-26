@@ -9,8 +9,64 @@ const WorkspaceManager = ({
   newWorkspace, 
   setNewWorkspace, 
   handleActivateWorkspace, 
-  handleDeleteWorkspace 
+  handleDeleteWorkspace,
+  handleGenerateBrandDirectives,
+  handleGenerateMarketTrends
 }) => {
+  const [isGeneratingContent, setIsGeneratingContent] = React.useState(false);
+  const [isGeneratingVisual, setIsGeneratingVisual] = React.useState(false);
+  const [isGeneratingTrends, setIsGeneratingTrends] = React.useState(false);
+  const [contentError, setContentError] = React.useState(false);
+  const [visualError, setVisualError] = React.useState(false);
+  const [showBrandHelp, setShowBrandHelp] = React.useState(false);
+
+  const handleAIContent = async () => {
+    if (!newWorkspace.contentDirectives || !newWorkspace.contentDirectives.trim() || newWorkspace.contentDirectives === 'Wypełnij to pole') {
+      setContentError(true);
+      setNewWorkspace(prev => ({ ...prev, contentDirectives: 'Wypełnij to pole' }));
+      return;
+    }
+    setContentError(false);
+    setIsGeneratingContent(true);
+    const result = await handleGenerateBrandDirectives(newWorkspace.name, 'content', newWorkspace.contentDirectives);
+    if (result) {
+      setNewWorkspace(prev => ({ ...prev, contentDirectives: result }));
+    }
+    setIsGeneratingContent(false);
+  };
+
+  const handleAIVisual = async () => {
+    if (!newWorkspace.visualStyle || !newWorkspace.visualStyle.trim() || newWorkspace.visualStyle === 'Wypełnij to pole') {
+      setVisualError(true);
+      setNewWorkspace(prev => ({ ...prev, visualStyle: 'Wypełnij to pole' }));
+      return;
+    }
+    setVisualError(false);
+    setIsGeneratingVisual(true);
+    const result = await handleGenerateBrandDirectives(newWorkspace.name, 'visual', newWorkspace.visualStyle);
+    if (result) {
+      setNewWorkspace(prev => ({ ...prev, visualStyle: result }));
+    }
+    setIsGeneratingVisual(false);
+  };
+
+  const handleAITrends = async () => {
+    setIsGeneratingTrends(true);
+    const result = await handleGenerateMarketTrends(newWorkspace.name, newWorkspace.contentDirectives, newWorkspace.visualStyle);
+    if (result) {
+      setNewWorkspace(prev => ({ ...prev, marketTrends: result }));
+    }
+    setIsGeneratingTrends(false);
+  };
+
+  const handleToggleForm = () => {
+    if (showWorkspaceForm) {
+      // User clicked "Anuluj" - clear the form
+      setNewWorkspace({ name: '', contentDirectives: '', visualStyle: '', marketTrends: '' });
+    }
+    setShowWorkspaceForm(!showWorkspaceForm);
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', padding: '0 5px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -19,7 +75,7 @@ const WorkspaceManager = ({
           <p style={{ color: 'var(--text-muted)' }}>Zdefiniuj profile swoich marek dla spójnej komunikacji AI.</p>
         </div>
         <button 
-          onClick={() => setShowWorkspaceForm(!showWorkspaceForm)}
+          onClick={handleToggleForm}
           className="btn-primary"
           style={{ padding: '0.8rem 1.5rem', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
         >
@@ -29,8 +85,37 @@ const WorkspaceManager = ({
       </div>
 
       {showWorkspaceForm && (
-        <div className="glass" style={{ padding: '2.5rem', borderRadius: '6px', background: 'var(--bg-white)', border: 'none' }}>
-          <h3 style={{ marginBottom: '1.5rem', fontWeight: '700' }}>Dodaj nową markę</h3>
+        <div className="glass" style={{ padding: '2.5rem', borderRadius: '6px', background: 'var(--bg-white)', border: 'none', position: 'relative' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '1.5rem' }}>
+            <h3 style={{ margin: 0, fontWeight: '700' }}>Dodaj nową markę</h3>
+            <button
+              type="button"
+              onClick={() => setShowBrandHelp(!showBrandHelp)}
+              style={{ background: 'none', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', opacity: 0.8, transition: 'opacity 0.2s' }}
+              onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = 0.8}
+              title="Jak działa ten panel?"
+            >
+              <span className="material-icons" style={{ fontSize: '1.6rem' }}>info</span>
+            </button>
+          </div>
+
+          {showBrandHelp && (
+            <div style={{ padding: '1.5rem', background: 'rgba(66, 133, 244, 0.05)', borderRadius: '8px', border: '1px solid rgba(66, 133, 244, 0.2)', marginBottom: '1.5rem', fontSize: '1.125rem', color: 'var(--text-main)', lineHeight: '1.6', animation: 'fadeIn 0.3s ease-out' }}>
+              <h4 style={{ color: 'var(--color-primary)', marginTop: 0, marginBottom: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.3rem' }}>
+                <span className="material-icons" style={{ fontSize: '1.5rem' }}>lightbulb</span>
+                Jak działa ten panel?
+              </h4>
+              <p style={{ marginBottom: '0.5rem' }}>Wyobraź sobie, że zatrudniasz profesjonalnego asystenta. Aby mógł pracować skutecznie, musisz mu powiedzieć <strong>kim jesteś i czego oczekujesz</strong>. Ten panel to odprawa dla Twojej Sztucznej Inteligencji (AI).</p>
+              <ul style={{ paddingLeft: '1.5rem', margin: '0.5rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <li><strong>Osobista baza wiedzy:</strong> Raz dodajesz markę, a AI zapamiętuje Twój styl. Koniec z pisaniem sztampowych, "robotycznych" postów! Twoje treści zyskają charakter.</li>
+                <li><strong><span style={{color: '#8b5cf6'}}>✨ AI Write</span> (Wytyczne tekstowe):</strong> Nie wiesz, jak opisać swój ton? Wpisz luźne myśli (np. <i>"pisz luksusowo i bez emoji"</i>), a ten przycisk rozbuduje je w profesjonalne, szczegółowe instrukcje copywriterskie.</li>
+                <li><strong><span style={{color: '#d946ef'}}>✨ AI Design</span> (Styl wizualny):</strong> Masz w głowie tylko zarys wyglądu? Napisz np. <i>"minimalizm, pastelowe kolory"</i>, a ten przycisk przetłumaczy Twój pomysł na fachowy język zrozumiały dla generatorów obrazu.</li>
+                <li><strong>Wyszukaj trendy AI:</strong> System przeanalizuje to, co wpisałeś, i automatycznie znajdzie aktualne trendy na rynku, dzięki czemu Twoje posty będą zawsze na czasie i zyskają większe zasięgi.</li>
+              </ul>
+            </div>
+          )}
+
           <form onSubmit={handleAddWorkspace}>
             <div className="input-group" style={{ marginBottom: '1.2rem' }}>
               <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Nazwa przestrzeni / Klienta</label>
@@ -40,27 +125,136 @@ const WorkspaceManager = ({
                 value={newWorkspace.name}
                 onChange={(e) => setNewWorkspace({ ...newWorkspace, name: e.target.value })}
                 required
-                style={{ width: '100%', minHeight: '100px', padding: '1rem', background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '3px', color: 'var(--text-main)', resize: 'vertical' }}
+                style={{ width: '100%', padding: '1rem', background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '3px', color: 'var(--text-main)' }}
               />
             </div>
             <div className="input-group" style={{ marginBottom: '1.2rem' }}>
-              <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Wytyczne tekstowe (Co pisać? Czego unikać?)</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>Wytyczne tekstowe (Co pisać? Czego unikać?)</label>
+                <button 
+                  type="button"
+                  onClick={handleAIContent}
+                  disabled={isGeneratingContent}
+                  className="btn-animate"
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '0.4rem', 
+                    fontSize: '0.75rem', 
+                    padding: '0.4rem 0.8rem', 
+                    background: 'rgba(66, 133, 244, 0.1)', 
+                    color: '#4285f4', 
+                    border: '1px solid rgba(66, 133, 244, 0.2)', 
+                    borderRadius: '4px',
+                    cursor: isGeneratingContent ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <span className={`material-icons ${isGeneratingContent ? 'animate-spin' : ''}`} style={{ fontSize: '1rem' }}>
+                    {isGeneratingContent ? 'sync' : 'auto_awesome'}
+                  </span>
+                  {isGeneratingContent ? 'Generowanie...' : 'AI Write'}
+                </button>
+              </div>
               <textarea 
                 placeholder="np. Pisz luksusowym językiem, unikaj emoji, zawsze dodawaj link do sklepu..."
                 value={newWorkspace.contentDirectives}
-                onChange={(e) => setNewWorkspace({ ...newWorkspace, contentDirectives: e.target.value })}
-                style={{ width: '100%', minHeight: '100px', padding: '1rem', background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '12px', color: 'var(--text-main)', resize: 'vertical' }}
+                onChange={(e) => {
+                  setNewWorkspace({ ...newWorkspace, contentDirectives: e.target.value });
+                  if (contentError) setContentError(false);
+                }}
+                onFocus={() => {
+                  if (newWorkspace.contentDirectives === 'Wypełnij to pole') {
+                    setNewWorkspace({ ...newWorkspace, contentDirectives: '' });
+                    setContentError(false);
+                  }
+                }}
+                style={{ width: '100%', minHeight: '150px', padding: '1.2rem', background: 'var(--bg-app)', border: contentError ? '1px solid #ef4444' : '1px solid var(--border-color)', borderRadius: '12px', color: contentError ? '#ef4444' : 'var(--text-main)', resize: 'vertical', fontSize: '1rem', lineHeight: '1.6', fontFamily: 'inherit', transition: 'all 0.3s ease' }}
               />
             </div>
             <div className="input-group" style={{ marginBottom: '1.5rem' }}>
-              <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Styl wizualny (Jak mają wyglądać grafiki?)</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>Styl wizualny (Jak mają wyglądać grafiki?)</label>
+                <button 
+                  type="button"
+                  onClick={handleAIVisual}
+                  disabled={isGeneratingVisual}
+                  className="btn-animate"
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '0.4rem', 
+                    fontSize: '0.75rem', 
+                    padding: '0.4rem 0.8rem', 
+                    background: 'rgba(155, 114, 203, 0.1)', 
+                    color: '#9b72cb', 
+                    border: '1px solid rgba(155, 114, 203, 0.2)', 
+                    borderRadius: '4px',
+                    cursor: isGeneratingVisual ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <span className={`material-icons ${isGeneratingVisual ? 'animate-spin' : ''}`} style={{ fontSize: '1rem' }}>
+                    {isGeneratingVisual ? 'sync' : 'auto_awesome'}
+                  </span>
+                  {isGeneratingVisual ? 'Generowanie...' : 'AI Design'}
+                </button>
+              </div>
               <textarea 
                 placeholder="np. Minimalistyczne zdjęcia produktowe, pastelowe kolory, dużo wolnej przestrzeni..."
                 value={newWorkspace.visualStyle}
-                onChange={(e) => setNewWorkspace({ ...newWorkspace, visualStyle: e.target.value })}
-                style={{ width: '100%', minHeight: '100px', padding: '1rem', background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '12px', color: 'var(--text-main)', resize: 'vertical' }}
+                onChange={(e) => {
+                  setNewWorkspace({ ...newWorkspace, visualStyle: e.target.value });
+                  if (visualError) setVisualError(false);
+                }}
+                onFocus={() => {
+                  if (newWorkspace.visualStyle === 'Wypełnij to pole') {
+                    setNewWorkspace({ ...newWorkspace, visualStyle: '' });
+                    setVisualError(false);
+                  }
+                }}
+                style={{ width: '100%', minHeight: '150px', padding: '1.2rem', background: 'var(--bg-app)', border: visualError ? '1px solid #ef4444' : '1px solid var(--border-color)', borderRadius: '12px', color: visualError ? '#ef4444' : 'var(--text-main)', resize: 'vertical', fontSize: '1rem', lineHeight: '1.6', fontFamily: 'inherit', transition: 'all 0.3s ease' }}
               />
             </div>
+            <div className="input-group" style={{ marginBottom: '1.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>Aktualne trendy rynkowe</label>
+              </div>
+              <textarea 
+                placeholder="Kliknij przycisk poniżej, aby AI wyszukało trendy dla tej marki, lub wpisz je ręcznie..."
+                value={newWorkspace.marketTrends || ''}
+                onChange={(e) => setNewWorkspace({ ...newWorkspace, marketTrends: e.target.value })}
+                style={{ width: '100%', minHeight: '150px', padding: '1.2rem', background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '12px', color: 'var(--text-main)', resize: 'vertical', fontSize: '1rem', lineHeight: '1.6', fontFamily: 'inherit' }}
+              />
+            </div>
+            
+            <button 
+              type="button"
+              onClick={handleAITrends}
+              disabled={isGeneratingTrends}
+              className="btn-animate"
+              style={{ 
+                width: '100%',
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                gap: '0.5rem', 
+                padding: '0.8rem', 
+                background: 'rgba(244, 175, 69, 0.1)', 
+                color: '#f4af45', 
+                border: '1px solid rgba(244, 175, 69, 0.3)', 
+                borderRadius: '4px',
+                cursor: isGeneratingTrends ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s ease',
+                marginBottom: '1rem'
+              }}
+            >
+              <span className={`material-icons ${isGeneratingTrends ? 'animate-spin' : ''}`} style={{ fontSize: '1.2rem' }}>
+                {isGeneratingTrends ? 'sync' : 'trending_up'}
+              </span>
+              {isGeneratingTrends ? 'Wyszukiwanie trendów...' : 'Wyszukaj trendy AI'}
+            </button>
+
             <button type="submit" className="btn-primary" style={{ width: '100%', padding: '1.2rem', borderRadius: '4px' }}>Zapisz przestrzeń</button>
           </form>
         </div>
@@ -121,6 +315,14 @@ const WorkspaceManager = ({
                 {ws.visualStyle || 'Brak specyficznych wytycznych.'}
               </p>
             </div>
+            {ws.marketTrends && (
+              <div style={{ marginTop: '0.5rem' }}>
+                <label style={{ display: 'block', fontSize: '0.7rem', color: '#f4af45', fontWeight: '700', textTransform: 'uppercase', marginBottom: '0.3rem' }}>Trendy Rynkowe</label>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-main)', margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                  {ws.marketTrends}
+                </p>
+              </div>
+            )}
           </div>
         ))}
         {workspaces.length === 0 && !showWorkspaceForm && (

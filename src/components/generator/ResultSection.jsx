@@ -56,6 +56,7 @@ const ResultSection = ({
   const [animationFeedback, setAnimationFeedback] = useState('');
   const [mediaError, setMediaError] = useState(false);
   const [animationError, setAnimationError] = useState(false);
+  const [isVisualPanelOpen, setIsVisualPanelOpen] = useState(false);
 
   // Auto-scroll logic to focus on user action
   React.useEffect(() => {
@@ -113,7 +114,7 @@ const ResultSection = ({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <div className="glass" style={{ padding: '2.5rem', borderRadius: '8px', background: 'var(--bg-white)', border: 'none', animation: 'fadeIn 0.5s ease-out' }}>
+      <div className="glass" style={{ padding: '2.5rem', borderRadius: '2px', background: 'var(--bg-white)', border: 'none', animation: 'fadeIn 0.5s ease-out' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', alignItems: 'center' }}>
           <h3 style={{ color: 'var(--color-primary)', fontWeight: '700', margin: 0 }}>Wygenerowana Treść</h3>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
@@ -124,7 +125,7 @@ const ResultSection = ({
                 border: '1px solid var(--border-color)',
                 color: 'var(--text-muted)',
                 padding: '0.8rem 1.2rem',
-                borderRadius: '5px',
+                borderRadius: '1.5px',
                 cursor: 'pointer',
                 fontSize: '0.85rem',
                 fontWeight: '700',
@@ -161,14 +162,14 @@ const ResultSection = ({
               value={textFeedback}
               onChange={(e) => setTextFeedback(e.target.value)}
               placeholder="Co chcesz poprawić w tym poście? (np. skróć do 3 zdań, dodaj więcej dynamiki...)"
-              style={{ flex: 1, minHeight: '60px', padding: '0.8rem', fontSize: '0.9rem', borderRadius: '3px', border: '1px solid var(--border-color)', background: 'var(--bg-white)', color: 'var(--text-main)', resize: 'vertical' }}
+              style={{ flex: 1, minHeight: '60px', padding: '0.8rem', fontSize: '0.9rem', borderRadius: '1px', border: '1px solid var(--border-color)', background: 'var(--bg-white)', color: 'var(--text-main)', resize: 'vertical' }}
               disabled={isTextRefining}
             />
             <button 
               onClick={handleRefineText}
               disabled={!textFeedback.trim() || isTextRefining}
               className="btn-primary"
-              style={{ padding: '0.8rem 1.5rem', borderRadius: '3px', alignSelf: 'stretch', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+              style={{ padding: '0.8rem 1.5rem', borderRadius: '1px', alignSelf: 'stretch', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
             >
               {isTextRefining ? <span className="spinner"></span> : (
                 <>
@@ -182,22 +183,55 @@ const ResultSection = ({
       </div>
 
       {/* Visualization Section */}
-      <div className="glass" style={{ padding: '3.5rem 2.5rem', borderRadius: '10px', background: 'var(--bg-white)', border: 'none', animation: 'fadeIn 0.5s ease-out 0.2s both', marginTop: '1rem' }}>
-        <div style={{ marginBottom: '3rem', textAlign: 'left' }}>
-          <h2 style={{ color: 'var(--text-main)', fontWeight: '800', fontSize: '2.2rem', marginBottom: '0.8rem', letterSpacing: '-0.5px' }}>Utwórz wizualizacje</h2>
-          {!isPromptMode && (
-            <p style={{ color: 'var(--text-muted)', fontSize: '1.05rem', fontWeight: '400' }}>Wybierz platformę i wygeneruj profesjonalne materiały AI.</p>
-          )}
+      {(!isVisualPanelOpen && !isPromptMode && !imageLoading && (!mediaHistory || mediaHistory.length === 0)) ? (
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          animation: 'fadeIn 0.8s ease-out 0.2s both' 
+        }}>
+          <button 
+            onClick={() => setIsVisualPanelOpen(true)}
+            className="premium-button"
+            style={{ 
+              padding: '1.5rem 4rem', 
+              borderRadius: '25px', 
+              fontSize: '1.2rem', 
+              gap: '1rem',
+              boxShadow: '0 20px 40px rgba(56, 189, 248, 0.25)',
+              border: '1px solid rgba(255,255,255,0.1)'
+            }}
+          >
+            <span className="material-icons" style={{ fontSize: '1.8rem', animation: 'float 3s ease-in-out infinite' }}>rocket_launch</span>
+            Utwórz wizualizację AI
+          </button>
         </div>
+      ) : (
+        <div className="glass" style={{ padding: '3.5rem 2.5rem', borderRadius: '2.5px', background: 'var(--bg-white)', border: 'none', animation: 'fadeIn 0.5s ease-out 0.2s both' }}>
+          <div style={{ marginBottom: '3rem', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <h2 style={{ color: 'var(--text-main)', fontWeight: '800', fontSize: '2.2rem', marginBottom: '0.8rem', letterSpacing: '-0.5px' }}>Utwórz wizualizacje</h2>
+              {!isPromptMode && (
+                <p style={{ color: 'var(--text-muted)', fontSize: '1.05rem', fontWeight: '400' }}>Wybierz platformę i wygeneruj profesjonalne materiały AI.</p>
+              )}
+            </div>
+            {isVisualPanelOpen && !isPromptMode && !imageLoading && (!mediaHistory || mediaHistory.length === 0) && (
+              <button 
+                onClick={() => setIsVisualPanelOpen(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                <span className="material-icons">close</span>
+              </button>
+            )}
+          </div>
         
         {/* Media Tab Bar - Segmented Control Look */}
-        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '3rem', background: 'var(--bg-app)', padding: '0.4rem', borderRadius: '5px', border: '1px solid var(--border-color)' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '3rem', background: 'var(--bg-app)', padding: '0.4rem', borderRadius: '1.5px', border: '1px solid var(--border-color)' }}>
           <button
             onClick={() => setVisualizationType('image')}
             style={{
               flex: 1,
               padding: '1rem',
-              borderRadius: '4px',
+              borderRadius: '1px',
               border: 'none',
               background: visualizationType === 'image' ? 'var(--bg-white)' : 'transparent',
               color: visualizationType === 'image' ? 'var(--color-primary)' : 'var(--text-muted)',
@@ -214,7 +248,7 @@ const ResultSection = ({
             style={{
               flex: 1,
               padding: '1rem',
-              borderRadius: '4px',
+              borderRadius: '1px',
               border: 'none',
               background: visualizationType === 'video' ? 'var(--bg-white)' : 'transparent',
               color: visualizationType === 'video' ? 'var(--color-primary)' : 'var(--text-muted)',
@@ -234,7 +268,7 @@ const ResultSection = ({
               background: '#f4af45', 
               color: '#000', 
               padding: '0.15rem 0.4rem', 
-              borderRadius: '4px', 
+              borderRadius: '1px', 
               fontWeight: '900',
               textTransform: 'uppercase'
             }}>
@@ -280,7 +314,7 @@ const ResultSection = ({
                         width: '100%',
                         minHeight: '220px',
                         padding: '1.5rem 1rem',
-                        borderRadius: '6px',
+                        borderRadius: '1.5px',
                         border: isActive ? '2px solid transparent' : '1px solid var(--border-color)',
                         background: isActive 
                           ? `linear-gradient(var(--bg-app), var(--bg-app)) padding-box, linear-gradient(135deg, #4285f4, #9b72cb, #d96570, #f4af45) border-box`
@@ -302,7 +336,7 @@ const ResultSection = ({
                         width: '70px', 
                         height: '90px', 
                         border: `2px dashed ${isActive ? format.color : 'var(--border-color)'}`,
-                        borderRadius: '10px',
+                        borderRadius: '2.5px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -315,52 +349,28 @@ const ResultSection = ({
                           width: format.aspect === '1/1' ? '45px' : (format.aspect === '16/9' ? '55px' : '35px'),
                           height: format.aspect === '1/1' ? '45px' : (format.aspect === '9:16' || format.aspect === '4/5' ? '65px' : '32px'),
                           background: isActive ? format.color : 'var(--text-muted)',
-                          borderRadius: '5px',
+                          borderRadius: '1.5px',
                           opacity: 0.25,
                           transition: 'all 0.3s ease'
                         }}></div>
                       </div>
-
-                      <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: '1rem', fontWeight: '800', marginBottom: '0.2rem' }}>{format.tip}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600' }}>{format.id}</div>
+                      <div style={{ textAlign: 'center', width: '100%' }}>
+                        <div style={{ fontSize: '1.1rem', fontWeight: '800', marginBottom: '0.2rem' }}>{format.tip}</div>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: '600', marginBottom: '0.8rem' }}>{format.id}</div>
+                        <div style={{ 
+                          fontSize: '0.8rem', 
+                          color: 'var(--text-muted)', 
+                          lineHeight: '1.5', 
+                          opacity: 0.8,
+                          borderTop: '1px solid var(--border-color)',
+                          paddingTop: '0.8rem',
+                          marginTop: '0.4rem',
+                          fontWeight: '400'
+                        }}>
+                          {format.desc}
+                        </div>
                       </div>
                     </button>
-
-                    {/* Info trigger at top right */}
-                    <div className="format-info-trigger" style={{ 
-                      position: 'absolute', 
-                      top: '15px', 
-                      right: '15px', 
-                      cursor: 'help', 
-                      color: isActive ? format.color : 'var(--text-muted)', 
-                      opacity: 0.7,
-                      zIndex: 10
-                    }}>
-                      <span className="material-icons" style={{ fontSize: '1.2rem' }}>info</span>
-                      <div className="format-tooltip" style={{
-                        position: 'absolute',
-                        bottom: '115%',
-                        right: '-5px',
-                        width: '220px',
-                        background: 'var(--bg-card)',
-                        color: 'var(--text-main)',
-                        padding: '1.2rem',
-                        borderRadius: '18px',
-                        fontSize: '0.85rem',
-                        boxShadow: '0 15px 35px rgba(0,0,0,0.2)',
-                        border: `1px solid ${format.color}`,
-                        pointerEvents: 'none',
-                        opacity: 0,
-                        transition: 'all 0.3s ease',
-                        zIndex: 100,
-                        textAlign: 'left',
-                        lineHeight: '1.6'
-                      }}>
-                        <strong style={{ color: format.color, display: 'block', marginBottom: '0.4rem', fontSize: '0.95rem' }}>{format.tip}</strong>
-                        {format.desc}
-                      </div>
-                    </div>
                   </div>
                 );
               })}
@@ -382,7 +392,7 @@ const ResultSection = ({
                 className="btn-secondary" 
                 style={{ 
                   padding: '1.4rem 2rem', 
-                  borderRadius: '50px', 
+                  borderRadius: '12.5px', 
                   fontSize: '1.1rem', 
                   fontWeight: '800',
                   display: 'flex', 
@@ -399,44 +409,15 @@ const ResultSection = ({
                 {imageLoading && visualizationType === visualizationType && !isAutoGenerating ? (
                   <span className="spinner"></span>
                 ) : (
-                  <>
-                    <span className="material-icons" style={{ fontSize: '1.6rem', color: 'var(--color-primary)' }}>{visualizationType === 'video' ? 'movie_filter' : 'auto_fix_high'}</span>
-                    <span>Przygotuj {visualizationType === 'image' ? 'obraz' : 'wideo'}</span>
-                    <div className="format-info-trigger" style={{ 
-                      position: 'absolute',
-                      right: '25px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      color: 'var(--text-muted)', 
-                      opacity: 0.8,
-                      cursor: 'help'
-                    }}>
-                      <span className="material-icons" style={{ fontSize: '1.4rem' }}>info</span>
-                      <div className="format-tooltip" style={{
-                        position: 'absolute',
-                        bottom: '140%',
-                        right: '-10px',
-                        width: '320px',
-                        background: 'var(--bg-card)',
-                        color: 'var(--text-main)',
-                        padding: '1.5rem',
-                        borderRadius: '24px',
-                        fontSize: '1rem',
-                        boxShadow: '0 20px 50px rgba(0,0,0,0.3)',
-                        border: '1px solid var(--color-primary)',
-                        pointerEvents: 'none',
-                        opacity: 0,
-                        transition: 'all 0.3s ease',
-                        zIndex: 100,
-                        textAlign: 'left',
-                        lineHeight: '1.6',
-                        fontWeight: 'normal'
-                      }}>
-                        <strong style={{ color: 'var(--color-primary)', display: 'block', marginBottom: '0.6rem', fontSize: '1.1rem' }}>Tryb Kontrolowany</strong>
-                        AI przygotuje najpierw opis techniczny (prompt), który będziesz mógł dowolnie edytować przed generacją finalnego dzieła. Idealne, gdy potrzebujesz precyzji.
-                      </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                      <span className="material-icons" style={{ fontSize: '1.6rem', color: 'var(--color-primary)' }}>{visualizationType === 'video' ? 'movie_filter' : 'auto_fix_high'}</span>
+                      <span>Przygotuj {visualizationType === 'image' ? 'obraz' : 'wideo'}</span>
                     </div>
-                  </>
+                    <span style={{ fontSize: '0.85rem', fontWeight: '400', opacity: 0.8, lineHeight: '1.4', maxWidth: '350px', textAlign: 'center' }}>
+                      AI przygotuje opis (prompt), który będziesz mógł edytować przed generacją.
+                    </span>
+                  </div>
                 )}
               </button>
 
@@ -447,7 +428,7 @@ const ResultSection = ({
                 className="btn-primary" 
                 style={{ 
                   padding: '1.4rem 2rem', 
-                  borderRadius: '12px', 
+                  borderRadius: '3px', 
                   fontSize: '1.1rem', 
                   fontWeight: '800',
                   display: 'flex', 
@@ -466,43 +447,15 @@ const ResultSection = ({
                 {imageLoading && visualizationType === visualizationType && isAutoGenerating ? (
                   <span className="spinner"></span>
                 ) : (
-                  <>
-                    <span className="material-icons" style={{ fontSize: '1.6rem' }}>{visualizationType === 'video' ? 'movie' : 'rocket_launch'}</span>
-                    <span>Wygeneruj {visualizationType === 'image' ? 'obraz' : 'wideo'}</span>
-                    <div className="format-info-trigger" style={{ 
-                      position: 'absolute',
-                      right: '25px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      color: 'rgba(255,255,255,0.8)',
-                      cursor: 'help'
-                    }}>
-                      <span className="material-icons" style={{ fontSize: '1.4rem' }}>info</span>
-                      <div className="format-tooltip" style={{
-                        position: 'absolute',
-                        bottom: '140%',
-                        right: '-10px',
-                        width: '320px',
-                        background: 'var(--bg-card)',
-                        color: 'var(--text-main)',
-                        padding: '1.5rem',
-                        borderRadius: '24px',
-                        fontSize: '1rem',
-                        boxShadow: '0 20px 50px rgba(0,0,0,0.3)',
-                        border: '1px solid var(--color-primary)',
-                        pointerEvents: 'none',
-                        opacity: 0,
-                        transition: 'all 0.3s ease',
-                        zIndex: 100,
-                        textAlign: 'left',
-                        lineHeight: '1.6',
-                        fontWeight: 'normal'
-                      }}>
-                        <strong style={{ color: 'var(--color-primary)', display: 'block', marginBottom: '0.6rem', fontSize: '1.1rem' }}>Tryb Błyskawiczny</strong>
-                        AI automatycznie przygotuje opis i natychmiast wygeneruje obraz na podstawie treści posta. Najszybszy sposób na stworzenie profesjonalnej grafiki.
-                      </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                      <span className="material-icons" style={{ fontSize: '1.6rem' }}>{visualizationType === 'video' ? 'movie' : 'rocket_launch'}</span>
+                      <span>Wygeneruj {visualizationType === 'image' ? 'obraz' : 'wideo'}</span>
                     </div>
-                  </>
+                    <span style={{ fontSize: '0.85rem', fontWeight: '400', opacity: 0.9, lineHeight: '1.4', maxWidth: '350px', textAlign: 'center' }}>
+                      Najszybsza droga. AI automatycznie stworzy opis i obraz na bazie posta.
+                    </span>
+                  </div>
                 )}
               </button>
             </div>
@@ -516,7 +469,7 @@ const ResultSection = ({
             </h3>
             
             {mediaHistory.filter(m => m.type === visualizationType && !m.parentUrl).map((media, idx) => (
-              <div key={idx} id={`media-item-${idx}`} style={{ textAlign: 'center', background: 'var(--bg-app)', padding: '1.5rem', borderRadius: '8px', border: '1px solid var(--border-color)', position: 'relative' }}>
+              <div key={idx} id={`media-item-${idx}`} style={{ textAlign: 'center', background: 'var(--bg-app)', padding: '1.5rem', borderRadius: '2px', border: '1px solid var(--border-color)', position: 'relative' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.2rem', color: 'var(--text-muted)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <span className="material-icons" style={{ fontSize: '1.2rem' }}>{media.type === 'video' ? 'movie' : 'image'}</span>
@@ -536,7 +489,7 @@ const ResultSection = ({
                         color: 'white',
                         width: '32px',
                         height: '32px',
-                        borderRadius: '2px',
+                        borderRadius: '1px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -567,7 +520,7 @@ const ResultSection = ({
                         color: '#ff4444',
                         width: '32px',
                         height: '32px',
-                        borderRadius: '2px',
+                        borderRadius: '1px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -583,12 +536,12 @@ const ResultSection = ({
                 </div>
                 <div style={{ position: 'relative', width: '100%' }}>
                   {media.type === 'image' ? (
-                    <img src={media.url} alt={`Generated version ${idx + 1}`} style={{ width: '100%', borderRadius: '5px', boxShadow: 'var(--shadow-md)' }} />
+                    <img src={media.url} alt={`Generated version ${idx + 1}`} style={{ width: '100%', borderRadius: '1px', boxShadow: 'var(--shadow-md)' }} />
                   ) : (
                     <video 
                       src={media.url} 
                       controls 
-                      style={{ width: '100%', borderRadius: '5px', boxShadow: 'var(--shadow-md)', background: '#000' }} 
+                      style={{ width: '100%', borderRadius: '1px', boxShadow: 'var(--shadow-md)', background: '#000' }} 
                     />
                   )}
                 </div>
@@ -603,7 +556,7 @@ const ResultSection = ({
                     background: 'linear-gradient(rgba(255,255,255,0.03), rgba(255,255,255,0.03)) padding-box, linear-gradient(135deg, #4285f4, #9b72cb, #d96570, #f4af45) border-box',
                     backdropFilter: 'blur(12px)',
                     padding: '8px 20px',
-                    borderRadius: '2px',
+                    borderRadius: '1px',
                     border: '1px solid transparent',
                     boxShadow: '0 5px 15px rgba(0,0,0,0.2)'
                   }}>
@@ -1102,26 +1055,28 @@ const ResultSection = ({
           </div>
         )}
 
-        {/* Save Project / Next Project Action */}
-        {(result || (mediaHistory && mediaHistory.length > 0)) && (
-          <div style={{ marginTop: '4rem', display: 'flex', justifyContent: 'center', borderTop: '1px solid var(--border-color)', paddingTop: '3rem', animation: 'fadeIn 0.8s ease-out' }}>
-            <button 
-              onClick={handleReset}
-              className="premium-button"
-              style={{ 
-                padding: '1.2rem 4rem', 
-                borderRadius: '50px', 
-                fontSize: '1.1rem',
-                gap: '1rem',
-                boxShadow: '0 15px 35px rgba(0,0,0,0.2)'
-              }}
-            >
-              <span className="material-icons" style={{ fontSize: '1.4rem' }}>cloud_done</span>
-              Zakończ i Zapisz Projekt
-            </button>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Save Project / Next Project Action */}
+      {(result || (mediaHistory && mediaHistory.length > 0)) && (
+        <div style={{ display: 'flex', justifyContent: 'center', animation: 'fadeIn 0.8s ease-out' }}>
+          <button 
+            onClick={handleReset}
+            className="premium-button"
+            style={{ 
+              padding: '1.2rem 4rem', 
+              borderRadius: '12.5px', 
+              fontSize: '1.1rem',
+              gap: '1rem',
+              boxShadow: '0 15px 35px rgba(0,0,0,0.2)'
+            }}
+          >
+            <span className="material-icons" style={{ fontSize: '1.4rem' }}>cloud_done</span>
+            Zakończ i Zapisz Projekt
+          </button>
+        </div>
+      )}
     </div>
   );
 };

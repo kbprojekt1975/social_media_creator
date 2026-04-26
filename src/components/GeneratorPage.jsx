@@ -606,6 +606,63 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
     }
   };
 
+  const handleGenerateBrandDirectives = async (brandName, type, currentDirectives) => {
+    if (!brandName && !currentDirectives) {
+      showWarning('Proszę najpierw wpisać nazwę marki lub wstępne wytyczne.');
+      return;
+    }
+    
+    // Check if user has enough balance
+    if (!checkBalance('refine')) return;
+
+    try {
+      const token = await user.getIdToken();
+      const response = await axios.post(`${API_BASE_URL}/generate-brand-directives`, {
+        brandName,
+        type,
+        currentDirectives
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      showSuccess('Profesjonalne wytyczne zostały przygotowane!');
+      return response.data.result;
+    } catch (error) {
+      console.error('Brand directives generation failed:', error);
+      handleApiError(error, 'Nie udało się wygenerować wytycznych marki.');
+      return null;
+    }
+  };
+
+
+
+  const handleGenerateMarketTrends = async (brandName, contentDirectives, visualStyle) => {
+    if (!brandName && !contentDirectives && !visualStyle) {
+      showWarning('Proszę najpierw uzupełnić dane marki, aby AI mogło przeanalizować odpowiednie trendy.');
+      return null;
+    }
+    
+    if (!checkBalance('refine')) return null;
+
+    try {
+      const token = await user.getIdToken();
+      const response = await axios.post(`${API_BASE_URL}/generate-market-trends`, {
+        brandName,
+        contentDirectives,
+        visualStyle
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      showSuccess('Aktualne trendy rynkowe zostały pomyślnie zidentyfikowane!');
+      return response.data.result;
+    } catch (error) {
+      console.error('Market trends generation failed:', error);
+      handleApiError(error, 'Nie udało się wyszukać trendów rynkowych.');
+      return null;
+    }
+  };
+
   const handleAnimateImage = async (imageUrl, instruction) => {
     if (!imageUrl || !instruction.trim() || isVisualSyncing || isReadOnly) return;
     setIsVisualSyncing(true);
@@ -1520,6 +1577,8 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
             setNewWorkspace={setNewWorkspace}
             handleActivateWorkspace={toggleWorkspace}
             handleDeleteWorkspace={handleDeleteWorkspace}
+            handleGenerateBrandDirectives={handleGenerateBrandDirectives}
+            handleGenerateMarketTrends={handleGenerateMarketTrends}
           />
         )}
 

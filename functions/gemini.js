@@ -953,11 +953,104 @@ Bądź profesjonalny, konkretny i podawaj dokładne nazwy sekcji/zakładek. Odpo
   }
 }
 
+/**
+ * Generates professional brand directives (content and visual) based on brand name/description and current input.
+ */
+async function generateBrandDirectives({ brandName, type, currentDirectives }) {
+  const ai = initGemini();
+  if (!ai) throw new Error("Gemini API not initialized.");
+  
+  const model = ai.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+
+  const prompt = type === 'content' 
+    ? `
+    Jesteś ekspertem od strategii komunikacji marki i copywritingu. 
+    Twoim zadaniem jest stworzenie lub ulepszenie profesjonalnych wytycznych tekstowych dla marki.
+    
+    NAZWA MARKI: "${brandName}"
+    ISTNIEJĄCE NOTATKI/WYTYCZNE UŻYTKOWNIKA: "${currentDirectives || 'Brak'}"
+    
+    Wytyczne powinny zawierać:
+    1. Ton komunikacji (Tone of Voice).
+    2. Słowa kluczowe i frazy, których należy używać.
+    3. Czego unikać w tekstach.
+    4. Sposób zwracania się do odbiorcy.
+    
+    INSTRUKCJA: Rozwiń i profesjonalizuj notatki użytkownika, zachowując ich sens, ale nadając im formę konkretnej instrukcji dla AI.
+    WAŻNE FORMATOWANIE: Zostaw zawsze PUSTĄ LINIĘ (podwójny enter) między każdym nowym punktem na liście dla lepszej czytelności.
+    WAŻNE: Zwróć TYLKO same wytyczne. Nie dodawaj wstępów typu "Oto wytyczne...", "Doskonale!", ani żadnych komentarzy.
+    Odpowiadaj po POLSKU. Max 4-5 zdań.
+    `
+    : `
+    Jesteś dyrektorem artystycznym i ekspertem od brandingu wizualnego. 
+    Twoim zadaniem jest stworzenie lub ulepszenie profesjonalnych wytycznych wizualnych dla marki.
+    
+    NAZWA MARKI: "${brandName}"
+    ISTNIEJĄCE NOTATKI/WYTYCZNE UŻYTKOWNIKA: "${currentDirectives || 'Brak'}"
+    
+    Wytyczne powinny zawierać:
+    1. Preferowaną kolorystykę i oświetlenie.
+    2. Styl kompozycji i kadrowania.
+    3. Nastrój i emocje, jakie mają budzić grafiki.
+    4. Elementy charakterystyczne dla tej marki.
+    
+    INSTRUKCJA: Rozwiń i profesjonalizuj notatki użytkownika, zachowując ich sens, ale nadając im formę konkretnej instrukcji dla modeli generatywnych (np. Midjourney/Stable Diffusion).
+    WAŻNE: Zwróć TYLKO same wytyczne. Nie dodawaj wstępów typu "Oto wytyczne...", "Doskonale!", ani żadnych komentarzy.
+    Odpowiadaj po POLSKU. Max 4-5 zdań.
+    `;
+
+  try {
+    const result = await withRetry(() => model.generateContent(prompt));
+    const response = await result.response;
+    return response.text().trim();
+  } catch (error) {
+    console.error("Generate Brand Directives Error:", error);
+    throw new Error(`Nie udało się wygenerować wytycznych: ${error.message}`);
+  }
+}
+
+/**
+ * Generates market trends based on brand name and its directives.
+ */
+async function generateMarketTrends({ brandName, contentDirectives, visualStyle }) {
+  const ai = initGemini();
+  if (!ai) throw new Error("Gemini API not initialized.");
+  
+  // Use Gemini 2.5 Pro if available or Flash for broad knowledge
+  const model = ai.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+
+  const prompt = `
+    Jesteś analitykiem trendów i głównym strategiem social media.
+    Twoim zadaniem jest zidentyfikowanie 3-5 najważniejszych, aktualnych trendów rynkowych dla poniższej marki.
+    
+    NAZWA MARKI: "${brandName || 'Nie podano'}"
+    STYL KOMUNIKACJI: "${contentDirectives || 'Brak danych'}"
+    STYL WIZUALNY: "${visualStyle || 'Brak danych'}"
+    
+    Zidentyfikuj trendy, które pozwolą tej marce pisać lepsze posty i tworzyć lepsze grafiki (np. popularne formaty, estetyka, zagadnienia, które teraz angażują).
+    
+    INSTRUKCJA: Zwróć wynik jako zwięzłą listę.
+    WAŻNE FORMATOWANIE: Zostaw zawsze PUSTĄ LINIĘ (podwójny enter) między każdym nowym punktem na liście dla lepszej czytelności.
+    WAŻNE: Nie używaj wstępów typu "Oto trendy". Zwróć tylko konkrety gotowe do użycia przez AI jako kontekst.
+    Odpowiadaj po POLSKU.
+  `;
+
+  try {
+    const result = await withRetry(() => model.generateContent(prompt));
+    const response = await result.response;
+    return response.text().trim();
+  } catch (error) {
+    console.error("Generate Market Trends Error:", error);
+    throw new Error(`Nie udało się wyszukać trendów: ${error.message}`);
+  }
+}
+
 module.exports = { 
   generatePost, generatePostPlan, syncEnglishPrompt, generateVisualPrompt, 
   syncVisualPrompt, translateToTechnicalPrompt, generateNanoBananaImage, 
   generateVeoVideo, refinePost, refineVisualPrompt, generateCampaignPlan, 
-  refineCampaignGoal, refineProductDescription, refineUSP, chatWithAssistant 
+  refineCampaignGoal, refineProductDescription, refineUSP, chatWithAssistant,
+  generateBrandDirectives, generateMarketTrends
 };
 
 

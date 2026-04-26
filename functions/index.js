@@ -7,7 +7,7 @@ const admin = require("firebase-admin");
 const express = require("express");
 const cors = require("cors");
 const stripe = require("stripe");
-const { generatePost, generatePostPlan, syncEnglishPrompt, generateVisualPrompt, syncVisualPrompt, translateToTechnicalPrompt, generateNanoBananaImage, generateVeoVideo, refinePost, refineVisualPrompt, generateCampaignPlan, refineCampaignGoal, refineProductDescription, refineUSP, chatWithAssistant } = require("./gemini");
+const { generatePost, generatePostPlan, syncEnglishPrompt, generateVisualPrompt, syncVisualPrompt, translateToTechnicalPrompt, generateNanoBananaImage, generateVeoVideo, refinePost, refineVisualPrompt, generateCampaignPlan, refineCampaignGoal, refineProductDescription, refineUSP, chatWithAssistant, generateBrandDirectives, generateMarketTrends } = require("./gemini");
 
 
 // Initialize Firebase Admin
@@ -806,6 +806,80 @@ app.post("/chat-assistant", async (req, res) => {
 
   } catch (error) {
     console.error("Chat Assistant Route Error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint: Generate Brand Directives
+app.post("/generate-brand-directives", async (req, res) => {
+  const idToken = req.headers.authorization?.split("Bearer ")[1];
+  if (!idToken) return res.status(401).send("Unauthorized");
+
+  try {
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const { brandName, type, currentDirectives } = req.body;
+    
+    if (!brandName || !type) {
+      return res.status(400).json({ error: "brandName and type are required." });
+    }
+
+    const pricing = await getPricingConfig();
+    const cost = pricing.REFINE_COST || 5000; // Use refine cost or similar
+
+    const userRef = db.collection("users").doc(decodedToken.uid);
+    const userDoc = await userRef.get();
+    const balance = userDoc.data()?.balance || 0;
+
+    if (balance < cost) {
+      return res.status(402).json({ error: "Brak tokenów na koncie." });
+    }
+
+    const result = await generateBrandDirectives({ brandName, type, currentDirectives });
+
+    // Deduct tokens
+    await userRef.update({ 
+      balance: admin.firestore.FieldValue.increment(-cost) 
+    });
+
+    res.json({ result, cost });
+
+  } catch (error) {
+    console.error("Brand Directives Error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint: Generate Market Trends
+app.post("/generate-market-trends", async (req, res) => {
+  const idToken = req.headers.authorization?.split("Bearer ")[1];
+  if (!idToken) return res.status(401).send("Unauthorized");
+
+  try {
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const { brandName, contentDirectives, visualStyle } = req.body;
+
+    const pricing = await getPricingConfig();
+    const cost = pricing.REFINE_COST || 5000;
+
+    const userRef = db.collection("users").doc(decodedToken.uid);
+    const userDoc = await userRef.get();
+    const balance = userDoc.data()?.balance || 0;
+
+    if (balance < cost) {
+      return res.status(402).json({ error: "Brak tokenów na koncie." });
+    }
+
+    const result = await generateMarketTrends({ brandName, contentDirectives, visualStyle });
+
+    // Deduct tokens
+    await userRef.update({ 
+      balance: admin.firestore.FieldValue.increment(-cost) 
+    });
+
+    res.json({ result, cost });
+
+  } catch (error) {
+    console.error("Market Trends Error:", error);
     res.status(500).json({ error: error.message });
   }
 });

@@ -30,6 +30,34 @@ const PostGenerator = ({
   const [showStyleModal, setShowStyleModal] = React.useState(false);
   const [newStyleName, setNewStyleName] = React.useState('');
   const [newStyleDesc, setNewStyleDesc] = React.useState('');
+  const [topicError, setTopicError] = React.useState(false);
+
+  const onLocalGenerate = (e) => {
+    e.preventDefault();
+    if (!topic || !topic.trim() || topic === 'Wypełnij to pole') {
+      setTopicError(true);
+      setTopic('Wypełnij to pole');
+      return;
+    }
+    setTopicError(false);
+    handleGenerate(e);
+  };
+
+  const onLocalGeneratePlan = (e) => {
+    e.preventDefault();
+    if (!topic || !topic.trim() || topic === 'Wypełnij to pole') {
+      setTopicError(true);
+      setTopic('Wypełnij to pole');
+      return;
+    }
+    setTopicError(false);
+    handleGeneratePlan();
+  };
+
+  const onLocalReset = () => {
+    setTopicError(false);
+    handleReset();
+  };
 
   const onSyncClick = async () => {
     try {
@@ -74,7 +102,7 @@ const PostGenerator = ({
             </button>
           </div>
           <button 
-            onClick={handleReset} 
+            onClick={onLocalReset} 
             className="btn-secondary reset-btn" 
             style={{ padding: '0.5rem 1rem', borderRadius: '15px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
             title="Wyczyść formularz i zacznij od nowa"
@@ -84,12 +112,21 @@ const PostGenerator = ({
           </button>
         </div>
 
-        <form onSubmit={handleGenerate}>
+        <form onSubmit={onLocalGenerate}>
           <div className="input-group" style={{ marginBottom: '1.5rem' }}>
             <label style={{ display: 'block', marginBottom: '0.8rem', color: 'var(--text-muted)' }}>Temat / O czym ma być post?</label>
             <textarea 
               value={topic}
-              onChange={(e) => setTopic(e.target.value)}
+              onChange={(e) => {
+                setTopic(e.target.value);
+                if (topicError) setTopicError(false);
+              }}
+              onFocus={() => {
+                if (topic === 'Wypełnij to pole') {
+                  setTopic('');
+                  setTopicError(false);
+                }
+              }}
               placeholder={isReadOnly ? "Tryb tylko do odczytu - brak środków" : "Np. Zalety pracy zdalnej w 2024 roku..."}
               readOnly={isReadOnly}
               maxLength={2000}
@@ -98,12 +135,13 @@ const PostGenerator = ({
                 minHeight: '120px',
                 padding: '1rem',
                 background: 'var(--bg-app)',
-                border: isReadOnly ? '1px solid #ef4444' : '1px solid var(--border-color)',
+                border: topicError ? '1px solid #ef4444' : (isReadOnly ? '1px solid #ef4444' : '1px solid var(--border-color)'),
                 borderRadius: '15px',
-                color: 'var(--text-main)',
+                color: topicError ? '#ef4444' : 'var(--text-main)',
                 resize: 'vertical',
                 cursor: isReadOnly ? 'not-allowed' : 'text',
-                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)'
+                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)',
+                transition: 'all 0.3s ease'
               }}
             />
             <div style={{ 
@@ -226,8 +264,8 @@ const PostGenerator = ({
 
             <button 
               type="button" 
-              onClick={handleGeneratePlan}
-              disabled={isPlanning || !topic || isReadOnly}
+              onClick={onLocalGeneratePlan}
+              disabled={isPlanning || isReadOnly}
               className="btn-secondary"
               style={{ flex: 1, padding: '1.2rem', fontSize: '0.95rem', borderRadius: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >

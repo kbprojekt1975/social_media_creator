@@ -32,6 +32,7 @@ const CampaignPlanner = ({
   const [showCustomForm, setShowCustomForm] = useState(false);
   const [hideHistory, setHideHistory] = useState(false);
   const [collapsedCampaigns, setCollapsedCampaigns] = useState({});
+  const [showCampaignHelp, setShowCampaignHelp] = useState(false);
 
   const toggleCampaign = (id) => {
     setCollapsedCampaigns(prev => ({
@@ -176,7 +177,19 @@ const CampaignPlanner = ({
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', width: '100%' }}>
       <div className="glass" style={{ padding: '2.5rem', borderRadius: '8px', background: 'var(--bg-white)', border: 'none' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-          <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: '700' }}>Planer Kampanii</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+            <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: '700' }}>Planer Kampanii</h2>
+            <button
+              type="button"
+              onClick={() => setShowCampaignHelp(!showCampaignHelp)}
+              style={{ background: 'none', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', opacity: 0.8, transition: 'opacity 0.2s' }}
+              onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = 0.8}
+              title="Jak działa Planer Kampanii?"
+            >
+              <span className="material-icons" style={{ fontSize: '1.6rem' }}>info</span>
+            </button>
+          </div>
           {(name || productDescription || initialSession) && (
             <button 
               onClick={() => {
@@ -204,6 +217,21 @@ const CampaignPlanner = ({
           )}
         </div>
         
+        {showCampaignHelp && (
+          <div style={{ padding: '1.5rem', background: 'rgba(66, 133, 244, 0.05)', borderRadius: '8px', border: '1px solid rgba(66, 133, 244, 0.2)', marginBottom: '2rem', fontSize: '1.125rem', color: 'var(--text-main)', lineHeight: '1.6', animation: 'fadeIn 0.3s ease-out' }}>
+            <h4 style={{ color: 'var(--color-primary)', marginTop: 0, marginBottom: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.3rem' }}>
+              <span className="material-icons" style={{ fontSize: '1.5rem' }}>lightbulb</span>
+              Dlaczego warto planować kampanię?
+            </h4>
+            <p style={{ marginBottom: '0.8rem' }}><strong>Zamiast wymyślać posty z dnia na dzień</strong>, Planer pozwala Ci ułożyć sprytną strategię. To tak, jakbyś prowadził klienta za rękę – od zaciekawienia, aż po zakup.</p>
+            <ul style={{ paddingLeft: '1.5rem', margin: '0.5rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <li><strong>🎯 Jasny Cel:</strong> Określasz, co chcesz osiągnąć (np. sprzedaż, edukacja). AI zaplanuje posty tak, aby krok po kroku budować u klienta potrzebę i dążyć prosto do Twojego celu.</li>
+              <li><strong>📅 Gotowy Harmonogram:</strong> Ty podajesz tylko swoją ofertę i czas trwania. Sztuczna inteligencja przygotuje listę konkretnych, powiązanych ze sobą tematów na każdy dzień.</li>
+              <li><strong>💰 Lepsza Konwersja (Sprzedaż):</strong> Wyobraź sobie film – ma wstęp, rozwinięcie i finał. Podobnie w marketingu, seria spójnych postów działa o wiele lepiej i bardziej przekonuje do zakupu niż pojedyncze wrzutki!</li>
+            </ul>
+          </div>
+        )}
+
         <form onSubmit={onSubmit}>
           {/* Section A: Fundamenty */}
           <div style={{ marginBottom: '2.5rem' }}>

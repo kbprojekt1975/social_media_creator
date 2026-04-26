@@ -27,9 +27,8 @@ export const StatusPill = ({ perc, activeWorkspace, setActiveTab, setForcePaymen
             style={{ transition: 'stroke-dashoffset 0.5s ease' }}
           />
         </svg>
-        <div style={{ 
+        <div className="status-percentage" style={{ 
           position: 'absolute', 
-          fontSize: '0.65rem', 
           fontWeight: '800', 
           color: perc > 50 ? '#4ade80' : perc > 25 ? '#fb923c' : '#ef4444' 
         }}>
