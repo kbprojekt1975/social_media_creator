@@ -1385,7 +1385,7 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
 
       {/* Dashboard Grid (now Centered Layout) */}
       <div className="dashboard-grid" style={{
-        maxWidth: '1000px',
+        maxWidth: '50%',
         margin: '0 auto',
         display: 'flex',
         flexDirection: 'column',

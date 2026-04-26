@@ -361,8 +361,8 @@ const VisualEditor = ({
   };
 
   return (
-    <div className="visual-editor-container" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-      <div className="glass" style={{ padding: '2.5rem', borderRadius: '30px', background: 'var(--bg-white)', border: 'none' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      <div className="premium-border" style={{ padding: '2.5rem', borderRadius: '8px', animation: 'fadeIn 0.5s ease-out 0.2s both' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
           <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: '700' }}>Edytor Wizualny</h2>
           <div style={{ display: 'flex', gap: '0.8rem' }}>
@@ -384,7 +384,7 @@ const VisualEditor = ({
                   showInfo("Rozpoczęto nową sesję.");
                 }}
                 className="btn-secondary"
-                style={{ padding: '0.5rem 1rem', borderRadius: '12px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                style={{ padding: '0.5rem 1rem', borderRadius: '3px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
               >
                 <span className="material-icons" style={{ fontSize: '1.1rem' }}>add_circle_outline</span>
                 Nowa sesja
@@ -394,13 +394,13 @@ const VisualEditor = ({
         </div>
         
         {/* Editor Mode Tabs */}
-        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem', background: 'var(--bg-app)', padding: '0.4rem', borderRadius: '18px', border: '1px solid var(--border-color)', maxWidth: '500px' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem', background: 'var(--bg-app)', padding: '0.4rem', borderRadius: '5px', border: '1px solid var(--border-color)', maxWidth: '100%' }}>
           <button
             onClick={() => setEditorMode('image')}
             style={{
               flex: 1,
               padding: '0.8rem',
-              borderRadius: '14px',
+              borderRadius: '4px',
               border: 'none',
               background: editorMode === 'image' ? 'var(--bg-white)' : 'transparent',
               color: editorMode === 'image' ? 'var(--color-primary)' : 'var(--text-muted)',
@@ -422,7 +422,7 @@ const VisualEditor = ({
             style={{
               flex: 1,
               padding: '0.8rem',
-              borderRadius: '14px',
+              borderRadius: '4px',
               border: 'none',
               background: editorMode === 'video' ? 'var(--bg-white)' : 'transparent',
               color: editorMode === 'video' ? 'var(--color-primary)' : 'var(--text-muted)',
@@ -444,7 +444,7 @@ const VisualEditor = ({
             style={{
               flex: 1,
               padding: '0.8rem',
-              borderRadius: '14px',
+              borderRadius: '4px',
               border: 'none',
               background: editorMode === 'gif' ? 'var(--bg-white)' : 'transparent',
               color: editorMode === 'gif' ? 'var(--color-primary)' : 'var(--text-muted)',
@@ -463,7 +463,7 @@ const VisualEditor = ({
           </button>
         </div>
 
-        <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', width: '100%' }}>
           {/* Left Side: Upload & Initial Instruction */}
           <div style={{ flex: 1, minWidth: 'min(300px, 100%)' }}>
             <div style={{ display: 'grid', gridTemplateColumns: (editorMode === 'video' || editorMode === 'gif' ? '1fr 1fr' : '1fr'), gap: '1rem', marginBottom: '1rem' }}>
@@ -473,7 +473,7 @@ const VisualEditor = ({
                   width: '100%',
                   height: (editorMode === 'video' || editorMode === 'gif' ? '180px' : '250px'),
                   border: '2px dashed var(--border-color)',
-                  borderRadius: '20px',
+                  borderRadius: '5px',
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
@@ -519,7 +519,7 @@ const VisualEditor = ({
                     width: '100%',
                     height: '180px',
                     border: '2px dashed var(--border-color)',
-                    borderRadius: '20px',
+                    borderRadius: '5px',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
@@ -575,7 +575,7 @@ const VisualEditor = ({
                     paddingRight: '3.5rem',
                     background: 'var(--bg-app)',
                     border: '1px solid var(--border-color)',
-                    borderRadius: '15px',
+                    borderRadius: '4px',
                     color: 'var(--text-main)',
                     resize: 'none'
                   }}
@@ -590,7 +590,7 @@ const VisualEditor = ({
                     right: '10px',
                     background: 'rgba(var(--color-primary-rgb), 0.1)',
                     border: '1px solid rgba(var(--color-primary-rgb), 0.2)',
-                    borderRadius: '10px',
+                    borderRadius: '3px',
                     width: '32px',
                     height: '32px',
                     display: 'flex',
@@ -610,7 +610,7 @@ const VisualEditor = ({
 
             {/* GIF SETTINGS PANEL */}
             {editorMode === 'gif' && (
-              <div className="glass" style={{ marginTop: '2rem', padding: '1.5rem', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <div className="glass" style={{ marginTop: '2rem', padding: '1.5rem', borderRadius: '5px', border: '1px solid rgba(255,255,255,0.1)' }}>
                 <h4 style={{ margin: '0 0 1.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <span className="material-icons" style={{ color: 'var(--color-primary)' }}>settings</span>
                   Ustawienia GIF
@@ -628,7 +628,7 @@ const VisualEditor = ({
                           style={{
                             flex: 1,
                             padding: '0.6rem',
-                            borderRadius: '10px',
+                            borderRadius: '3px',
                             border: '1px solid ' + (aspectRatio === ratio ? 'var(--color-primary)' : 'rgba(255,255,255,0.1)'),
                             background: aspectRatio === ratio ? 'rgba(var(--color-primary-rgb), 0.1)' : 'transparent',
                             color: aspectRatio === ratio ? 'var(--color-primary)' : 'inherit',
@@ -692,7 +692,7 @@ const VisualEditor = ({
                     <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.8rem', opacity: 0.8 }}>Efekt Beauty</label>
                     <select 
                       value={gifBeautyEffect} onChange={(e) => setGifBeautyEffect(e.target.value)}
-                      style={{ width: '100%', padding: '0.8rem', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff' }}
+                      style={{ width: '100%', padding: '0.8rem', borderRadius: '3px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff' }}
                     >
                       <option value="none">Brak efektu</option>
                       <option value="sparkle">Sparkle (Błysk ✨)</option>
@@ -716,12 +716,12 @@ const VisualEditor = ({
               </div>
             )}
 
-            <div style={{ marginTop: '1.5rem' }}>
+            <div style={{ marginTop: '1.5rem', display: 'flex' }}>
               <button 
                 onClick={() => handleInitialGenerate(editorMode)}
                 disabled={loadingType !== null || !file || (editorMode !== 'gif' && !instruction.trim()) || isReadOnly}
                 className="btn-primary"
-                style={{ flex: 1, padding: '1rem', borderRadius: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                style={{ flex: 1, padding: '1rem', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
               >
                 {loadingType !== null ? 'Generowanie...' : <><span className="material-icons">{editorMode === 'image' ? 'image' : (editorMode === 'video' ? 'movie' : 'gif')}</span> Generuj {editorMode === 'image' ? 'Obraz' : (editorMode === 'video' ? 'Wideo' : 'GIF')}</>}
                 {loadingType !== null && <span className="spinner"></span>}
@@ -735,7 +735,7 @@ const VisualEditor = ({
               width: '100%', 
               minHeight: '400px', 
               background: 'var(--bg-app)', 
-              borderRadius: '20px', 
+              borderRadius: '5px', 
               display: 'flex', 
               alignItems: 'center', 
               justifyContent: 'center',
@@ -770,10 +770,10 @@ const VisualEditor = ({
                       loop 
                       muted 
                       playsInline
-                      style={{ maxWidth: '100%', maxHeight: '400px', borderRadius: '10px' }} 
+                      style={{ maxWidth: '100%', maxHeight: '400px', borderRadius: '3px' }} 
                     />
                   ) : (
-                    <img src={generatedMedia.url} alt="Wygenerowany" style={{ maxWidth: '100%', maxHeight: '400px', borderRadius: '10px' }} />
+                    <img src={generatedMedia.url} alt="Wygenerowany" style={{ maxWidth: '100%', maxHeight: '400px', borderRadius: '3px' }} />
                   )}
                   <button 
                     onClick={(e) => { e.stopPropagation(); handleDownload(generatedMedia.url, generatedMedia.type); }}
@@ -810,7 +810,7 @@ const VisualEditor = ({
             </div>
 
             {generatedMedia && (
-              <div className="glass" style={{ padding: '1.5rem', background: 'rgba(var(--color-primary-rgb), 0.05)', borderRadius: '20px', border: '1px solid rgba(var(--color-primary-rgb), 0.1)' }}>
+              <div className="glass" style={{ padding: '1.5rem', background: 'rgba(var(--color-primary-rgb), 0.05)', borderRadius: '5px', border: '1px solid rgba(var(--color-primary-rgb), 0.1)' }}>
                 <h4 style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <span className="material-icons" style={{ fontSize: '1.2rem', color: 'var(--color-primary)' }}>edit</span>
                   Chcesz coś zmienić? Opisz kolejną poprawkę:
@@ -828,7 +828,7 @@ const VisualEditor = ({
                         padding: '0.8rem 3.5rem 0.8rem 1.2rem',
                         background: 'var(--bg-app)',
                         border: '1px solid var(--border-color)',
-                        borderRadius: '12px',
+                        borderRadius: '3px',
                         color: 'var(--text-main)',
                         outline: 'none'
                       }}
@@ -860,7 +860,7 @@ const VisualEditor = ({
                     onClick={handleRefine}
                     disabled={loadingType !== null || !modificationText.trim()}
                     className="btn-primary"
-                    style={{ padding: '0.8rem 1.5rem', borderRadius: '12px' }}
+                    style={{ padding: '0.8rem 1.5rem', borderRadius: '3px' }}
                   >
                     {loadingType === 'refine' ? <span className="spinner"></span> : 'Zmień'}
                   </button>
@@ -885,7 +885,7 @@ const VisualEditor = ({
                 style={{ 
                   minWidth: '150px', 
                   height: '150px', 
-                  borderRadius: '15px', 
+                  borderRadius: '4px', 
                   overflow: 'hidden', 
                   cursor: 'pointer',
                   border: generatedMedia?.url === item.url ? '3px solid var(--color-primary)' : '1px solid var(--border-color)',
@@ -937,7 +937,7 @@ const VisualEditor = ({
             className="premium-button"
             style={{ 
               padding: '1rem 3rem', 
-              borderRadius: '50px', 
+              borderRadius: '12px', 
               fontSize: '1rem',
               gap: '0.8rem',
               boxShadow: '0 10px 25px rgba(0,0,0,0.2)'

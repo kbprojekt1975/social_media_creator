@@ -59,28 +59,29 @@ const PostGenerator = ({
       
       <div className="premium-border" style={{ padding: '2.5rem', animation: 'fadeIn 0.5s ease-out 0.2s both' }}>
         <div className="generator-header-container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-          <h2 className="generator-title" style={{ margin: 0, fontSize: '1.8rem', fontWeight: '700' }}>
-            {formatTopicTitle(topic)}
-          </h2>
-          <div className="generator-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+          <div className="generator-title-group" style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+            <h2 className="generator-title" style={{ margin: 0, fontSize: '1.8rem', fontWeight: '700' }}>
+              {formatTopicTitle(topic)}
+            </h2>
             <button 
               type="button"
+              className="info-btn"
               onClick={onShowHelp}
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', opacity: 0.7 }}
               title="Pokaż przewodnik"
             >
               <span className="material-icons" style={{ fontSize: '1.4rem' }}>info</span>
             </button>
-            <button 
-              onClick={handleReset} 
-              className="btn-secondary" 
-              style={{ padding: '0.5rem 1rem', borderRadius: '15px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-              title="Wyczyść formularz i zacznij od nowa"
-            >
-              <span className="material-icons" style={{ fontSize: '1rem' }}>refresh</span>
-              Resetuj
-            </button>
           </div>
+          <button 
+            onClick={handleReset} 
+            className="btn-secondary reset-btn" 
+            style={{ padding: '0.5rem 1rem', borderRadius: '15px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+            title="Wyczyść formularz i zacznij od nowa"
+          >
+            <span className="material-icons" style={{ fontSize: '1rem' }}>refresh</span>
+            Resetuj
+          </button>
         </div>
 
         <form onSubmit={handleGenerate}>
@@ -118,7 +119,7 @@ const PostGenerator = ({
 
           <div style={{ marginBottom: '2rem' }}>
             <label style={{ display: 'block', marginBottom: '0.8rem', color: 'var(--text-main)', fontSize: '0.95rem', fontWeight: '500' }}>Styl postu</label>
-            <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <div className="style-chips-container" style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap', alignItems: 'center' }}>
               {['Profesjonalny', 'Humorystyczny', 'Entuzjastyczny', 'Nietuzinkowy'].map(s => (
                 <button
                   key={s}
@@ -171,6 +172,36 @@ const PostGenerator = ({
                 Własny styl
               </button>
             </div>
+
+            {/* Mobile View: Select Dropdown */}
+            <div className="style-select-container">
+              <select 
+                value={style}
+                onChange={(e) => {
+                  if (e.target.value === '__custom__') {
+                    setShowStyleModal(true);
+                  } else {
+                    setStyle(e.target.value);
+                  }
+                }}
+                style={{ width: '100%', padding: '1rem', background: 'var(--bg-app)', color: 'var(--text-main)', border: '1px solid var(--border-color)', borderRadius: '15px', fontSize: '1rem' }}
+              >
+                {['Profesjonalny', 'Humorystyczny', 'Entuzjastyczny', 'Nietuzinkowy'].map(s => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+                {customStyles.map(s => (
+                  <option key={s.id} value={s.name}>{s.name}</option>
+                ))}
+                <option value="__custom__">+ Własny styl...</option>
+              </select>
+
+              {/* Delete button for custom style (mobile) */}
+              {customStyles.some(s => s.name === style) && (
+                <button type="button" className="style-delete-btn" onClick={() => handleDeleteCustomStyle(customStyles.find(s => s.name === style).id)} style={{ marginLeft: '0.5rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-primary)' }}>
+                  <span className="material-icons" style={{ fontSize: '1.2rem' }}>delete</span>
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="input-group" style={{ marginBottom: '2.5rem' }}>
@@ -191,7 +222,8 @@ const PostGenerator = ({
           </div>
 
 
-          <div style={{ display: 'flex', gap: '1rem' }}>
+            <div className="post-action-buttons" style={{ display: 'flex', gap: '1rem' }}>
+
             <button 
               type="button" 
               onClick={handleGeneratePlan}

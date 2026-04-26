@@ -2,15 +2,15 @@ import React from 'react';
 
 const GeneratorTabs = ({ activeTab, setActiveTab, activeWorkspace, showAdvanced, setShowAdvanced }) => {
   return (
-    <div className="generator-tabs" style={{ maxWidth: '1000px', margin: '0 auto', width: '100%' }}>
-      <div style={{ 
+    <div className="generator-tabs" style={{ maxWidth: '50%', margin: '0 auto', width: '100%' }}>
+      <div className="tabs-inner-container" style={{ 
         display: 'flex', 
         gap: '0', 
-        marginBottom: '2.5rem', 
+        marginBottom: '5px', 
         maxWidth: 'fit-content', 
         background: 'linear-gradient(var(--bg-app), var(--bg-app)) padding-box, linear-gradient(135deg, #4285f4, #9b72cb, #d96570, #f4af45) border-box',
         border: '1px solid transparent',
-        borderRadius: '100px',
+        borderRadius: '10px',
         padding: '4px',
         position: 'relative', 
         zIndex: 10, 
@@ -22,7 +22,7 @@ const GeneratorTabs = ({ activeTab, setActiveTab, activeWorkspace, showAdvanced,
         onClick={() => setActiveTab('generator')}
         style={{ 
           padding: '0.8rem 1.8rem', 
-          borderRadius: '100px', 
+          borderRadius: '10px', 
           display: 'flex', 
           alignItems: 'center', 
           gap: '0.6rem', 
@@ -54,7 +54,7 @@ const GeneratorTabs = ({ activeTab, setActiveTab, activeWorkspace, showAdvanced,
           onClick={() => setActiveTab('workspaces')}
           style={{ 
             padding: '0.8rem 1.4rem', 
-            borderRadius: '100px', 
+            borderRadius: '10px', 
             display: 'flex', 
             alignItems: 'center', 
             gap: '0.5rem',
@@ -74,7 +74,7 @@ const GeneratorTabs = ({ activeTab, setActiveTab, activeWorkspace, showAdvanced,
           onClick={() => setActiveTab('campaigns')}
           style={{ 
             padding: '0.8rem 1.4rem', 
-            borderRadius: '100px', 
+            borderRadius: '10px', 
             display: 'flex', 
             alignItems: 'center', 
             gap: '0.5rem',
@@ -93,7 +93,7 @@ const GeneratorTabs = ({ activeTab, setActiveTab, activeWorkspace, showAdvanced,
           onClick={() => setActiveTab('visual_editor')}
           style={{ 
             padding: '0.8rem 1.4rem', 
-            borderRadius: '100px', 
+            borderRadius: '10px', 
             display: 'flex', 
             alignItems: 'center', 
             gap: '0.5rem',

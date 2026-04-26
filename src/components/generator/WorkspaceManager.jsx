@@ -12,7 +12,7 @@ const WorkspaceManager = ({
   handleDeleteWorkspace 
 }) => {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', padding: '0 5px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h2 style={{ fontSize: '2rem', fontWeight: '700', marginBottom: '0.5rem' }}>Przestrzenie robocze</h2>
@@ -21,7 +21,7 @@ const WorkspaceManager = ({
         <button 
           onClick={() => setShowWorkspaceForm(!showWorkspaceForm)}
           className="btn-primary"
-          style={{ padding: '0.8rem 1.5rem', borderRadius: '15px', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+          style={{ padding: '0.8rem 1.5rem', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
         >
           <span className="material-icons">{showWorkspaceForm ? 'close' : 'add'}</span>
           {showWorkspaceForm ? 'Anuluj' : 'Nowa marka'}
@@ -29,7 +29,7 @@ const WorkspaceManager = ({
       </div>
 
       {showWorkspaceForm && (
-        <div className="glass" style={{ padding: '2.5rem', borderRadius: '25px', background: 'var(--bg-white)', border: 'none' }}>
+        <div className="glass" style={{ padding: '2.5rem', borderRadius: '6px', background: 'var(--bg-white)', border: 'none' }}>
           <h3 style={{ marginBottom: '1.5rem', fontWeight: '700' }}>Dodaj nową markę</h3>
           <form onSubmit={handleAddWorkspace}>
             <div className="input-group" style={{ marginBottom: '1.2rem' }}>
@@ -40,7 +40,7 @@ const WorkspaceManager = ({
                 value={newWorkspace.name}
                 onChange={(e) => setNewWorkspace({ ...newWorkspace, name: e.target.value })}
                 required
-                style={{ width: '100%', padding: '1rem', background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '12px', color: 'var(--text-main)' }}
+                style={{ width: '100%', minHeight: '100px', padding: '1rem', background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '3px', color: 'var(--text-main)', resize: 'vertical' }}
               />
             </div>
             <div className="input-group" style={{ marginBottom: '1.2rem' }}>
@@ -61,7 +61,7 @@ const WorkspaceManager = ({
                 style={{ width: '100%', minHeight: '100px', padding: '1rem', background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '12px', color: 'var(--text-main)', resize: 'vertical' }}
               />
             </div>
-            <button type="submit" className="btn-primary" style={{ width: '100%', padding: '1.2rem', borderRadius: '15px' }}>Zapisz przestrzeń</button>
+            <button type="submit" className="btn-primary" style={{ width: '100%', padding: '1.2rem', borderRadius: '4px' }}>Zapisz przestrzeń</button>
           </form>
         </div>
       )}
@@ -69,8 +69,8 @@ const WorkspaceManager = ({
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
         {workspaces.map(ws => (
           <div key={ws.id} className={`glass ${activeWorkspace?.id === ws.id ? 'format-card-active' : ''}`} style={{ 
-            padding: '1.8rem', 
-            borderRadius: '25px', 
+            padding: '5px', 
+            borderRadius: '6px', 
             background: activeWorkspace?.id === ws.id
               ? `linear-gradient(var(--bg-card), var(--bg-card)) padding-box, linear-gradient(135deg, #4285f4, #9b72cb, #d96570, #f4af45) border-box`
               : 'var(--bg-card)', 
@@ -78,7 +78,7 @@ const WorkspaceManager = ({
             position: 'relative',
             display: 'flex',
             flexDirection: 'column',
-            gap: '1.2rem',
+            gap: '5px',
             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             boxShadow: activeWorkspace?.id === ws.id ? '0 15px 35px rgba(0,0,0,0.15)' : 'none'
           }}>
@@ -94,7 +94,7 @@ const WorkspaceManager = ({
                   style={{ 
                     padding: '0.4rem 0.8rem', 
                     fontSize: '0.75rem', 
-                    borderRadius: '10px',
+                    borderRadius: '3px',
                     minWidth: '80px'
                   }}
                 >

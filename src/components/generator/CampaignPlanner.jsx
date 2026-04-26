@@ -419,7 +419,7 @@ const CampaignPlanner = ({
               <span className="material-icons">trending_up</span> Sekcja C: Strategia
             </h4>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+            <div className="campaign-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
               <div className="input-group">
                 <label style={{ display: 'block', marginBottom: '0.8rem', color: 'var(--text-muted)' }}>Czas trwania (dni)</label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -449,7 +449,7 @@ const CampaignPlanner = ({
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+            <div className="campaign-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
               <div className="input-group">
                 <label style={{ display: 'block', marginBottom: '0.8rem', color: 'var(--text-muted)' }}>Ton marki (Tone of Voice)</label>
                 <select 
@@ -527,7 +527,7 @@ const CampaignPlanner = ({
               setHideHistory(true);
             }}
             className="btn-primary"
-            style={{ padding: '0.8rem 2rem', borderRadius: '15px', display: 'flex', alignItems: 'center', gap: '0.6rem', background: 'var(--color-primary)', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600' }}
+            style={{ padding: '0.8rem 2rem', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '0.6rem', background: 'var(--color-primary)', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600' }}
           >
             <span className="material-icons">save</span>
             Zapisz kampanię
@@ -540,7 +540,7 @@ const CampaignPlanner = ({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <h3 style={{ margin: '1rem 0 0.5rem 0', fontWeight: '700' }}>Twoje Strategie</h3>
           {campaigns.map(campaign => (
-            <div key={campaign.id} className="glass" style={{ padding: '2rem', borderRadius: '25px', background: 'var(--bg-white)', border: 'none' }}>
+            <div key={campaign.id} className="glass" style={{ padding: '2rem', borderRadius: '6px', background: 'var(--bg-white)', border: 'none' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                 <div style={{ flex: 1 }}>
                   {editingId === campaign.id ? (
@@ -588,7 +588,7 @@ const CampaignPlanner = ({
                       background: 'rgba(var(--color-primary-rgb), 0.1)', 
                       border: 'none', 
                       color: 'var(--color-primary)', 
-                      borderRadius: '10px', 
+                      borderRadius: '3px', 
                       padding: '0.4rem', 
                       cursor: 'pointer',
                       display: 'flex',
@@ -606,10 +606,10 @@ const CampaignPlanner = ({
               {!collapsedCampaigns[campaign.id] && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {campaign.strategy.map((item, idx) => (
-                  <div key={idx} style={{ padding: '1.2rem', background: 'var(--bg-app)', borderRadius: '18px', border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
+                  <div key={idx} className="campaign-item-card" style={{ padding: '1.2rem', background: 'var(--bg-app)', borderRadius: '5px', border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.4rem' }}>
-                        <span style={{ fontSize: '0.75rem', fontWeight: '800', background: 'var(--color-primary)', color: 'white', padding: '0.2rem 0.6rem', borderRadius: '6px' }}>{item.day}</span>
+                        <span style={{ fontSize: '0.75rem', fontWeight: '800', background: 'var(--color-primary)', color: 'white', padding: '0.2rem 0.6rem', borderRadius: '2px' }}>{item.day}</span>
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700' }}>{item.platform.toUpperCase()}</span>
                       </div>
                       <h5 style={{ margin: '0 0 0.4rem 0', fontSize: '1rem' }}>{item.topic}</h5>
@@ -665,7 +665,7 @@ const CampaignPlanner = ({
                       <button 
                         onClick={() => handleSelectCampaignItem(item, campaign.id, idx)}
                         className="btn-secondary"
-                        style={{ padding: '0.6rem 1.2rem', borderRadius: '12px', fontSize: '0.85rem', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.4rem', borderColor: item.isCompleted ? '#10b981' : 'var(--border-color)' }}
+                        style={{ padding: '0.6rem 1.2rem', borderRadius: '3px', fontSize: '0.85rem', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.4rem', borderColor: item.isCompleted ? '#10b981' : 'var(--border-color)' }}
                       >
                         <span className="material-icons" style={{ fontSize: '1rem' }}>{item.isCompleted ? 'refresh' : 'bolt'}</span>
                         {item.isCompleted ? 'Generuj ponownie' : 'Generuj Post'}

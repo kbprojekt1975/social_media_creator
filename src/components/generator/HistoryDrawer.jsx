@@ -40,6 +40,7 @@ const HistoryDrawer = ({
   return (
     <>
       <div 
+        className="history-drawer"
         style={{ 
           position: 'fixed',
           left: 0,
@@ -49,7 +50,7 @@ const HistoryDrawer = ({
           minWidth: '400px',
           zIndex: 1000,
           padding: '2.5rem', 
-          borderRadius: '0 30px 30px 0', 
+          borderRadius: '0 8px 8px 0', 
           background: 'var(--bg-card)', 
           borderRight: '1px solid var(--border-color)',
           borderLeft: 'none',
@@ -79,7 +80,7 @@ const HistoryDrawer = ({
                   fontSize: '0.85rem', 
                   fontWeight: '700',
                   padding: '0.5rem 1rem',
-                  borderRadius: '12px',
+                  borderRadius: '3px',
                   transition: 'all 0.2s'
                 }}
               >
@@ -112,7 +113,7 @@ const HistoryDrawer = ({
               return (
                 <div key={item.id} style={{
                   background: 'var(--bg-app)',
-                  borderRadius: '25px',
+                  borderRadius: '6px',
                   border: '1px solid var(--border-color)',
                   overflow: 'hidden',
                   transition: 'all 0.3s ease',
@@ -192,7 +193,7 @@ const HistoryDrawer = ({
                           <h6 style={{ margin: '0 0 0.8rem 0', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Posty w tej kampanii:</h6>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                             {item.children.map(child => (
-                              <div key={child.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '0.6rem 0.8rem', borderRadius: '10px' }}>
+                              <div key={child.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '0.6rem 0.8rem', borderRadius: '3px' }}>
                                 <div style={{ overflow: 'hidden', flex: 1 }}>
                                   <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: '600', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{child.topic}</p>
                                   <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--text-muted)' }}>{child.platform} • {new Date(child.createdAt).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
@@ -237,7 +238,7 @@ const HistoryDrawer = ({
                             <button 
                               onClick={(e) => { e.stopPropagation(); copyToClipboard(item.content); }}
                               className="btn-secondary"
-                              style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', borderRadius: '12px' }}
+                              style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', borderRadius: '3px' }}
                             >
                               Kopiuj
                             </button>
@@ -245,7 +246,7 @@ const HistoryDrawer = ({
                           <button 
                             onClick={(e) => { e.stopPropagation(); handleEditHistoryItem(item); }}
                             className="btn-secondary"
-                            style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
+                            style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', borderRadius: '3px', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
                           >
                             <span className="material-icons" style={{ fontSize: '1rem' }}>
                               {item.historyType === 'campaign' ? 'visibility' : (item.historyType === 'editor' ? 'brush' : 'edit')}
