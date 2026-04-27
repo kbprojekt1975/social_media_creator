@@ -2,7 +2,7 @@ import React from 'react';
 
 const GeneratorTabs = ({ activeTab, setActiveTab, activeWorkspace, showAdvanced, setShowAdvanced }) => {
   return (
-    <div className="generator-tabs" style={{ maxWidth: '66%', margin: '0 auto', width: '100%' }}>
+    <div className="generator-tabs" style={{ width: 'auto' }}>
       <div className="tabs-inner-container" style={{ 
         display: 'flex', 
         gap: '0', 

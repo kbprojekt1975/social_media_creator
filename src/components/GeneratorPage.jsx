@@ -1493,13 +1493,42 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
 
       <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
 
-      <GeneratorTabs 
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        activeWorkspace={activeWorkspace}
-        showAdvanced={showAdvancedMenu}
-        setShowAdvanced={setShowAdvancedMenu}
-      />
+      <div className="tabs-wrapper" style={{
+        maxWidth: '66%',
+        margin: '0 auto 5px auto',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        width: '100%'
+      }}>
+        <button 
+          onClick={toggleHistoryDrawer}
+          style={{ 
+            width: '40px', 
+            height: '40px', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            cursor: 'pointer',
+            padding: 0,
+            background: 'none',
+            border: 'none',
+            color: 'var(--text-main)',
+            opacity: 0.8
+          }}
+          title="Pokaż historię"
+        >
+          <span className="material-icons" style={{ fontSize: '1.6rem' }}>history</span>
+        </button>
+
+        <GeneratorTabs 
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          activeWorkspace={activeWorkspace}
+          showAdvanced={showAdvancedMenu}
+          setShowAdvanced={setShowAdvancedMenu}
+        />
+      </div>
 
       <HistoryDrawer 
         isHistoryDrawerOpen={isHistoryDrawerOpen}
@@ -1577,6 +1606,7 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
               setForcePaymentView={setForcePaymentView}
               handleReset={handleReset}
               onShowHelp={() => setShowHelp(true)}
+              toggleHistoryDrawer={toggleHistoryDrawer}
             />
 
             {loading && (
@@ -1744,7 +1774,7 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
         className="glass scroll-to-top-btn"
         style={{
           position: 'fixed',
-          bottom: '1.5rem',
+          bottom: '6rem',
           right: '1.5rem',
           width: '30px',
           height: '30px',

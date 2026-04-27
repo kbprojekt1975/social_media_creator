@@ -737,15 +737,15 @@ body {
   
   .premium-border {
     width: 95% !important;
-    margin: 10px auto !important; /* Centruje panel i daje 95% szerokości */
-    padding: 10px !important; /* Nieco większy padding wewnętrzny dla czytelności */
+    margin: 0 auto 10px auto !important; /* Usunięto margines górny, by zmniejszyć odstęp od menu */
+    padding: 10px !important;
     box-sizing: border-box !important;
   }
 
   
   .generator-tabs > div {
-    margin-top: 5px !important;
-    margin-bottom: 5px !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important; /* Margines kontrolowany przez rodzica */
   }
   
   .generator-tabs button {
@@ -853,12 +853,20 @@ body {
     width: 100%;
   }
 
-  .generator-tabs {
-    max-width: 100% !important;
-    width: 100% !important;
-    margin: 5px 0 !important;
+  .tabs-wrapper {
+    max-width: 95% !important;
+    width: 95% !important;
+    margin: 5px auto !important;
     display: flex !important;
-    justify-content: center !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+  }
+
+  .generator-tabs {
+    width: auto !important;
+    margin: 0 !important;
+    display: flex !important;
+    justify-content: flex-end !important;
   }
 
   .tabs-inner-container {
@@ -952,8 +960,10 @@ body {
   }
 
   .generator-tabs {
-    margin: 5px;
+    margin: 5px 0;
     padding-top: 10px;
+    display: flex;
+    justify-content: flex-end;
   }
 }
 

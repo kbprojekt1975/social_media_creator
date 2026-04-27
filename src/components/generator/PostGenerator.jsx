@@ -21,6 +21,7 @@ const PostGenerator = ({
   isReadOnly, 
   handleReset,
   onShowHelp,
+  toggleHistoryDrawer,
   customStyles = [],
   handleAddCustomStyle,
   handleDeleteCustomStyle

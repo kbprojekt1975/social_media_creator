@@ -271,36 +271,7 @@ const HistoryDrawer = ({
         </div>
       </div>
 
-      {/* Floating Drawer Trigger */}
-      {!isHistoryDrawerOpen && (
-        <button 
-          className="desktop-floating-btn"
-          onClick={toggleHistoryDrawer}
-          style={{
-            position: 'fixed',
-            left: '1.5rem',
-            bottom: '2.5rem',
-            width: '60px',
-            height: '60px',
-            borderRadius: '50%',
-            background: 'var(--bg-card)',
-            border: '1px solid var(--border-color)',
-            boxShadow: 'var(--shadow-xl)',
-            cursor: 'pointer',
-            zIndex: 900,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'var(--color-primary)',
-            transition: 'transform 0.3s ease',
-            animation: 'fadeIn 0.5s ease-out'
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
-          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-        >
-          <span className="material-icons" style={{ fontSize: '2rem' }}>history</span>
-        </button>
-      )}
+
     </>
   );
 };

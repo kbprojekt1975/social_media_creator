@@ -71,34 +71,82 @@ const ChatAssistant = ({ API_BASE_URL, subscriptionStatus }) => {
     }
   };
 
+  const [position, setPosition] = useState({ 
+    bottom: typeof window !== 'undefined' ? (window.innerHeight / 2) - 30 : 300, 
+    right: 32 
+  });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragRef = useRef({ startX: 0, startY: 0, startBottom: 0, startRight: 0, moved: false });
+
+  const handleMouseDown = (e) => {
+    if (window.innerWidth <= 768) return;
+    dragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startBottom: position.bottom,
+      startRight: position.right,
+      moved: false
+    };
+    setIsDragging(true);
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  const handleMouseMove = (e) => {
+    const deltaX = dragRef.current.startX - e.clientX;
+    const deltaY = dragRef.current.startY - e.clientY;
+    
+    if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+      dragRef.current.moved = true;
+    }
+
+    setPosition({
+      bottom: dragRef.current.startBottom + deltaY,
+      right: dragRef.current.startRight + deltaX
+    });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+  };
+
+  const handleBtnClick = (e) => {
+    if (dragRef.current.moved) return;
+    setIsOpen(!isOpen);
+  };
+
   return (
     <>
       {/* Floating Button */}
       <button 
         className="desktop-floating-btn"
-        onClick={() => setIsOpen(!isOpen)}
+        onMouseDown={handleMouseDown}
+        onClick={handleBtnClick}
         style={{
           position: 'fixed',
-          bottom: '7rem',
-          right: '2rem',
+          bottom: `${position.bottom}px`,
+          right: `${position.right}px`,
           width: '60px',
           height: '60px',
           borderRadius: '50%',
           background: 'var(--color-primary)',
           color: 'white',
           border: 'none',
-          cursor: 'pointer',
+          cursor: isDragging ? 'grabbing' : 'pointer',
           boxShadow: '0 10px 25px rgba(var(--color-primary-rgb), 0.4)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 9999,
-          transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+          transition: isDragging ? 'none' : 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+          userSelect: 'none'
         }}
-        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1) rotate(5deg)'}
-        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1) rotate(0)'}
+        onMouseEnter={(e) => { if (!isDragging) e.currentTarget.style.transform = 'scale(1.1) rotate(5deg)'; }}
+        onMouseLeave={(e) => { if (!isDragging) e.currentTarget.style.transform = 'scale(1) rotate(0)'; }}
       >
-        <span className="material-icons" style={{ fontSize: '2rem' }}>
+        <span className="material-icons" style={{ fontSize: '2rem', pointerEvents: 'none' }}>
           {isOpen ? 'close' : 'chat_bubble'}
         </span>
       </button>
@@ -107,8 +155,8 @@ const ChatAssistant = ({ API_BASE_URL, subscriptionStatus }) => {
       {isOpen && (
         <div className="chat-window glass" style={{
           position: 'fixed',
-          bottom: '11.5rem',
-          right: '2rem',
+          bottom: `${position.bottom + 72}px`,
+          right: `${position.right}px`,
           width: '380px',
           height: '550px',
           zIndex: 9998,
