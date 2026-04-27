@@ -40,7 +40,8 @@ const CampaignPlanner = ({
   initialSession,
   onClearSession,
   handleGetPublishingSchedule,
-  handleSavePublishingSchedule
+  handleSavePublishingSchedule,
+  handleSaveDraftCampaign
 }) => {
   const [name, setName] = useState('');
   const [editingId, setEditingId] = useState(null);
@@ -56,23 +57,26 @@ const CampaignPlanner = ({
   const [isRefiningAudience, setIsRefiningAudience] = useState(false);
   const [showCustomForm, setShowCustomForm] = useState(false);
   const [hideHistory, setHideHistory] = useState(false);
-  const [collapsedCampaigns, setCollapsedCampaigns] = useState({});
   const [showCampaignHelp, setShowCampaignHelp] = useState(false);
+  const [isFormCollapsed, setIsFormCollapsed] = useState(true);
+  const [errors, setErrors] = useState({});
   
   // Publishing Schedule states
   const [publishingSchedule, setPublishingSchedule] = useState({});
   const [isGeneratingSchedule, setIsGeneratingSchedule] = useState({});
-  const [collapsedSchedules, setCollapsedSchedules] = useState({});
+  const [expandedSchedules, setExpandedSchedules] = useState({});
 
   const toggleSchedule = (id) => {
-    setCollapsedSchedules(prev => ({
+    setExpandedSchedules(prev => ({
       ...prev,
       [id]: !prev[id]
     }));
   };
 
+  const [expandedCampaigns, setExpandedCampaigns] = useState({});
+
   const toggleCampaign = (id) => {
-    setCollapsedCampaigns(prev => ({
+    setExpandedCampaigns(prev => ({
       ...prev,
       [id]: !prev[id]
     }));
@@ -188,8 +192,19 @@ const CampaignPlanner = ({
     }
   };
 
+  const validateForm = () => {
+    const newErrors = {};
+    if (!name.trim()) newErrors.name = 'Wypełnij pole';
+    if (!productDescription.trim()) newErrors.productDescription = 'Wypełnij pole';
+    if (!targetAudience.trim()) newErrors.targetAudience = 'Wypełnij pole';
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const onSubmit = (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
+    if (!validateForm()) return;
     setHideHistory(false);
     const finalGoalsString = selectedGoals.join(', ');
 
@@ -208,53 +223,85 @@ const CampaignPlanner = ({
     });
   };
 
-  const isFormInvalid = !name || !productDescription || selectedGoals.length === 0 || !targetAudience;
+  const isFormInvalid = selectedGoals.length === 0;
+  const isDraftSavable = name || productDescription;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', width: '100%' }}>
       <div className="glass" style={{ padding: '2.5rem', borderRadius: '8px', background: 'var(--bg-white)', border: 'none' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isFormCollapsed ? '0' : '2rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
             <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: '700' }}>Planer Kampanii</h2>
+            {!isFormCollapsed && (
+              <button
+                type="button"
+                onClick={() => setShowCampaignHelp(!showCampaignHelp)}
+                style={{ background: 'none', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', opacity: 0.8, transition: 'opacity 0.2s' }}
+                onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
+                onMouseLeave={(e) => e.currentTarget.style.opacity = 0.8}
+                title="Jak działa Planer Kampanii?"
+              >
+                <span className="material-icons" style={{ fontSize: '1.6rem' }}>info</span>
+              </button>
+            )}
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            {!isFormCollapsed && (name || productDescription || initialSession) && (
+              <button 
+                onClick={() => {
+                  setName('');
+                  setProductDescription('');
+                  setUsp('');
+                  setProblemSolved('');
+                  setTargetAudience('');
+                  setCustomGoals([]);
+                  setSelectedGoals(['Budowanie świadomości marki']);
+                  setDuration(7);
+                  setSelectedPlatforms(['LinkedIn']);
+                  setIntensity('Steady');
+                  setToneOfVoice('Profesjonalny');
+                  setMainCTA('');
+                  setHideHistory(false);
+                  if (onClearSession) onClearSession();
+                }}
+                className="btn-secondary"
+                style={{ padding: '0.5rem 1rem', borderRadius: '3px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+              >
+                <span className="material-icons" style={{ fontSize: '1.1rem' }}>add_circle_outline</span>
+                Nowa kampania
+              </button>
+            )}
+            
             <button
               type="button"
-              onClick={() => setShowCampaignHelp(!showCampaignHelp)}
-              style={{ background: 'none', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', opacity: 0.8, transition: 'opacity 0.2s' }}
-              onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
-              onMouseLeave={(e) => e.currentTarget.style.opacity = 0.8}
-              title="Jak działa Planer Kampanii?"
+              onClick={() => setIsFormCollapsed(!isFormCollapsed)}
+              style={{ 
+                background: 'rgba(66, 133, 244, 0.1)', 
+                border: 'none', 
+                color: 'var(--color-primary)', 
+                borderRadius: '50%', 
+                width: '36px', 
+                height: '36px', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                cursor: 'pointer',
+                transition: 'all 0.3s'
+              }}
+              title={isFormCollapsed ? "Rozwiń formularz" : "Zwiń formularz"}
             >
-              <span className="material-icons" style={{ fontSize: '1.6rem' }}>info</span>
+              <span className="material-icons" style={{ 
+                transition: 'transform 0.3s', 
+                transform: isFormCollapsed ? 'rotate(0deg)' : 'rotate(180deg)' 
+              }}>
+                expand_more
+              </span>
             </button>
           </div>
-          {(name || productDescription || initialSession) && (
-            <button 
-              onClick={() => {
-                setName('');
-                setProductDescription('');
-                setUsp('');
-                setProblemSolved('');
-                setTargetAudience('');
-                setCustomGoals([]);
-                setSelectedGoals(['Budowanie świadomości marki']);
-                setDuration(7);
-                setSelectedPlatforms(['LinkedIn']);
-                setIntensity('Steady');
-                setToneOfVoice('Profesjonalny');
-                setMainCTA('');
-                setHideHistory(false);
-                if (onClearSession) onClearSession();
-              }}
-              className="btn-secondary"
-              style={{ padding: '0.5rem 1rem', borderRadius: '3px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-            >
-              <span className="material-icons" style={{ fontSize: '1.1rem' }}>add_circle_outline</span>
-              Nowa kampania
-            </button>
-          )}
         </div>
         
-        {showCampaignHelp && (
+        {!isFormCollapsed && showCampaignHelp && (
           <div style={{ padding: '1.5rem', background: 'rgba(66, 133, 244, 0.05)', borderRadius: '8px', border: '1px solid rgba(66, 133, 244, 0.2)', marginBottom: '2rem', fontSize: '1.125rem', color: 'var(--text-main)', lineHeight: '1.6', animation: 'fadeIn 0.3s ease-out' }}>
             <h4 style={{ color: 'var(--color-primary)', marginTop: 0, marginBottom: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.3rem' }}>
               <span className="material-icons" style={{ fontSize: '1.5rem' }}>lightbulb</span>
@@ -269,7 +316,9 @@ const CampaignPlanner = ({
           </div>
         )}
 
-        <form onSubmit={onSubmit}>
+        {!isFormCollapsed && (
+          <>
+            <form onSubmit={onSubmit}>
           {/* Section A: Fundamenty */}
           <div style={{ marginBottom: '2.5rem' }}>
             <h4 style={{ color: 'var(--color-primary)', marginBottom: '1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -281,10 +330,23 @@ const CampaignPlanner = ({
               <input 
                 type="text"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  if (errors.name) setErrors(prev => ({ ...prev, name: null }));
+                }}
                 placeholder="np. Wyprzedaż letnia / Premiera nowej marki"
-                style={{ width: '100%', padding: '1rem', background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '4px', color: 'var(--text-main)' }}
+                style={{ 
+                  width: '100%', 
+                  padding: '1rem', 
+                  background: 'var(--bg-app)', 
+                  border: errors.name ? '2px solid #ff4d4d' : '1px solid var(--border-color)', 
+                  borderRadius: '4px', 
+                  color: 'var(--text-main)',
+                  boxShadow: errors.name ? '0 0 10px rgba(255, 77, 77, 0.4)' : 'none',
+                  outline: 'none'
+                }}
               />
+              {errors.name && <span style={{ color: '#ff4d4d', fontSize: '0.85rem', marginTop: '0.5rem', display: 'block', fontWeight: '600' }}>{errors.name}</span>}
             </div>
 
             <label style={{ display: 'block', marginBottom: '0.8rem', color: 'var(--text-muted)' }}>Cel kampanii (możesz wybrać kilka)</label>
@@ -392,10 +454,26 @@ const CampaignPlanner = ({
               <label style={{ display: 'block', marginBottom: '0.8rem', color: 'var(--text-muted)' }}>Opisz swój produkt/usługę</label>
               <textarea 
                 value={productDescription}
-                onChange={(e) => setProductDescription(e.target.value)}
+                onChange={(e) => {
+                  setProductDescription(e.target.value);
+                  if (errors.productDescription) setErrors(prev => ({ ...prev, productDescription: null }));
+                }}
                 placeholder="Opisz swoją usługę tak, jakbyś mówił do klienta..."
-                style={{ width: '100%', minHeight: '120px', padding: '1rem', paddingBottom: '3.5rem', background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '4px', color: 'var(--text-main)', resize: 'vertical' }}
+                style={{ 
+                  width: '100%', 
+                  minHeight: '120px', 
+                  padding: '1rem', 
+                  paddingBottom: '3.5rem', 
+                  background: 'var(--bg-app)', 
+                  border: errors.productDescription ? '2px solid #ff4d4d' : '1px solid var(--border-color)', 
+                  borderRadius: '4px', 
+                  color: 'var(--text-main)', 
+                  resize: 'vertical',
+                  boxShadow: errors.productDescription ? '0 0 10px rgba(255, 77, 77, 0.4)' : 'none',
+                  outline: 'none'
+                }}
               />
+              {errors.productDescription && <span style={{ color: '#ff4d4d', fontSize: '0.85rem', marginTop: '0.5rem', display: 'block', fontWeight: '600' }}>{errors.productDescription}</span>}
               <button
                 type="button"
                 onClick={handleRefineProduct}
@@ -452,10 +530,26 @@ const CampaignPlanner = ({
               <label style={{ display: 'block', marginBottom: '0.8rem', color: 'var(--text-muted)' }}>Do kogo mówimy? (Twoja Persona)</label>
               <textarea 
                 value={targetAudience}
-                onChange={(e) => setTargetAudience(e.target.value)}
+                onChange={(e) => {
+                  setTargetAudience(e.target.value);
+                  if (errors.targetAudience) setErrors(prev => ({ ...prev, targetAudience: null }));
+                }}
                 placeholder="np. Właściciele małych firm e-commerce, szukający sposobów na automatyzację marketingu."
-                style={{ width: '100%', minHeight: '80px', padding: '1rem', paddingBottom: '3.5rem', background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '4px', color: 'var(--text-main)', resize: 'vertical' }}
+                style={{ 
+                  width: '100%', 
+                  minHeight: '80px', 
+                  padding: '1rem', 
+                  paddingBottom: '3.5rem', 
+                  background: 'var(--bg-app)', 
+                  border: errors.targetAudience ? '2px solid #ff4d4d' : '1px solid var(--border-color)', 
+                  borderRadius: '4px', 
+                  color: 'var(--text-main)', 
+                  resize: 'vertical',
+                  boxShadow: errors.targetAudience ? '0 0 10px rgba(255, 77, 77, 0.4)' : 'none',
+                  outline: 'none'
+                }}
               />
+              {errors.targetAudience && <span style={{ color: '#ff4d4d', fontSize: '0.85rem', marginTop: '0.5rem', display: 'block', fontWeight: '600' }}>{errors.targetAudience}</span>}
               <button
                 type="button"
                 onClick={async () => {
@@ -566,7 +660,7 @@ const CampaignPlanner = ({
             {loading ? 'Planowanie strategii...' : (
               <>
                 <span className="material-icons">auto_awesome</span>
-                Generuj strategię kampanii (25k)
+                Generuj strategię kampanii
               </>
             )}
             {loading && <span className="spinner"></span>}
@@ -575,8 +669,24 @@ const CampaignPlanner = ({
         
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
           <button 
+            type="button"
             onClick={() => {
-              alert('Twoja kampania została zapisana i jest dostępna w panelu historii.');
+              const finalGoalsString = selectedGoals.join(', ');
+              handleSaveDraftCampaign({
+                name: name || 'Bez nazwy',
+                goal: finalGoalsString,
+                productDescription,
+                usp,
+                duration,
+                platforms: selectedPlatforms,
+                intensity,
+                toneOfVoice,
+                mainCTA,
+                targetAudience,
+                problemSolved
+              });
+              
+              // Clear form after save
               setName('');
               setProductDescription('');
               setUsp('');
@@ -589,15 +699,19 @@ const CampaignPlanner = ({
               setIntensity('Steady');
               setToneOfVoice('Profesjonalny');
               setMainCTA('');
-              setHideHistory(true);
+              setHideHistory(false);
+              if (onClearSession) onClearSession();
             }}
-            className="btn-primary"
-            style={{ padding: '0.8rem 2rem', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '0.6rem', background: 'var(--color-primary)', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600' }}
+            disabled={!isDraftSavable}
+            className="btn-secondary"
+            style={{ padding: '0.8rem 2rem', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '0.6rem', border: '1px solid var(--color-primary)', color: 'var(--color-primary)', cursor: isDraftSavable ? 'pointer' : 'not-allowed', fontWeight: '600', opacity: isDraftSavable ? 1 : 0.5 }}
           >
             <span className="material-icons">save</span>
-            Zapisz kampanię
+            Zapisz jako wersję roboczą
           </button>
         </div>
+          </>
+        )}
       </div>
 
       {/* Campaigns History / Results */}
@@ -631,6 +745,11 @@ const CampaignPlanner = ({
                   ) : (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
                       <h4 style={{ margin: 0, fontSize: '1.2rem' }}>{campaign.name}</h4>
+                      {campaign.status === 'draft' && (
+                        <span style={{ fontSize: '0.7rem', fontWeight: '700', background: 'var(--color-primary)', color: 'white', padding: '0.1rem 0.5rem', borderRadius: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          Wersja robocza
+                        </span>
+                      )}
                       <button 
                         onClick={() => {
                           setEditingId(campaign.id);
@@ -667,8 +786,8 @@ const CampaignPlanner = ({
                         // 2. Save to Firestore for permanence
                         await handleSavePublishingSchedule(campaign.id, result);
                         // 3. Ensure campaign and schedule are expanded
-                        setCollapsedCampaigns(prev => ({ ...prev, [campaign.id]: false }));
-                        setCollapsedSchedules(prev => ({ ...prev, [campaign.id]: false }));
+                        setExpandedCampaigns(prev => ({ ...prev, [campaign.id]: true }));
+                        setExpandedSchedules(prev => ({ ...prev, [campaign.id]: true }));
                       }
                       setIsGeneratingSchedule(prev => ({ ...prev, [campaign.id]: false }));
                     }}
@@ -695,7 +814,7 @@ const CampaignPlanner = ({
                   <button 
                     onClick={() => toggleCampaign(campaign.id)}
                     style={{ 
-                      background: 'rgba(var(--color-primary-rgb), 0.1)', 
+                      background: 'rgba(66, 133, 244, 0.1)', 
                       border: 'none', 
                       color: 'var(--color-primary)', 
                       borderRadius: '3px', 
@@ -704,10 +823,10 @@ const CampaignPlanner = ({
                       display: 'flex',
                       alignItems: 'center'
                     }}
-                    title={collapsedCampaigns[campaign.id] ? "Rozwiń strategię" : "Zwiń strategię"}
+                    title={expandedCampaigns[campaign.id] ? "Zwiń strategię" : "Rozwiń strategię"}
                   >
-                    <span className="material-icons" style={{ transition: 'transform 0.3s' }}>
-                      {collapsedCampaigns[campaign.id] ? 'expand_more' : 'expand_less'}
+                    <span className="material-icons" style={{ transition: 'transform 0.3s', transform: expandedCampaigns[campaign.id] ? 'rotate(0deg)' : 'rotate(180deg)' }}>
+                      expand_more
                     </span>
                   </button>
                 </div>
@@ -730,12 +849,12 @@ const CampaignPlanner = ({
                       <span className="material-icons" style={{ fontSize: '1.3rem' }}>insights</span>
                       Rekomendacja czasu publikacji (AI)
                     </h4>
-                    <span className="material-icons" style={{ color: 'var(--color-primary)', transition: 'transform 0.3s', transform: collapsedSchedules[campaign.id] ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                    <span className="material-icons" style={{ color: 'var(--color-primary)', transition: 'transform 0.3s', transform: expandedSchedules[campaign.id] ? 'rotate(0deg)' : 'rotate(180deg)' }}>
                       expand_more
                     </span>
                   </div>
                   
-                  {!collapsedSchedules[campaign.id] && (
+                  {expandedSchedules[campaign.id] && (
                     <div style={{ padding: '1.5rem', fontSize: '1.2rem', color: 'var(--text-main)', lineHeight: '1.7' }}>
                       {renderMarkdown(publishingSchedule[campaign.id] || campaign.publishingSchedule)}
                     </div>
@@ -743,7 +862,7 @@ const CampaignPlanner = ({
                 </div>
               )}
 
-              {!collapsedCampaigns[campaign.id] && (
+              {expandedCampaigns[campaign.id] && campaign.strategy && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {campaign.strategy.map((item, idx) => (
                   <div key={idx} className="campaign-item-card" style={{ padding: '1.2rem', background: 'var(--bg-app)', borderRadius: '1px', border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>

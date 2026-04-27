@@ -48,6 +48,8 @@ const ResultSection = ({
   handleOptimizePrompt,
   isOptimizing,
   handleGetPostSchedule,
+  postSchedule,
+  setPostSchedule,
   topic,
   platform,
   productDescription
@@ -62,8 +64,8 @@ const ResultSection = ({
   const [animationError, setAnimationError] = useState(false);
   const [isVisualPanelOpen, setIsVisualPanelOpen] = useState(false);
   
-  const [postSchedule, setPostSchedule] = useState(null);
   const [isGeneratingPostSchedule, setIsGeneratingPostSchedule] = useState(false);
+  const [isScheduleCollapsed, setIsScheduleCollapsed] = useState(false);
 
   const renderMarkdown = (text) => {
     if (!text) return null;
@@ -218,24 +220,52 @@ const ResultSection = ({
         {postSchedule && (
           <div style={{ 
             marginTop: '1rem', 
-            padding: '1.2rem', 
+            padding: isScheduleCollapsed ? '0.8rem 1.2rem' : '1.2rem', 
             background: 'rgba(66, 133, 244, 0.03)', 
             borderRadius: '8px', 
             borderLeft: '4px solid var(--color-primary)',
-            animation: 'fadeIn 0.3s ease-out'
+            animation: 'fadeIn 0.3s ease-out',
+            transition: 'all 0.3s ease'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem' }}>
-              <h4 style={{ margin: 0, color: 'var(--color-primary)', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <span className="material-icons" style={{ fontSize: '1.1rem' }}>auto_awesome</span>
-                AI: Sugerowany czas publikacji
-              </h4>
-              <button onClick={() => setPostSchedule(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div 
+                style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', flex: 1 }}
+                onClick={() => setIsScheduleCollapsed(!isScheduleCollapsed)}
+              >
+                <h4 style={{ margin: 0, color: 'var(--color-primary)', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <span className="material-icons" style={{ fontSize: '1.1rem' }}>auto_awesome</span>
+                  AI: Sugerowany czas publikacji
+                </h4>
+                <span className="material-icons" style={{ 
+                  fontSize: '1.2rem', 
+                  color: 'var(--color-primary)',
+                  transform: isScheduleCollapsed ? 'rotate(0deg)' : 'rotate(180deg)',
+                  transition: 'transform 0.3s'
+                }}>
+                  expand_more
+                </span>
+              </div>
+              <button 
+                onClick={() => setPostSchedule(null)} 
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}
+                title="Usuń rekomendację"
+              >
                 <span className="material-icons" style={{ fontSize: '1rem' }}>close</span>
               </button>
             </div>
-            <div style={{ fontSize: '0.95rem', color: 'var(--text-main)', lineHeight: '1.6' }}>
-              {renderMarkdown(postSchedule)}
-            </div>
+            
+            {!isScheduleCollapsed && (
+              <div style={{ 
+                marginTop: '1rem', 
+                fontSize: '0.95rem', 
+                color: 'var(--text-main)', 
+                lineHeight: '1.6',
+                borderTop: '1px solid rgba(66, 133, 244, 0.1)',
+                paddingTop: '1rem'
+              }}>
+                {renderMarkdown(postSchedule)}
+              </div>
+            )}
           </div>
         )}
 

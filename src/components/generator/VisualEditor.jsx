@@ -16,7 +16,8 @@ const VisualEditor = ({
   onClearSession,
   pricing,
   handleOptimizePrompt,
-  isOptimizingProp
+  isOptimizingProp,
+  checkWorkspaceReminder
 }) => {
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -184,6 +185,11 @@ const VisualEditor = ({
 
   const handleInitialGenerate = async (type = 'image') => {
     if (!checkBalance(type)) return;
+    
+    if (checkWorkspaceReminder && checkWorkspaceReminder(() => handleInitialGenerate(type))) {
+      return;
+    }
+
     if (!file && !preview) {
       showError("Wybierz obraz i wpisz instrukcję.");
       return;
@@ -327,6 +333,11 @@ const VisualEditor = ({
   const handleRefine = async () => {
     if (!checkBalance('refine')) return;
     if (!modificationText.trim() || !lastPromptData) return;
+
+    if (checkWorkspaceReminder && checkWorkspaceReminder(() => handleRefine())) {
+      return;
+    }
+
     setLoadingType('refine');
     try {
       const token = await auth.currentUser.getIdToken();

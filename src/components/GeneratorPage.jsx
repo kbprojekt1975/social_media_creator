@@ -176,6 +176,7 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
   const [mediaHistory, setMediaHistory] = useState([]); // Array to store { type: 'image'|'video', url: string, prompt: string }
   const [v1VisualPrompt, setV1VisualPrompt] = useState(null);
   const [aiDetectionLog, setAiDetectionLog] = useState("");
+  const [postSchedule, setPostSchedule] = useState(null);
 
   // Workspace States
   const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'generator'); // 'generator' | 'workspaces' | 'campaigns'
@@ -185,6 +186,8 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
   const [showWorkspaceForm, setShowWorkspaceForm] = useState(false);
   const [showAdvancedMenu, setShowAdvancedMenu] = useState(false);
   const [newWorkspace, setNewWorkspace] = useState({ name: '', contentDirectives: '', visualStyle: '' });
+  const [showWorkspaceReminder, setShowWorkspaceReminder] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null);
 
 
 
@@ -425,6 +428,13 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
     if (!checkBalance('post')) return;
     if (!topic || subscriptionStatus === 'loading') return;
 
+    // Check for Workspace Reminder
+    if (activeWorkspace && !pendingAction) {
+      setPendingAction(() => () => handleGenerate(e));
+      setShowWorkspaceReminder(true);
+      return;
+    }
+
     setLoading(true);
     setResult(null);
     setGeneratedImage(null);
@@ -559,6 +569,13 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
     if (!checkBalance(type)) return;
     if (!result || imageLoading || isReadOnly) return;
     
+    // Check for Workspace Reminder if auto-generating or starting new media session
+    if (activeWorkspace && !pendingAction) {
+      setPendingAction(() => () => handleGeneratePrompt(type, autoGenerate));
+      setShowWorkspaceReminder(true);
+      return;
+    }
+
     setImageLoading(true);
     setIsAutoGenerating(autoGenerate);
     setVisualizationType(type);
@@ -1063,6 +1080,7 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
     setMediaHistory([]);
     setV1VisualPrompt(null);
     setAiDetectionLog("");
+    setPostSchedule(null);
     setCurrentRecordId(null);
     setActiveCampaignContext(null);
   };
@@ -1096,6 +1114,7 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
     setPlatform(item.platform || 'LinkedIn');
     setStyle(item.style || 'Profesjonalny');
     setResult(item.content || '');
+    setPostSchedule(item.postSchedule || null);
     
     // Restore Text Post Plan
     if (item.polishPlan || item.englishPrompt) {
@@ -1157,6 +1176,13 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
 
   const handleGenerateCampaign = async (campaignData) => {
     if (!checkBalance('campaign')) return;
+
+    if (activeWorkspace && !pendingAction) {
+      setPendingAction(() => () => handleGenerateCampaign(campaignData));
+      setShowWorkspaceReminder(true);
+      return;
+    }
+
     setCampaignLoading(true);
     try {
       const token = await user.getIdToken();
@@ -1223,6 +1249,21 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
       });
     } catch (error) {
       console.error('Error updating campaign name:', error);
+    }
+  };
+
+  const handleSaveDraftCampaign = async (campaignData) => {
+    try {
+      const campaignRef = collection(db, 'users', user.uid, 'campaigns');
+      await addDoc(campaignRef, {
+        ...campaignData,
+        status: 'draft',
+        createdAt: serverTimestamp()
+      });
+      showSuccess('Wersja robocza kampanii została zapisana.');
+    } catch (error) {
+      console.error('Error saving campaign draft:', error);
+      showError('Nie udało się zapisać wersji roboczej.');
     }
   };
 
@@ -1374,7 +1415,21 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      return response.data.result;
+      const scheduleText = response.data.result;
+      
+      // Save to Firestore if we have a current record
+      if (currentRecordId) {
+        try {
+          await updateDoc(doc(db, 'users', user.uid, 'history', currentRecordId), {
+            postSchedule: scheduleText
+          });
+        } catch (saveErr) {
+          console.error("Error saving post schedule to history:", saveErr);
+        }
+      }
+
+      setPostSchedule(scheduleText);
+      return scheduleText;
     } catch (error) {
       console.error('Post schedule error:', error);
       showError('Nie udało się wygenerować rekomendacji czasu publikacji.');
@@ -1608,6 +1663,8 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
                 handleOptimizePrompt={handleOptimizePrompt}
                 isOptimizing={isOptimizing}
                 handleGetPostSchedule={handleGetPostSchedule}
+                postSchedule={postSchedule}
+                setPostSchedule={setPostSchedule}
                 topic={topic}
                 platform={platform}
                 productDescription={activeWorkspace?.contentDirectives || ''}
@@ -1645,6 +1702,7 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
             handleResetCampaignItem={handleResetCampaignItem}
             handleGetPublishingSchedule={handleGetPublishingSchedule}
             handleSavePublishingSchedule={handleSavePublishingSchedule}
+            handleSaveDraftCampaign={handleSaveDraftCampaign}
             history={history}
             balance={balance}
             isReadOnly={isReadOnly}
@@ -1665,6 +1723,14 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
             pricing={pricing}
             handleOptimizePrompt={handleOptimizePrompt}
             isOptimizingProp={isOptimizing}
+            checkWorkspaceReminder={(action) => {
+              if (activeWorkspace) {
+                setPendingAction(() => action);
+                setShowWorkspaceReminder(true);
+                return true;
+              }
+              return false;
+            }}
           />
         )}
       </div>
@@ -1705,6 +1771,70 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
         </span>
       </button>
       <ChatAssistant API_BASE_URL={API_BASE_URL} subscriptionStatus={subscriptionStatus} />
+      {/* Workspace Reminder Modal */}
+      {showWorkspaceReminder && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.85)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10001,
+          backdropFilter: 'blur(10px)',
+          padding: '20px'
+        }}>
+          <div className="glass modal-content premium-border" style={{ 
+            maxWidth: '450px', 
+            width: '100%',
+            textAlign: 'center', 
+            padding: '2.5rem',
+            backgroundColor: 'var(--bg-white)',
+            borderRadius: '30px',
+            boxShadow: 'var(--shadow-lg)',
+            border: '1px solid rgba(var(--color-primary-rgb), 0.2)'
+          }}>
+            <div style={{ background: 'rgba(66, 133, 244, 0.1)', width: '80px', height: '80px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
+              <span className="material-icons" style={{ fontSize: '3rem', color: 'var(--color-primary)' }}>workspaces</span>
+            </div>
+            <h3 style={{ fontSize: '1.6rem', marginBottom: '1rem', fontWeight: '800' }}>Aktywna Przestrzeń</h3>
+            <p style={{ color: 'var(--text-muted)', lineHeight: '1.6', marginBottom: '2rem', fontSize: '1.05rem' }}>
+              Masz aktywną przestrzeń roboczą: <strong style={{ color: 'var(--color-primary)' }}>"{activeWorkspace?.name}"</strong>. 
+              Czy chcesz kontynuować generowanie z tymi wytycznymi, czy wolisz zmienić przestrzeń?
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <button 
+                className="btn-primary" 
+                style={{ width: '100%', padding: '1.2rem', borderRadius: '15px', fontSize: '1.1rem', fontWeight: '700' }}
+                onClick={() => {
+                  const action = pendingAction;
+                  setPendingAction(null);
+                  setShowWorkspaceReminder(false);
+                  if (action) action();
+                }}
+              >
+                Kontynuuj
+              </button>
+              <button 
+                className="btn-secondary" 
+                style={{ width: '100%', padding: '1rem', borderRadius: '15px', fontSize: '1rem' }}
+                onClick={() => {
+                  setShowWorkspaceReminder(false);
+                  setPendingAction(null);
+                  setActiveTab('workspaces');
+                  handleReset(); // Reset topic/session
+                  showInfo("Przeniesiono do zarządzania przestrzeniami. Sesja została zresetowana.");
+                }}
+              >
+                Zmień przestrzeń roboczą
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
   </div>
   );
 };
