@@ -297,20 +297,20 @@ const LandingPage = ({ deferredPrompt, setDeferredPrompt }) => {
             marginBottom: '1.5rem', 
             fontWeight: '700'
           }}>
-            Zbuduj Swoją <br/>
+            Wystarczy Twój Pomysł. <br/>
             <span className="gradient-text" style={{ fontSize: '0.7em', display: 'block', marginTop: '0.5rem' }}>
-              Obecność W Social Media Z AI
+              Resztę Posta Zrobi nasza Kuźnia
             </span>
           </h1>
           <p style={{ 
             fontSize: '1.25rem', 
-            color: 'white', // Zmienione z muted na biały dla kontrastu
+            color: 'white', 
             marginBottom: '2.5rem', 
             maxWidth: '600px', 
             marginInline: 'auto',
             fontWeight: '500'
           }}>
-            Kompleksowa platforma AI do projektowania, planowania i analizowania Twoich treści w mediach społecznościowych z zachwycającą estetyką i maksymalnym zasięgiem.
+            Nie musisz być ekspertem od AI. Ty piszesz, o czym ma być post, a my tworzymy chwytliwy tekst, dopasowany styl i zachwycającą grafikę w sekundy.
           </p>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
             <Link 

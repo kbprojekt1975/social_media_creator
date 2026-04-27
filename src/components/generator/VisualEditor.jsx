@@ -183,10 +183,10 @@ const VisualEditor = ({
     return true;
   };
 
-  const handleInitialGenerate = async (type = 'image') => {
+  const handleInitialGenerate = async (type = 'image', skipWorkspaceCheck = false) => {
     if (!checkBalance(type)) return;
     
-    if (checkWorkspaceReminder && checkWorkspaceReminder(() => handleInitialGenerate(type))) {
+    if (checkWorkspaceReminder && checkWorkspaceReminder(() => handleInitialGenerate(type, true), skipWorkspaceCheck)) {
       return;
     }
 
@@ -330,11 +330,11 @@ const VisualEditor = ({
     setLoadingType(null);
   };
 
-  const handleRefine = async () => {
+  const handleRefine = async (skipWorkspaceCheck = false) => {
     if (!checkBalance('refine')) return;
     if (!modificationText.trim() || !lastPromptData) return;
-
-    if (checkWorkspaceReminder && checkWorkspaceReminder(() => handleRefine())) {
+    
+    if (checkWorkspaceReminder && checkWorkspaceReminder(() => handleRefine(true), skipWorkspaceCheck)) {
       return;
     }
 

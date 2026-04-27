@@ -150,7 +150,7 @@ const WorkspaceManager = ({
                     transition: 'all 0.2s ease'
                   }}
                 >
-                  <span className={`material-icons ${isGeneratingContent ? 'animate-spin' : ''}`} style={{ fontSize: '1rem' }}>
+                  <span className={`material-icons ${isGeneratingContent ? 'spin' : ''}`} style={{ fontSize: '1rem' }}>
                     {isGeneratingContent ? 'sync' : 'auto_awesome'}
                   </span>
                   {isGeneratingContent ? 'Generowanie...' : 'AI Write'}
@@ -194,7 +194,7 @@ const WorkspaceManager = ({
                     transition: 'all 0.2s ease'
                   }}
                 >
-                  <span className={`material-icons ${isGeneratingVisual ? 'animate-spin' : ''}`} style={{ fontSize: '1rem' }}>
+                  <span className={`material-icons ${isGeneratingVisual ? 'spin' : ''}`} style={{ fontSize: '1rem' }}>
                     {isGeneratingVisual ? 'sync' : 'auto_awesome'}
                   </span>
                   {isGeneratingVisual ? 'Generowanie...' : 'AI Design'}
@@ -249,7 +249,7 @@ const WorkspaceManager = ({
                 marginBottom: '1rem'
               }}
             >
-              <span className={`material-icons ${isGeneratingTrends ? 'animate-spin' : ''}`} style={{ fontSize: '1.2rem' }}>
+              <span className={`material-icons ${isGeneratingTrends ? 'spin' : ''}`} style={{ fontSize: '1.2rem' }}>
                 {isGeneratingTrends ? 'sync' : 'trending_up'}
               </span>
               {isGeneratingTrends ? 'Wyszukiwanie trendów...' : 'Wyszukaj trendy AI'}

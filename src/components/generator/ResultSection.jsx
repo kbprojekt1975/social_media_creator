@@ -52,7 +52,8 @@ const ResultSection = ({
   setPostSchedule,
   topic,
   platform,
-  productDescription
+  productDescription,
+  activeWorkspace
 }) => {
   const [isModified, setIsModified] = useState(false);
   const [isSyncSuccess, setIsSyncSuccess] = useState(false);
@@ -151,7 +152,26 @@ const ResultSection = ({
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <div className="glass" style={{ padding: '2.5rem', borderRadius: '2px', background: 'var(--bg-white)', border: 'none', animation: 'fadeIn 0.5s ease-out' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', alignItems: 'center' }}>
-          <h3 style={{ color: 'var(--color-primary)', fontWeight: '700', margin: 0 }}>Wygenerowana Treść</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+            <h3 style={{ color: 'var(--color-primary)', fontWeight: '700', margin: 0 }}>Wygenerowana Treść</h3>
+            {activeWorkspace && (
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '0.4rem', 
+                padding: '0.4rem 0.8rem', 
+                background: 'rgba(66, 133, 244, 0.08)', 
+                borderRadius: '20px',
+                border: '1px solid rgba(66, 133, 244, 0.2)',
+                fontSize: '0.85rem',
+                color: 'var(--color-primary)',
+                fontWeight: '600'
+              }}>
+                <span className="material-icons" style={{ fontSize: '1rem' }}>workspaces</span>
+                {activeWorkspace.name}
+              </div>
+            )}
+          </div>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
             <button 
               onClick={() => setShowAdvanced(!showAdvanced)}
@@ -1127,7 +1147,9 @@ const ResultSection = ({
                   fontWeight: '800'
                 }}
               >
-                {isVisualSyncing ? <span className="spinner"></span> : (
+                {isVisualSyncing ? (
+                  <span className="material-icons spin">sync</span>
+                ) : (
                   <>
                     <span className="material-icons">
                       {isSyncSuccess ? 'check_circle' : 'sync'}

@@ -423,14 +423,14 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
     }
   };
 
-  const handleGenerate = async (e) => {
+  const handleGenerate = async (e, skipWorkspaceCheck = false) => {
     if (e) e.preventDefault();
     if (!checkBalance('post')) return;
     if (!topic || subscriptionStatus === 'loading') return;
 
     // Check for Workspace Reminder
-    if (activeWorkspace && !pendingAction) {
-      setPendingAction(() => () => handleGenerate(e));
+    if (activeWorkspace && !pendingAction && !skipWorkspaceCheck) {
+      setPendingAction(() => () => handleGenerate(e, true));
       setShowWorkspaceReminder(true);
       return;
     }
@@ -565,13 +565,13 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
     }
   };
 
-  const handleGeneratePrompt = async (type, autoGenerate = false) => {
+  const handleGeneratePrompt = async (type, autoGenerate = false, skipWorkspaceCheck = false) => {
     if (!checkBalance(type)) return;
     if (!result || imageLoading || isReadOnly) return;
     
     // Check for Workspace Reminder if auto-generating or starting new media session
-    if (activeWorkspace && !pendingAction) {
-      setPendingAction(() => () => handleGeneratePrompt(type, autoGenerate));
+    if (activeWorkspace && !pendingAction && !skipWorkspaceCheck) {
+      setPendingAction(() => () => handleGeneratePrompt(type, autoGenerate, true));
       setShowWorkspaceReminder(true);
       return;
     }
@@ -1174,11 +1174,11 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
     window.scrollTo({ top: 0, behavior: 'smooth' }); 
   };
 
-  const handleGenerateCampaign = async (campaignData) => {
+  const handleGenerateCampaign = async (campaignData, skipWorkspaceCheck = false) => {
     if (!checkBalance('campaign')) return;
 
-    if (activeWorkspace && !pendingAction) {
-      setPendingAction(() => () => handleGenerateCampaign(campaignData));
+    if (activeWorkspace && !pendingAction && !skipWorkspaceCheck) {
+      setPendingAction(() => () => handleGenerateCampaign(campaignData, true));
       setShowWorkspaceReminder(true);
       return;
     }
@@ -1668,6 +1668,7 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
                 topic={topic}
                 platform={platform}
                 productDescription={activeWorkspace?.contentDirectives || ''}
+                activeWorkspace={activeWorkspace}
               />
             </div>
           </>
@@ -1708,6 +1709,8 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
             isReadOnly={isReadOnly}
             initialSession={activeCampaignSession}
             onClearSession={() => setActiveCampaignSession(null)}
+            handleDeleteCampaign={handleDeleteCampaign}
+            handleEditHistoryItem={handleEditHistoryItem}
           />
         )}
 
@@ -1723,8 +1726,8 @@ const GeneratorPage = ({ deferredPrompt, setDeferredPrompt }) => {
             pricing={pricing}
             handleOptimizePrompt={handleOptimizePrompt}
             isOptimizingProp={isOptimizing}
-            checkWorkspaceReminder={(action) => {
-              if (activeWorkspace) {
+            checkWorkspaceReminder={(action, skipReminder = false) => {
+              if (activeWorkspace && !skipReminder) {
                 setPendingAction(() => action);
                 setShowWorkspaceReminder(true);
                 return true;

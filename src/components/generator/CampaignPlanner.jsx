@@ -41,7 +41,8 @@ const CampaignPlanner = ({
   onClearSession,
   handleGetPublishingSchedule,
   handleSavePublishingSchedule,
-  handleSaveDraftCampaign
+  handleSaveDraftCampaign,
+  handleDeleteCampaign
 }) => {
   const [name, setName] = useState('');
   const [editingId, setEditingId] = useState(null);
@@ -424,7 +425,7 @@ const CampaignPlanner = ({
                       style={{ padding: '0.8rem 1.2rem', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem' }}
                       title="Ulepsz opis z AI"
                     >
-                      <span className="material-icons" style={{ fontSize: '1.1rem' }}>
+                      <span className={`material-icons ${isRefiningGoal ? 'spin' : ''}`} style={{ fontSize: '1.1rem' }}>
                         {isRefiningGoal ? 'sync' : 'auto_fix_high'}
                       </span>
                     </button>
@@ -481,7 +482,7 @@ const CampaignPlanner = ({
                 className="btn-secondary"
                 style={{ position: 'absolute', bottom: '10px', right: '10px', padding: '0.5rem 1rem', borderRadius: '10px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
               >
-                <span className="material-icons" style={{ fontSize: '1rem' }}>{isRefiningProduct ? 'sync' : 'auto_fix_high'}</span>
+                <span className={`material-icons ${isRefiningProduct ? 'spin' : ''}`} style={{ fontSize: '1rem' }}>{isRefiningProduct ? 'sync' : 'auto_fix_high'}</span>
                 AI Weryfikacja
               </button>
             </div>
@@ -503,7 +504,7 @@ const CampaignPlanner = ({
                   className="btn-secondary"
                   style={{ position: 'absolute', top: '50%', right: '5px', transform: 'translateY(-50%)', padding: '0.4rem 0.8rem', borderRadius: '10px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
                 >
-                  <span className="material-icons" style={{ fontSize: '0.9rem' }}>{isRefiningUSP ? 'sync' : 'auto_fix_high'}</span>
+                  <span className={`material-icons ${isRefiningUSP ? 'spin' : ''}`} style={{ fontSize: '0.9rem' }}>{isRefiningUSP ? 'sync' : 'auto_fix_high'}</span>
                   AI
                 </button>
               </div>
@@ -521,10 +522,10 @@ const CampaignPlanner = ({
             </div>
           </div>
 
-          {/* Section D: Grupa Docelowa (NEW) */}
+          {/* Section C: Grupa Docelowa (Persona) */}
           <div style={{ marginBottom: '2.5rem' }}>
             <h4 style={{ color: 'var(--color-primary)', marginBottom: '1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span className="material-icons">groups</span> Sekcja D: Grupa Docelowa (Persona)
+              <span className="material-icons">groups</span> Sekcja C: Grupa Docelowa (Persona)
             </h4>
             <div className="input-group" style={{ position: 'relative' }}>
               <label style={{ display: 'block', marginBottom: '0.8rem', color: 'var(--text-muted)' }}>Do kogo mówimy? (Twoja Persona)</label>
@@ -566,16 +567,16 @@ const CampaignPlanner = ({
                 className="btn-secondary"
                 style={{ position: 'absolute', bottom: '10px', right: '10px', padding: '0.5rem 1rem', borderRadius: '10px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
               >
-                <span className="material-icons" style={{ fontSize: '1rem' }}>{isRefiningAudience ? 'sync' : 'auto_fix_high'}</span>
+                <span className={`material-icons ${isRefiningAudience ? 'spin' : ''}`} style={{ fontSize: '1rem' }}>{isRefiningAudience ? 'sync' : 'auto_fix_high'}</span>
                 AI Weryfikacja
               </button>
             </div>
           </div>
 
-          {/* Section C: Strategia */}
+          {/* Section D: Strategia */}
           <div style={{ marginBottom: '2.5rem' }}>
             <h4 style={{ color: 'var(--color-primary)', marginBottom: '1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span className="material-icons">trending_up</span> Sekcja C: Strategia
+              <span className="material-icons">trending_up</span> Sekcja D: Strategia
             </h4>
 
             <div className="campaign-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
@@ -719,7 +720,7 @@ const CampaignPlanner = ({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <h3 style={{ margin: '1rem 0 0.5rem 0', fontWeight: '700' }}>Twoje Strategie</h3>
           {campaigns.map(campaign => (
-            <div key={campaign.id} className="glass" style={{ padding: '2rem', borderRadius: '2px', background: 'var(--bg-white)', border: 'none' }}>
+            <div key={campaign.id} className="glass" style={{ padding: '2rem', borderRadius: '8px', background: 'var(--bg-white)', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-sm)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                 <div style={{ flex: 1 }}>
                   {editingId === campaign.id ? (
@@ -765,58 +766,86 @@ const CampaignPlanner = ({
                   <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Cel: {campaign.goal} | {campaign.duration} dni</p>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <button
-                    onClick={async () => {
-                      // Check if already generating
-                      if (isGeneratingSchedule[campaign.id]) return;
+                  {campaign.status === 'draft' && (
+                    <div style={{ display: 'flex', gap: '0.8rem' }}>
+                      <button 
+                        onClick={() => {
+                          handleEditHistoryItem({
+                            ...campaign,
+                            historyType: 'campaign'
+                          });
+                          setIsFormCollapsed(false);
+                        }}
+                        className="btn-primary"
+                        style={{ padding: '0.5rem 1.2rem', borderRadius: '4px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                      >
+                        <span className="material-icons" style={{ fontSize: '1.1rem' }}>play_arrow</span>
+                        Kontynuuj
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteCampaign(campaign.id)}
+                        className="btn-secondary"
+                        style={{ padding: '0.5rem', minWidth: 'auto', borderRadius: '4px', color: '#ef4444', borderColor: '#ef4444' }}
+                        title="Usuń wersję roboczą"
+                      >
+                        <span className="material-icons" style={{ fontSize: '1.1rem' }}>delete_outline</span>
+                      </button>
+                    </div>
+                  )}
+                  {campaign.status !== 'draft' && (
+                    <button
+                      onClick={async () => {
+                        // Check if already generating
+                        if (isGeneratingSchedule[campaign.id]) return;
 
-                      // If we already have it in state, we just toggle UI (locally)
-                      // but usually we want to toggle the block visibility
-                      if (publishingSchedule[campaign.id] || campaign.publishingSchedule) {
-                        // If it's already there, the button could toggle "collapsed" state of that specific block
-                        toggleSchedule(campaign.id);
-                        return;
-                      }
-                      
-                      setIsGeneratingSchedule(prev => ({ ...prev, [campaign.id]: true }));
-                      const result = await handleGetPublishingSchedule(campaign);
-                      if (result) {
-                        // 1. Save to local state for immediate feedback
-                        setPublishingSchedule(prev => ({ ...prev, [campaign.id]: result }));
-                        // 2. Save to Firestore for permanence
-                        await handleSavePublishingSchedule(campaign.id, result);
-                        // 3. Ensure campaign and schedule are expanded
-                        setExpandedCampaigns(prev => ({ ...prev, [campaign.id]: true }));
-                        setExpandedSchedules(prev => ({ ...prev, [campaign.id]: true }));
-                      }
-                      setIsGeneratingSchedule(prev => ({ ...prev, [campaign.id]: false }));
-                    }}
-                    disabled={isGeneratingSchedule[campaign.id]}
-                    className="btn-secondary"
-                    style={{ 
-                      padding: '0.5rem 1rem', 
-                      borderRadius: '4px', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: '0.4rem', 
-                      fontSize: '0.85rem', 
-                      borderColor: (publishingSchedule[campaign.id] || campaign.publishingSchedule) ? 'var(--color-primary)' : 'var(--border-color)', 
-                      color: (publishingSchedule[campaign.id] || campaign.publishingSchedule) ? 'var(--color-primary)' : 'var(--text-main)' 
-                    }}
-                    title="Sprawdź optymalne godziny publikacji"
-                  >
-                    <span className="material-icons" style={{ fontSize: '1.1rem' }}>
-                      {isGeneratingSchedule[campaign.id] ? 'sync' : 'schedule'}
-                    </span>
-                    {isGeneratingSchedule[campaign.id] ? 'Analizowanie...' : 'Kiedy publikować?'}
-                  </button>
+                        // If we already have it in state, we just toggle UI (locally)
+                        // but usually we want to toggle the block visibility
+                        if (publishingSchedule[campaign.id] || campaign.publishingSchedule) {
+                          // If it's already there, the button could toggle "collapsed" state of that specific block
+                          toggleSchedule(campaign.id);
+                          return;
+                        }
+                        
+                        setIsGeneratingSchedule(prev => ({ ...prev, [campaign.id]: true }));
+                        const result = await handleGetPublishingSchedule(campaign);
+                        if (result) {
+                          // 1. Save to local state for immediate feedback
+                          setPublishingSchedule(prev => ({ ...prev, [campaign.id]: result }));
+                          // 2. Save to Firestore for permanence
+                          await handleSavePublishingSchedule(campaign.id, result);
+                          // 3. Ensure campaign and schedule are expanded
+                          setExpandedCampaigns(prev => ({ ...prev, [campaign.id]: true }));
+                          setExpandedSchedules(prev => ({ ...prev, [campaign.id]: true }));
+                        }
+                        setIsGeneratingSchedule(prev => ({ ...prev, [campaign.id]: false }));
+                      }}
+                      disabled={isGeneratingSchedule[campaign.id]}
+                      className="btn-secondary"
+                      style={{ 
+                        padding: '0.5rem 1rem', 
+                        borderRadius: '4px', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '0.4rem', 
+                        fontSize: '0.85rem', 
+                        borderColor: 'var(--border-color)', 
+                        color: 'var(--text-main)' 
+                      }}
+                      title="Sprawdź optymalne godziny publikacji"
+                    >
+                      <span className={`material-icons ${isGeneratingSchedule[campaign.id] ? 'spin' : ''}`} style={{ fontSize: '1.1rem' }}>
+                        {isGeneratingSchedule[campaign.id] ? 'sync' : 'schedule'}
+                      </span>
+                      {isGeneratingSchedule[campaign.id] ? 'Analizowanie...' : 'Kiedy publikować?'}
+                    </button>
+                  )}
                   <span className="material-icons" style={{ color: 'var(--color-primary)' }}>verified</span>
                   <button 
                     onClick={() => toggleCampaign(campaign.id)}
                     style={{ 
-                      background: 'rgba(66, 133, 244, 0.1)', 
-                      border: 'none', 
-                      color: 'var(--color-primary)', 
+                      background: 'var(--bg-app)', 
+                      border: '1px solid var(--border-color)', 
+                      color: 'var(--text-muted)', 
                       borderRadius: '3px', 
                       padding: '0.4rem', 
                       cursor: 'pointer',
@@ -833,7 +862,7 @@ const CampaignPlanner = ({
               </div>
 
               {(publishingSchedule[campaign.id] || campaign.publishingSchedule) && (
-                <div style={{ background: 'rgba(66, 133, 244, 0.05)', borderRadius: '8px', border: '1px solid var(--color-primary)', marginBottom: '1.5rem', animation: 'fadeIn 0.3s ease-out', overflow: 'hidden' }}>
+                <div style={{ background: 'var(--bg-white)', borderRadius: '8px', border: expandedSchedules[campaign.id] ? '1px solid var(--border-color)' : 'none', marginBottom: '1.5rem', animation: 'fadeIn 0.3s ease-out', overflow: 'hidden' }}>
                   <div 
                     onClick={() => toggleSchedule(campaign.id)}
                     style={{ 
@@ -841,15 +870,15 @@ const CampaignPlanner = ({
                       cursor: 'pointer', 
                       display: 'flex', 
                       alignItems: 'center', 
-                      justifyContent: 'space-between',
-                      borderBottom: collapsedSchedules[campaign.id] ? 'none' : '1px solid rgba(0, 163, 193, 0.1)'
+                      gap: '1rem',
+                      borderBottom: !expandedSchedules[campaign.id] ? 'none' : '1px solid rgba(0, 163, 193, 0.1)'
                     }}
                   >
-                    <h4 style={{ color: 'var(--color-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.1rem' }}>
-                      <span className="material-icons" style={{ fontSize: '1.3rem' }}>insights</span>
+                    <h4 style={{ color: 'var(--text-main)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.1rem' }}>
+                      <span className="material-icons" style={{ fontSize: '1.3rem', color: 'var(--text-muted)' }}>insights</span>
                       Rekomendacja czasu publikacji (AI)
                     </h4>
-                    <span className="material-icons" style={{ color: 'var(--color-primary)', transition: 'transform 0.3s', transform: expandedSchedules[campaign.id] ? 'rotate(0deg)' : 'rotate(180deg)' }}>
+                    <span className="material-icons" style={{ color: 'var(--text-muted)', transition: 'transform 0.3s', transform: expandedSchedules[campaign.id] ? 'rotate(0deg)' : 'rotate(180deg)' }}>
                       expand_more
                     </span>
                   </div>
